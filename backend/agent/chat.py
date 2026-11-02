@@ -48,7 +48,8 @@ TOOLS = [
             "properties": {"upload_id": {"type": "string"},
                            "kind": {"type": "string", "enum": [k for k, _ in Evidence.KINDS]}}}},
     }),
-    _tool("attach_evidence", "Attach an uploaded file to an existing request and re-check it.", {
+    _tool("attach_evidence", "Attach an uploaded file to an existing request and re-check it. Never use this "
+          "for a revised quote or invoice with a different amount: create a new request instead.", {
         "request_id": {"type": "string"},
         "upload_id": {"type": "string"},
         "kind": {"type": "string", "enum": [k for k, _ in Evidence.KINDS]},

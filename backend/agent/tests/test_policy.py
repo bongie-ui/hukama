@@ -17,10 +17,13 @@ from .helpers import fake_pay, midday, paid_history, submit
 FOUNDATION_OK = {"kind": Evidence.MILESTONE_PHOTO, "extracted": {"verdict": "matches", "observed": "slab poured"}}
 
 
-def quote(unit_price, name="Cement 50kg bag"):
-    return {"kind": Evidence.QUOTE, "extracted": {"supplier": "Test Supplier", "items": [
+def quote(unit_price, name="Cement 50kg bag", total=None):
+    extracted = {"supplier": "Test Supplier", "items": [
         {"name": name, "quantity": 40, "unit_price": unit_price}, {"name": "Bricks", "quantity": 500,
-                                                                   "unit_price": 0.3}]}}
+                                                                   "unit_price": 0.3}]}
+    if total is not None:
+        extracted["total"] = total
+    return {"kind": Evidence.QUOTE, "extracted": extracted}
 
 
 def kinds(req, passed):
@@ -83,6 +86,28 @@ class BuildMandateRuleTests(TestCase):
             req = services.reassess(req, intent_analyzer=lambda c: {"ai_risk": 0}, now=midday())
         self.assertEqual(req.status, Request.APPROVED)
 
+    def test_amount_cannot_exceed_the_quote_total(self):
+        # Live bug, 2 Nov: a $560 request was approved after a $420 revised quote was attached to it.
+        req = self.build(amount="560", evidence=(quote(10.50, total=420), FOUNDATION_OK))
+        self.assertEqual(req.status, Request.REFUSED)
+        self.assertIn("$560.00", req.latest_decision.reason)
+        self.assertIn("$420.00", req.latest_decision.reason)
+        self.assertFalse(req.rail_transactions.exists())
+
+    def test_quote_total_falls_back_to_line_items(self):
+        req = self.build(amount="600", evidence=(quote(10.50), FOUNDATION_OK))  # 40 x 10.50 + 500 x 0.30 = 570
+        self.assertEqual(req.status, Request.REFUSED)
+        self.assertIn("$570.00", req.latest_decision.reason)
+
+    def test_revised_cheaper_quote_on_old_request_is_refused_not_overpaid(self):
+        req = self.build(amount="560", evidence=(quote(14, total=560), FOUNDATION_OK))
+        req.evidence.create(kind=Evidence.QUOTE, extracted=quote(10.50, total=420)["extracted"])
+        with mock.patch("payments.rails.for_payee") as for_payee:
+            for_payee.return_value.pay.side_effect = fake_pay
+            req = services.reassess(req, intent_analyzer=lambda c: {"ai_risk": 0}, now=midday())
+        self.assertEqual(req.status, Request.REFUSED)
+        self.assertFalse(for_payee.return_value.pay.called)
+
     def test_signature_tamper_refuses(self):
         rule = self.mandate.rules.get(kind="max_per_request")
         rule.params = {"amount": 100000}
@@ -99,7 +124,7 @@ class BuildMandateRuleTests(TestCase):
         self.assertIn("Insufficient mandate funds: $100.00", req.latest_decision.reason)
 
     def test_balance_counts_pending_payouts(self):
-        self.build(amount="600")  # approved, payout pending
+        self.build(amount="600", evidence=(quote(10.50, total=600), FOUNDATION_OK))  # approved, payout pending
         req = self.build(amount="500")
         self.assertIn("Insufficient", req.latest_decision.reason)
 

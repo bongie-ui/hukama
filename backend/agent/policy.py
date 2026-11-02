@@ -156,6 +156,17 @@ def _requires_evidence(rule, request, ctx):
     return True, f"Evidence provided: {label}"
 
 
+def _quote_total(extracted, items):
+    """The quote's stated total, else the sum of its lines; None if it cannot be worked out."""
+    try:
+        if extracted.get("total") not in (None, ""):
+            return Decimal(str(extracted["total"]))
+        return sum((Decimal(str(line.get("quantity") or 1)) * Decimal(str(line["unit_price"])) for line in items),
+                   Decimal("0"))
+    except (KeyError, ArithmeticError, ValueError, TypeError):
+        return None
+
+
 def _price_ceiling(rule, request, ctx):
     item = rule.params["item"]
     keywords = [k.lower() for k in rule.params.get("keywords") or [item.split("_")[0]]]
@@ -164,6 +175,11 @@ def _price_ceiling(rule, request, ctx):
     items = (evidence.extracted or {}).get("items") if evidence else None
     if not items:
         return False, "Needs a quote or invoice with line items to check prices"
+    # Never pay more than the quote asks for (a cheaper revised quote must not approve the old amount).
+    total = _quote_total(evidence.extracted, items)
+    if total is not None and request.amount > total:
+        return False, (f"{money(request.amount, ctx['currency'])} is more than the quote's total of "
+                       f"{money(total, ctx['currency'])}")
     pretty = item.replace("_", " ")
     matched = [line for line in items
                if line.get("key") == item or any(k in str(line.get("name", "")).lower() for k in keywords)]

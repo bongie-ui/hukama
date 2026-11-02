@@ -88,7 +88,7 @@ class PayPalClient:
         return self.request("POST", "/v1/payments/payouts", json={
             "sender_batch_header": {
                 "sender_batch_id": reference,
-                "email_subject": "You have a payment from Thuma",
+                "email_subject": "You have a payment from Hukama",
             },
             "items": [{
                 "recipient_type": "EMAIL",
