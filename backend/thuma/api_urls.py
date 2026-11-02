@@ -38,6 +38,9 @@ urlpatterns = [
     path("mandates/<uuid:pk>/fund/create-order/", payments.fund_create_order),
     path("mandates/<uuid:pk>/fund/capture/", payments.fund_capture),
     path("mandates/<uuid:pk>/fundings/", payments.mandate_fundings),
+    path("mandates/<uuid:pk>/contribution-link/", mandates.mandate_contribution_link),
+    path("public/pools/<str:token>/", payments.public_pool),
+    path("public/pools/<str:token>/contribute/", payments.public_contribute),
 
     path("requests/", mandates.requests_),
     path("requests/<uuid:pk>/", mandates.request_detail),

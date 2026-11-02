@@ -4,6 +4,7 @@ Every state change writes an append-only LedgerEntry.
 """
 
 import hashlib
+import secrets
 from decimal import Decimal
 
 from django.conf import settings
@@ -99,6 +100,19 @@ def update_rules(mandate, rules, user):
     mandate.signature = signing.sign(mandate)
     mandate.save(update_fields=["version", "signature", "updated_at"])
     record(mandate, LedgerEntry.RULES_CHANGED, actor_of(user), version=mandate.version, rules=rules)
+    return mandate
+
+
+def set_contribution_link(mandate, user, enabled):
+    """Owner switches the pool's public PayPal link on (a new private token) or off."""
+    from .templates import get_template
+
+    if not is_owner(mandate, user):
+        raise ServiceError("Only the mandate owner can share or stop its contribution link")
+    if enabled and not get_template(mandate.type).public_contributions:
+        raise ServiceError("Only pools can take contributions from people outside the family")
+    mandate.contribute_token = secrets.token_urlsafe(12) if enabled else None
+    mandate.save(update_fields=["contribute_token", "updated_at"])
     return mandate
 
 

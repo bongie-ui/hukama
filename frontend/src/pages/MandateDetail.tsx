@@ -70,7 +70,7 @@ export default function MandateDetail({ id }: { id: string }) {
       <div className="split">
         <div className="stack" style={{ gap: 28 }}>
           {covered.map((b) => <QuickActions key={b.id} mandate={m} beneficiary={b} onChange={refresh} />)}
-          {m.type === "ISILILO" && <PoolContributions mandate={m} />}
+          {m.public_contributions && <PoolContributions mandate={m} onChange={refresh} />}
           {covered.length === 0 && <RequestForm mandate={m} />}
 
           <section className="section" aria-labelledby="req-h">

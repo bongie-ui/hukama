@@ -39,7 +39,7 @@ In the **Assistant** tab, *See it from their side* lets you write as Mama, as Gw
 3. Open **Approvals**. You'll see the red card: risk 100/100, every check that fired, what the AI noticed (with quotes), and *"Call Mama Siqile Fuyana on the registered number (+263 77 000 0001)…"*.
 4. **Report scam**. Both unknown numbers are now blocked for the whole family.
 
-**Also try:** a request on **Mama's house: foundation** with the photos in [`backend/demo_assets/`](backend/demo_assets) (a handwritten quote at $14 a bag is refused by the $11 ceiling; the revised $10.50 quote plus the foundation photo is paid by PayPal Payout), and **Dashboard → Build with AI**.
+**Also try:** **Support for Mama → Groceries**: pick *Family week*, choose *Deliver home*, and watch it go from packing to delivered; the **Family funeral pool**'s share link (open it signed out); a request on **Mama's house: foundation** with the photos in [`backend/demo_assets/`](backend/demo_assets) (a handwritten quote at $14 a bag is refused by the $11 ceiling; the revised $10.50 quote plus the foundation photo is paid by PayPal Payout), and **Dashboard → Build with AI**.
 
 A [Postman collection](docs/postman/) replays scenarios 3 and 4 with assertions. API docs: https://thuma.onrender.com/api/docs/
 
@@ -59,8 +59,12 @@ A [Postman collection](docs/postman/) replays scenarios 3 and 4 with assertions.
 |---|---|
 | **Akha** (build) | Pay only Gwanda Hardware · at most $600 · cement no more than $11 a bag · only after a photo shows the foundation is done · never more than the quote's total |
 | **Imfundo** (school fees) | Pay only Sunrise Academy · only on the school's own invoice, for its exact total |
-| **Isikhwama** (shared support) | Only for Mama · airtime, bundles, cash · bundles up to $30 a month **shared by all funders** · not twice in 24 hours · a funder approves anything over $50 |
-| **Isililo** (funeral pool) | Pay only the funeral provider, on invoice · relatives at home can add from mobile money |
+| **Isikhwama** (shared support) | Only for Mama · airtime, bundles, cash, **groceries** · bundles up to $30 a month **shared by all funders** · not twice in 24 hours · groceries up to $120 a month, at most every 72 hours · a funder approves anything over $50 |
+| **Isililo** (funeral pool) | Pay only the funeral provider, on invoice · **anyone with the pool's link can give with PayPal**, no account needed |
+
+**Groceries:** pick a basket from the family's store (prices come from the store's own list, so nobody can type an amount), then *collect in store* (Mama gets a code) or *home delivery* to her **registered address only**. The store is paid by PayPal Payout; packing and delivery are simulated.
+
+**Pool link:** the pool owner shares `…/#/give/<link>` on WhatsApp. Relatives and friends see what has been raised and give with PayPal checkout; givers appear by first name and initial.
 
 New mandates are drafted by the AI from plain words, shown as readable rules, edited, then signed by the funder.
 
@@ -88,26 +92,24 @@ The person who sent a held message never sees why it was held. Funders see every
 
 | Part | Status |
 |---|---|
-| PayPal Payouts to suppliers and schools | **Real (sandbox).** Verified end to end on 2 Nov 2026: $420 to Gwanda Hardware, $340 to Sunrise Academy |
-| Funding a mandate with PayPal checkout (Orders v2, APIMatic-generated PayPal Server SDK, JS SDK) | **In progress.** "Add funds with PayPal" says it is not switched on yet; demo mandates are pre-funded |
+| PayPal Payouts to suppliers, schools and the grocer | **Real (sandbox).** Verified end to end on 2 Nov 2026: $420 to Gwanda Hardware, $340 to Sunrise Academy, $48 to Gwanda Fresh Market |
+| Funding a mandate, or giving through a pool link, with PayPal checkout (Orders v2, APIMatic-generated PayPal Server SDK, JS SDK) | **In progress.** The buttons say checkout is not switched on yet; demo mandates are pre-funded |
 | PayPal Webhooks | **In progress.** Payout status is polled meanwhile |
 | Payout to the local mobile money provider's PayPal account | **Simulated rail for now.** Becomes a real PayPal Payout with the checkout work |
-| Last mile at home: airtime, data, cash with a collection code | **Simulated** (no public sandbox exists). Labelled "Simulated rail" in the app |
+| Last mile at home: airtime, data, cash or groceries with a collection code, grocery packing and delivery | **Simulated** (no public sandbox exists). Labelled in the app |
 | Billers (funeral cover, medical aid) | **Simulated** |
-| Relatives at home contributing from mobile money (Paynow) | **Real test mode**, inbound only. Needs Paynow test credentials |
 | AI: chat agent, vision, rule drafting, fraud intent, dashboard agents | **Real** (OpenAI), always called from the server |
 
 ## Built with
 
 | Tool | Used for |
 |---|---|
-| **PayPal Payouts** | Paying suppliers, schools and the mobile money provider, only after the policy engine approves |
-| **PayPal Orders + JS SDK** via the **APIMatic**-generated **PayPal Server SDK** | Funding mandates *(in progress)* |
+| **PayPal Payouts** | Paying suppliers, schools, the grocer and the mobile money provider, only after the policy engine approves |
+| **PayPal Orders + JS SDK** via the **APIMatic**-generated **PayPal Server SDK** | Funding mandates and giving through a pool link *(in progress)* |
 | **OpenAI** | Tool-calling chat agent (multilingual), vision for quotes, invoices and photos, structured outputs for drafting mandates, scam intent analysis. All calls go through one wrapper (`backend/agent/llm.py`) with retries, timeouts and a demo replay cache |
-| **AG Studio** (AG Grid + AG Charts) | Family dashboard: funds by mandate, each sibling's contributions, spend by category, fraud alerts, audit trail. Its Agent Framework builds charts from plain language, with every turn proxied through our server |
+| **AG Studio** (AG Grid + AG Charts) | Family dashboard, saved per family: a custom **Money flow** widget (family member → mandate → what it was spent on), each sibling's contributions, spend by category, fraud alerts, audit trail. Its Agent Framework builds charts from plain language (and can place the custom widget), with every turn proxied through our server |
 | **Render** | One web service (Django serving the built React app) + PostgreSQL |
 | **Postman** | Public collection that replays the demo with assertions (`docs/postman/`) |
-| **Paynow** (test mode) | Local mobile money contributions into a funeral pool |
 | Django, DRF, React, TypeScript, Vite, GitHub Actions | App, API, tests on every push |
 
 ## Run it locally
@@ -154,7 +156,6 @@ For frontend work with hot reload, keep `runserver` going and run `npm run dev` 
 | `PAYPAL_BASE_URL` | `https://api-m.sandbox.paypal.com` (the API host, not the website) |
 | `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_MODEL_FAST` | The agent, vision, fraud analysis and dashboard AI. Without them, requests still work using rules-only fraud checks |
 | `VITE_AG_STUDIO_LICENSE_KEY` | Removes the AG Studio watermark (read at build time) |
-| `PAYNOW_INTEGRATION_ID`, `PAYNOW_INTEGRATION_KEY`, `PAYNOW_AUTH_EMAIL` | Local mobile money contributions (test mode) |
 
 Check PayPal: `curl http://127.0.0.1:8000/api/health/paypal/` should print `"status": "connected"`.
 
@@ -164,7 +165,7 @@ Check PayPal: `curl http://127.0.0.1:8000/api/health/paypal/` should print `"sta
 cd backend && .venv/bin/python manage.py test     # Windows: .venv\Scripts\python manage.py test
 ```
 
-These cover every rule kind, shared caps across funders, signature tampering, fraud signals (and that AI can only add risk), payout idempotency, the last mile, the dashboard AI proxy, Paynow hashing, and scenarios 1–5 end to end. PayPal and the model are mocked; tests never call them. GitHub Actions runs the tests and the frontend build on every push.
+These cover every rule kind, shared caps across funders, signature tampering, fraud signals (and that AI can only add risk), payout idempotency, the last mile, grocery pricing and delivery, the pool link, the dashboard AI proxy and saved layouts, and scenarios 1–5 end to end. PayPal and the model are mocked; tests never call them. GitHub Actions runs the tests and the frontend build on every push.
 
 Regenerate the Postman collection with `python manage.py export_postman`.
 
@@ -179,6 +180,7 @@ All accounts are PayPal **sandbox** accounts (US), whatever the story location.
 | `hardware@business.example.com` | Gwanda Hardware (supplier) |
 | `fees@business.example.com` | Sunrise Academy (school) |
 | `mobilemoney@business.example.com` | Local mobile money provider |
+| `groceries@business.example.com` | Gwanda Fresh Market (grocer). Create this sandbox business account, or set `DEMO_PAYEE_GROCER_EMAIL` |
 
 Sandbox passwords are not in this repository; judges get them in the Devpost testing instructions.
 
@@ -186,7 +188,7 @@ Sandbox passwords are not in this repository; judges get them in the Devpost tes
 
 ```
 backend/   Django: accounts, mandates (models, services, rules), agent (LLM, chat, fraud, policy),
-           payments (PayPal client, rails, payouts, last mile, Paynow), core (seed_demo, export_postman)
+           payments (PayPal client, rails, payouts, last mile, pool link), core (seed_demo, export_postman)
 frontend/  React + TypeScript + Vite; src/dashboard is the AG Studio dashboard
 docs/      architecture, Postman collection, Devpost material
 ```

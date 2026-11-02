@@ -106,6 +106,15 @@ ANNOTATIONS = [
         parameters=[OpenApiParameter("beneficiary", OpenApiTypes.UUID, required=True)], responses=OBJ)),
     (payments.mandate_fundings, None, dict(tags=["Funding"], summary="Who funded a mandate (all through PayPal)",
                                            responses=OBJ)),
+    (mandates.mandate_contribution_link, None, dict(
+        tags=["Funding"], summary="Owner turns a pool's public PayPal link on (POST) or off (DELETE)",
+        request=None, responses=MandateSerializer)),
+    (payments.public_pool, None, dict(tags=["Public pool"], summary="A pool as seen through its link (no sign-in)",
+                                      responses=OBJ)),
+    (payments.public_contribute, None, dict(
+        tags=["Public pool"], summary="Give to a pool with PayPal checkout (in progress)",
+        request=body("PublicContributionInput", name=text(), amount=money(), message=text(required=False)),
+        responses=OBJ)),
     (payments.fund_create_order, None, dict(tags=["Funding"], summary="Start PayPal checkout (in progress)",
                                             request=body("FundInput", amount=money()), responses=OBJ)),
     (payments.fund_capture, None, dict(tags=["Funding"], summary="Capture PayPal checkout (in progress)",

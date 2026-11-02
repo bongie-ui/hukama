@@ -47,13 +47,13 @@ Family members abroad fund a **mandate**: money set aside for one purpose, with 
 |---|---|
 | **Akha** (build) | Quotes are checked against a price ceiling, milestone photos are verified, then the supplier is paid |
 | **Imfundo** (school fees) | Fees are locked to the school and paid against the school's own invoice |
-| **Isikhwama** (shared support) | Siblings share caps for a parent's airtime, data and cash. No double top-ups, and the app tells you who already covered it |
-| **Isililo** (funeral pool) | Siblings abroad add with PayPal; relatives at home add from mobile money and approve on their own phone |
+| **Isikhwama** (shared support) | Siblings share caps for a parent's airtime, data, cash and groceries. Groceries are baskets from a local store, collected in store or delivered to the registered address. No double top-ups, and the app tells you who already covered it |
+| **Isililo** (funeral pool) | The family funds it, and anyone with the pool's link can give with PayPal, no account needed |
 
 ### What we saw in testing
 
 - A handwritten quote for 40 bags of cement at $14 is read by the vision model, refused by the $11 price ceiling, and the supplier is asked for a revised quote in plain words.
-- The revised quote at $10.50 plus the foundation photo is approved, and Gwanda Hardware receives a real $420 PayPal sandbox payout within half a minute. Sunrise Academy's $340 invoice is paid the same way.
+- The revised quote at $10.50 plus the foundation photo is approved, and Gwanda Hardware receives a real $420 PayPal sandbox payout within half a minute. Sunrise Academy's $340 invoice is paid the same way, and a $48 grocery basket is paid to the store and delivered to Mama's registered address.
 - Andile buys Mama's bundles. An hour later Mmeli tries the same thing and is told, "Andile Fuyana already sent bundles ($10.00) at 08:50; wait 24 hours."
 - A "hospital emergency" message from an unknown number scores 100/100 risk and is held. The sender sees only "held until the family confirms with her on her registered number". The funders see every signal, and the assistant's reasoning with quotes from the message.
 
@@ -64,7 +64,7 @@ Family members abroad fund a **mandate**: money set aside for one purpose, with 
 - **PayPal:** PayPal Payouts pays suppliers, schools and the local mobile money provider, idempotently (`sender_batch_id` = `hukama-<request id>`, so a retry can never pay twice). **(update later: PayPal Orders checkout via the APIMatic-generated PayPal Server SDK, webhooks)**
 - **Frontend:** React + TypeScript + Vite, served by Django on one Render service. Mobile-first, light and dark modes, with its own design system and logo.
 - **Dashboard:** AG Studio (built on AG Grid and AG Charts) shows funds by mandate, each sibling's contributions, spend by category, fraud alerts and the full audit trail. Its Agent Framework lets you say "chart cash paid out per month" and the chart appears. The agents' model calls go through our own server, so the API key never reaches the browser.
-- **Local money in:** Paynow test mode lets relatives at home contribute to a funeral pool from mobile money (inbound only).
+- **Pool link:** a funeral pool can be shared on WhatsApp; relatives and friends anywhere see what has been raised and give with PayPal.
 - **Postman:** A public collection whose first folder replays the demo scenarios with assertions.
 - **Quality:** 169 automated tests (policy engine, fraud signals, payout idempotency, the five demo scenarios end to end with PayPal and the model mocked). GitHub Actions runs them on every push.
 
@@ -95,7 +95,7 @@ Families don't want an app that sends money. They want one that keeps a promise,
 
 ### Built with (tags)
 
-python, django, django-rest-framework, postgresql, react, typescript, vite, openai, paypal, paypal-payouts, ag-studio, ag-grid, ag-charts, render, postman, paynow, github-actions
+python, django, django-rest-framework, postgresql, react, typescript, vite, openai, paypal, paypal-payouts, ag-studio, ag-grid, ag-charts, render, postman, github-actions
 
 **(update later)** add: paypal-orders, paypal-server-sdk, apimatic, paypal-webhooks
 
@@ -161,7 +161,7 @@ Zimbabwe
 
 - PayPal Orders checkout ("Add funds with PayPal" currently says it's not switched on) and PayPal webhooks: Phase 4, waiting on APIMatic credits
 - APIMatic Context Plugin and the PayPal Server SDK
-- Live Paynow test-mode contributions (needs Paynow credentials)
+- Giving through a pool link with PayPal checkout (same Phase 4 work)
 - AG Studio licence key (the dashboard shows a watermark until it's set)
 - Funeral cover and medical aid premiums
 - The video

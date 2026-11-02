@@ -21,7 +21,7 @@ from payments.payouts import reference_for
 
 FAMILY = "Fuyana family"
 # Bump when the demo data changes, so `seed_demo --sync` (run on every deploy) rebuilds it once.
-SEED_VERSION = 3
+SEED_VERSION = 5
 MAMA_PHONE = "+263770000001"  # fake number
 MAMA_ADDRESS = "Stand 1182, Jahunda, Gwanda"  # fictional
 PRODUCTS = {"momo": ["airtime", "bundles", "cash"], "grocer": ["groceries"]}
@@ -189,8 +189,9 @@ class Command(BaseCommand):
         pool = services.create_mandate(
             family=family, type=Mandate.ISILILO, title="Family funeral pool", created_by=mmeli,
             co_funders=[bonginkosi, andile],
-            purpose_text="A pool for family funerals, including bringing someone home from abroad. Relatives at home "
-                         "can add to it from mobile money. Pays the funeral provider directly, on its invoice.",
+            purpose_text="A pool for family funerals, including bringing someone home from abroad. Relatives and "
+                         "friends anywhere can add to it with PayPal through the pool's link. Pays the funeral "
+                         "provider directly, on its invoice.",
             rules=[{"kind": "allowed_payees", "params": {"payee_ids": [str(payees["funeral"].id)]}},
                    {"kind": "requires_invoice", "params": {}},
                    {"kind": "escalate_above", "params": {"amount": 500}}])
@@ -203,6 +204,7 @@ class Command(BaseCommand):
                 funding = services.create_funding(mandate, user, Decimal(amount), external_id="SEED-ORDER")
                 services.mark_funding_captured(funding, external_id=f"SEED-{funding.id.hex[:12].upper()}")
 
+        services.set_contribution_link(pool, mmeli, enabled=True)
         # A relative outside the funders already gave through the pool's PayPal link (history).
         local = services.create_funding(pool, None, Decimal("25"))
         local.contributor_name = "Auntie Nomsa (Gwanda)"

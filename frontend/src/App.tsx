@@ -4,6 +4,7 @@ import Icon from "./components/Icon";
 import { Avatar, ErrorNote, PageLoading } from "./components/ui";
 import { SessionContext, useApi, usePoll, useSession } from "./hooks";
 import Chat from "./pages/Chat";
+import Give from "./pages/Give";
 import DashboardPage from "./pages/DashboardPage";
 import Home from "./pages/Home";
 import Inbox from "./pages/Inbox";
@@ -16,6 +17,14 @@ import { match, usePath } from "./router";
 import type { PayRequest, Session } from "./types";
 
 export default function App() {
+  // The public "give to this pool" page needs no session.
+  const path = usePath();
+  const give = match("/give/:token", path);
+  if (give) return <Give token={give.token} />;
+  return <SignedIn />;
+}
+
+function SignedIn() {
   const [session, setSession] = useState<Session | null>(null);
   const [error, setError] = useState<string | null>(null);
 

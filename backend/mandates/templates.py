@@ -46,6 +46,7 @@ class MandateTemplate:
     payee_kinds: tuple = ()
     funding: tuple = (PAYPAL_CHECKOUT,)
     products: tuple = field(default_factory=tuple)
+    public_contributions: bool = False  # anyone with the pool's link may give (pools, not personal mandates)
 
 
 TEMPLATES = {
@@ -92,6 +93,7 @@ TEMPLATES = {
             default_rules=({"kind": "requires_invoice", "params": {}},),
             payee_kinds=(Payee.FUNERAL_PROVIDER,),
             funding=(PAYPAL_CHECKOUT, PAYPAL_SUBSCRIPTIONS),
+            public_contributions=True,
         ),
         MandateTemplate(
             type=Mandate.VIKELA,

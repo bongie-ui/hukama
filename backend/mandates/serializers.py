@@ -96,7 +96,12 @@ class MandateSerializer(serializers.ModelSerializer):
         model = Mandate
         fields = ["id", "type", "type_label", "title", "purpose_text", "status", "currency", "version",
                   "signature_valid", "expires_at", "created_at", "balance", "funded", "funders", "rules",
-                  "beneficiary_ids", "pending"]
+                  "beneficiary_ids", "pending", "contribute_token", "public_contributions"]
+
+    public_contributions = serializers.SerializerMethodField()
+
+    def get_public_contributions(self, m) -> bool:
+        return TEMPLATES[m.type].public_contributions
 
     def get_type_label(self, m) -> str:
         return TEMPLATES[m.type].label

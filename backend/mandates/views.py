@@ -173,6 +173,15 @@ def mandate_funders(request, pk):
     return Response(MandateSerializer(mandate).data)
 
 
+@api_view(["POST", "DELETE"])
+@permission_classes(PERMS)
+def mandate_contribution_link(request, pk):
+    """Owner turns the pool's public PayPal link on (POST, a new token) or off (DELETE)."""
+    mandate = get_or_404(current_family(request).mandates.prefetch_related("rules", "mandate_funders__user"), pk=pk)
+    services.set_contribution_link(mandate, request.user, enabled=request.method == "POST")
+    return Response(MandateSerializer(mandate).data)
+
+
 @api_view(["GET"])
 @permission_classes(PERMS)
 def mandate_coverage(request, pk):

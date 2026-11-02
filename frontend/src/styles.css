@@ -602,3 +602,14 @@ a.list-item:hover { background: var(--plum-tint); text-decoration: none; }
 .basket.on, .choice.on { border-color: var(--primary); background: var(--plum-tint); box-shadow: 0 0 0 1px var(--primary) inset; }
 .basket:has(input:focus-visible), .choice:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
 .choice.disabled { opacity: .55; cursor: not-allowed; }
+
+/* ---------- Public pool page ---------- */
+.give { min-height: 100vh; background: var(--bg); }
+.give-top { padding: 16px max(16px, env(safe-area-inset-left, 0px)); border-bottom: 1px solid var(--line); background: var(--surface); }
+.give-top .brand { padding: 0; }
+.give-main { max-width: 640px; margin: 0 auto; padding: 24px 16px 64px; display: flex; flex-direction: column; gap: 20px; }
+.give-hero { background: var(--plum); color: #fff; border-radius: var(--r-xl); padding: 28px; display: flex; flex-direction: column; gap: 10px; }
+.give-hero h1 { color: #fff; font-size: var(--text-3xl); }
+.give-hero p { color: rgb(255 255 255 / .82); }
+.give-hero .eyebrow, .give-hero .small { color: rgb(255 255 255 / .7); }
+.give-hero .amount { color: #fff; }

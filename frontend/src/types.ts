@@ -104,6 +104,8 @@ export interface Mandate {
   rules: Rule[];
   beneficiary_ids: string[];
   pending: number;
+  contribute_token: string | null;
+  public_contributions: boolean;
 }
 
 export interface Draft {

@@ -101,6 +101,8 @@ class Mandate(BaseModel):
     expires_at = models.DateTimeField(null=True, blank=True)
     version = models.PositiveIntegerField(default=1)
     signature = models.CharField(max_length=64, blank=True)  # hex HMAC-SHA256, see signing.py
+    # Public "give to this pool" link (#/give/<token>). Anyone with it can contribute through PayPal.
+    contribute_token = models.CharField(max_length=32, unique=True, null=True, blank=True)
     created_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name="+")
     funders = models.ManyToManyField(User, through="MandateFunder", related_name="funded_mandates")
 
