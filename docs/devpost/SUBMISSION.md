@@ -9,7 +9,7 @@ Paste-ready text for the three Devpost edit pages. Sections marked **(update lat
 **Project name**
 Hukama
 
-**Elevator pitch** (200 characters max; this one is 176)
+**Elevator pitch** (200 characters max; this one is 170)
 An AI agent that turns money sent home into purpose-locked payments: builders, schools and mobile money get paid directly by PayPal, only when the family's rules are met.
 
 **Thumbnail**
