@@ -110,9 +110,10 @@ SPECTACULAR_SETTINGS = {
     "TITLE": "Hukama API",
     "DESCRIPTION": "Purpose-locked family payments: the AI proposes, code decides, PayPal moves the money.",
     "VERSION": "1.0.0",
-    # Function views carry no request/response annotations yet; they come with the Postman collection.
-    "DISABLE_ERRORS_AND_WARNINGS": True,
-    "ENABLE_DJANGO_DEPLOY_CHECK": False,
+    # Function views are annotated in thuma/api_schema.py.
+    "COMPONENT_SPLIT_REQUEST": True,
+    "ENUM_NAME_OVERRIDES": {"RailTransactionStatusEnum": "payments.models.RailTransaction.STATUSES",
+                            "RequestStatusEnum": "mandates.models.Request.STATUSES"},
 }
 
 # The built React app (frontend/dist), served by WhiteNoise at the site root; index.html via core.views.spa.

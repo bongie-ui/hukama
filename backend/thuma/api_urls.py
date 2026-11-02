@@ -9,6 +9,8 @@ from core.views import health
 from mandates import views as mandates
 from payments import views as payments
 
+from .api_schema import annotate
+
 urlpatterns = [
     path("health/", health, name="health"),
     path("", include("payments.urls")),
@@ -56,3 +58,5 @@ urlpatterns = [
 
     path("demo/last-mile/<uuid:pk>/collect/", payments.demo_collect),
 ]
+
+annotate()

@@ -35,7 +35,7 @@ class MemberSerializer(serializers.ModelSerializer):
         model = Membership
         fields = ["user_id", "username", "name", "role", "country", "phone", "paypal_email"]
 
-    def get_name(self, m):
+    def get_name(self, m) -> str:
         return display_name(m.user)
 
 
@@ -48,7 +48,7 @@ class BeneficiarySerializer(serializers.ModelSerializer):
                   "phone_changed_at", "phone_recently_changed"]
         read_only_fields = ["verified_at", "phone_changed_at", "timezone"]
 
-    def get_phone_recently_changed(self, b):
+    def get_phone_recently_changed(self, b) -> bool:
         return bool(b.phone_changed_at and timezone.now() - b.phone_changed_at < PHONE_CHANGE_WINDOW)
 
 
@@ -64,10 +64,10 @@ class PayeeSerializer(serializers.ModelSerializer):
                   "verified", "shared", "simulated"]
         read_only_fields = ["verified"]
 
-    def get_shared(self, p):
+    def get_shared(self, p) -> bool:
         return p.family_id is None
 
-    def get_simulated(self, p):
+    def get_simulated(self, p) -> bool:
         return payee_is_simulated(p)
 
 
@@ -78,7 +78,7 @@ class RuleSerializer(serializers.ModelSerializer):
         model = Rule
         fields = ["id", "kind", "params", "position", "text"]
 
-    def get_text(self, rule):
+    def get_text(self, rule) -> str:
         return describe_rule(rule.kind, rule.params, rule.mandate.currency)
 
 
@@ -98,29 +98,29 @@ class MandateSerializer(serializers.ModelSerializer):
                   "signature_valid", "expires_at", "created_at", "balance", "funded", "funders", "rules",
                   "beneficiary_ids", "pending"]
 
-    def get_type_label(self, m):
+    def get_type_label(self, m) -> str:
         return TEMPLATES[m.type].label
 
-    def get_balance(self, m):
+    def get_balance(self, m) -> str:
         return f"{services.mandate_balance(m):.2f}"
 
-    def get_funded(self, m):
+    def get_funded(self, m) -> str:
         return f"{services.captured_total(m):.2f}"
 
-    def get_funders(self, m):
+    def get_funders(self, m) -> list[dict]:
         contributions = services.funder_contributions(m)
         return [{"user_id": f.user_id, "name": display_name(f.user), "role": f.role,
                  "contributed": f"{contributions.get(f.user_id, 0):.2f}"}
                 for f in m.mandate_funders.select_related("user").order_by("created_at")]
 
-    def get_signature_valid(self, m):
+    def get_signature_valid(self, m) -> bool:
         return signing.verify(m)
 
-    def get_beneficiary_ids(self, m):
+    def get_beneficiary_ids(self, m) -> list[str]:
         return [str(i) for r in m.rules.all() if r.kind == "allowed_beneficiaries"
                 for i in r.params.get("beneficiary_ids", [])]
 
-    def get_pending(self, m):
+    def get_pending(self, m) -> int:
         return m.requests.filter(status__in=(Request.ESCALATED, Request.HELD_FRAUD)).count()
 
 
@@ -152,23 +152,23 @@ class RequestSerializer(serializers.ModelSerializer):
                   "product", "amount", "message_text", "summary_en", "status", "created_at", "decision", "risk",
                   "payment"]
 
-    def get_requester(self, r):
+    def get_requester(self, r) -> str:
         return person(r)
 
-    def get_beneficiary_name(self, r):
+    def get_beneficiary_name(self, r) -> str | None:
         return r.beneficiary.name if r.beneficiary else None
 
-    def get_payee_name(self, r):
+    def get_payee_name(self, r) -> str | None:
         return r.payee.name if r.payee else None
 
-    def get_payee_simulated(self, r):
+    def get_payee_simulated(self, r) -> bool:
         return payee_is_simulated(r.payee) if r.payee else False
 
-    def get_decision(self, r):
+    def get_decision(self, r) -> dict | None:
         d = r.latest_decision
         return {"outcome": d.outcome, "reason": d.reason, "decided_by": d.decided_by} if d else None
 
-    def get_risk(self, r):
+    def get_risk(self, r) -> dict | None:
         try:
             risk = r.risk_assessment
         except RiskAssessment.DoesNotExist:
@@ -177,7 +177,7 @@ class RequestSerializer(serializers.ModelSerializer):
                 "ai_summary": risk.ai_summary, "suggested_verification": risk.suggested_verification,
                 "model_name": risk.model_name}
 
-    def get_payment(self, r):
+    def get_payment(self, r) -> dict | None:
         tx = r.rail_transactions.order_by("-created_at").first()
         return RailTransactionSerializer(tx).data if tx else None
 
@@ -205,7 +205,7 @@ class ApprovalSerializer(serializers.ModelSerializer):
         model = Approval
         fields = ["id", "user", "user_name", "action", "note", "created_at"]
 
-    def get_user_name(self, a):
+    def get_user_name(self, a) -> str:
         return display_name(a.user)
 
 
@@ -221,10 +221,10 @@ class RequestDetailSerializer(RequestSerializer):
         fields = RequestSerializer.Meta.fields + ["evidence", "decisions", "approvals", "rail_transactions",
                                                   "allowed_actions", "price_ceilings"]
 
-    def get_allowed_actions(self, r):
+    def get_allowed_actions(self, r) -> list[str]:
         return sorted(services.ALLOWED_ACTIONS.get(r.status, ()))
 
-    def get_price_ceilings(self, r):
+    def get_price_ceilings(self, r) -> list[dict]:
         """So the app can mark quoted lines that break a ceiling, using the same matching as the policy."""
         return [{"item": rule.params["item"], "max_unit_price": str(rule.params["max_unit_price"]),
                  "keywords": rule.params.get("keywords") or [rule.params["item"].split("_")[0]]}
@@ -240,7 +240,7 @@ class LedgerEntrySerializer(serializers.ModelSerializer):
         fields = ["id", "event", "mandate", "mandate_title", "request", "amount", "actor", "actor_name", "data",
                   "created_at"]
 
-    def get_actor_name(self, e):
+    def get_actor_name(self, e) -> str:
         names = self.context.get("user_names", {})
         if e.actor.isdigit():
             return names.get(int(e.actor), "A family member")
