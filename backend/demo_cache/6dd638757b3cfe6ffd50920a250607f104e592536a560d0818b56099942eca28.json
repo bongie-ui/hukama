@@ -1,0 +1,10 @@
+{
+ "model": "gpt-5.5-2026-04-23",
+ "result": {
+  "ai_risk": 5,
+  "flags": [],
+  "stated_intent": "The requester is asking for $5 airtime.",
+  "suggested_verification": "When you call the registered number, ask: \u201cDid you just request $5 airtime, and is it for Mama\u2019s shared airtime balance?\u201d",
+  "summary": "This looks like a routine airtime request from a registered family number and the amount matches the mandate purpose. No clear fraud indicators are present in the message."
+ }
+}

@@ -1,0 +1,113 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" font-family="Manrope, Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 10 5 0 10z" fill="#4a1f3d"/>
+    </marker>
+    <marker id="g" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 10 5 0 10z" fill="#17734b"/>
+    </marker>
+    <style>
+      .t{font-size:19px;font-weight:700;fill:#1f1a1d}
+      .s{font-size:14.5px;fill:#4b4348}
+      .h{font-family:'Bricolage Grotesque',Helvetica,Arial,sans-serif;font-weight:700;fill:#4a1f3d}
+      .box{fill:#fff;stroke:#d9d0d5;stroke-width:1.5}
+      .core{fill:#fbf5f8;stroke:#4a1f3d;stroke-width:2}
+      .ln{stroke:#4a1f3d;stroke-width:2.2;fill:none}
+      .money{stroke:#17734b;stroke-width:3;fill:none}
+      .tag{font-size:12px;font-weight:800;letter-spacing:.06em}
+    </style>
+  </defs>
+  <rect width="1600" height="900" fill="#f8f6f7"/>
+
+  <text x="60" y="70" class="h" font-size="40">Hukama</text>
+  <text x="262" y="66" class="s" style="font-size:20px;fill:#776d73">The AI proposes, code decides, PayPal moves the money.</text>
+
+  <!-- People -->
+  <text x="60" y="140" class="h" font-size="18">PEOPLE</text>
+  <rect x="60" y="160" width="300" height="120" rx="16" class="box"/>
+  <text x="84" y="198" class="t">Family abroad (funders)</text>
+  <text x="84" y="226" class="s">Web app: mandates, quick actions,</text>
+  <text x="84" y="248" class="s">approvals inbox, dashboard</text>
+
+  <rect x="60" y="310" width="300" height="150" rx="16" class="box"/>
+  <text x="84" y="348" class="t">At home: beneficiary,</text>
+  <text x="84" y="372" class="t">suppliers, school, strangers</text>
+  <text x="84" y="402" class="s">Chat in English, isiNdebele or Shona,</text>
+  <text x="84" y="424" class="s">with photos of quotes and invoices</text>
+
+  <!-- Core -->
+  <rect x="440" y="120" width="720" height="560" rx="24" class="core"/>
+  <text x="470" y="160" class="h" font-size="18">HUKAMA (Django on Render)</text>
+
+  <rect x="470" y="185" width="300" height="130" rx="14" class="box"/>
+  <text x="492" y="220" class="t">AI agent</text>
+  <text x="492" y="246" class="s">Chat with tools, vision reads quotes,</text>
+  <text x="492" y="268" class="s">drafts rules from plain words.</text>
+  <text x="492" y="295" class="s" style="fill:#4a1f3d;font-weight:700">Cannot pay, approve or change rules</text>
+
+  <rect x="830" y="185" width="300" height="130" rx="14" class="box"/>
+  <text x="852" y="220" class="t">Fraud &amp; risk check</text>
+  <text x="852" y="246" class="s">8 deterministic signals +</text>
+  <text x="852" y="268" class="s">AI intent flags. AI can only</text>
+  <text x="852" y="290" class="s">add risk, never remove it</text>
+
+  <rect x="470" y="360" width="660" height="120" rx="14" fill="#4a1f3d"/>
+  <text x="496" y="400" font-size="21" font-weight="700" fill="#fff">Policy engine (deterministic)</text>
+  <text x="496" y="428" class="s" style="fill:#f5e9f0">Signed rules: price ceilings, shared caps, intervals, evidence, payees, limits</text>
+  <text x="496" y="454" class="s" style="fill:#ffb3a8;font-weight:700">APPROVE  ·  REFUSE  ·  ESCALATE to a funder  ·  HOLD as possible fraud</text>
+
+  <rect x="470" y="520" width="320" height="130" rx="14" class="box"/>
+  <text x="492" y="556" class="t">Funders' approvals</text>
+  <text x="492" y="582" class="s">Fraud card: "call home on the</text>
+  <text x="492" y="604" class="s">registered number". Approval</text>
+  <text x="492" y="626" class="s">re-checks every hard rule</text>
+
+  <rect x="810" y="520" width="320" height="130" rx="14" class="box"/>
+  <text x="832" y="556" class="t">Append-only ledger</text>
+  <text x="832" y="582" class="s">Every state change, every actor,</text>
+  <text x="832" y="604" class="s">never edited. Feeds the</text>
+  <text x="832" y="626" class="s">AG Studio dashboard</text>
+
+  <!-- Rails -->
+  <text x="1220" y="140" class="h" font-size="18">MONEY (PAYPAL CENTRAL)</text>
+  <rect x="1220" y="160" width="320" height="110" rx="16" class="box"/>
+  <text x="1244" y="196" class="t">Money in</text>
+  <text x="1244" y="222" class="s">PayPal checkout (Orders)</text>
+  <text x="1244" y="244" class="s">Paynow test mode for relatives at home</text>
+
+  <rect x="1220" y="300" width="320" height="120" rx="16" class="box" stroke="#17734b" stroke-width="2.5"/>
+  <text x="1244" y="336" class="t">PayPal Payouts</text>
+  <text x="1244" y="362" class="s">Suppliers, schools, mobile money</text>
+  <text x="1244" y="384" class="s">provider. Idempotent per request</text>
+  <rect x="1460" y="318" width="62" height="24" rx="12" fill="#e3f3ea"/>
+  <text x="1491" y="335" class="tag" fill="#17734b" text-anchor="middle">REAL</text>
+
+  <rect x="1220" y="450" width="320" height="120" rx="16" class="box" stroke-dasharray="7 6"/>
+  <text x="1244" y="486" class="t">Last mile at home</text>
+  <text x="1244" y="512" class="s">Airtime, data, cash code to the</text>
+  <text x="1244" y="534" class="s">registered phone; billers</text>
+  <rect x="1440" y="468" width="82" height="24" rx="12" fill="#ebe5e8"/>
+  <text x="1481" y="485" class="tag" fill="#776d73" text-anchor="middle">SIMULATED</text>
+
+  <rect x="1220" y="600" width="320" height="80" rx="16" class="box"/>
+  <text x="1244" y="634" class="t">OpenAI</text>
+  <text x="1244" y="658" class="s">Agent, fraud intent, dashboard. Server only</text>
+
+  <!-- Arrows -->
+  <path class="ln" d="M360 385 C 410 385 420 260 468 255" marker-end="url(#a)"/>
+  <path class="ln" d="M360 220 C 400 220 410 560 468 580" marker-end="url(#a)"/>
+  <path class="ln" d="M770 250 H 828" marker-end="url(#a)"/>
+  <path class="ln" d="M980 315 V 358" marker-end="url(#a)"/>
+  <path class="ln" d="M630 480 V 518" marker-end="url(#a)"/>
+  <path class="ln" d="M970 480 V 518" marker-end="url(#a)"/>
+  <path class="money" d="M1130 410 C 1180 410 1180 360 1218 360" marker-end="url(#g)"/>
+  <path class="money" d="M1380 420 V 448" marker-end="url(#g)"/>
+  <path class="money" d="M1220 215 C 1170 215 1170 330 1132 380" marker-end="url(#g)"/>
+  <text x="1146" y="438" class="s" style="fill:#17734b;font-weight:800">pay</text>
+
+  <!-- Footer -->
+  <rect x="60" y="730" width="1480" height="120" rx="16" class="box"/>
+  <text x="84" y="768" class="t">Also in the box</text>
+  <text x="84" y="798" class="s">AG Studio dashboard with an AI chart builder (agent turns proxied through the server)  ·  Postman collection that replays the demo  ·  OpenAPI docs</text>
+  <text x="84" y="822" class="s">169+ automated tests (policy, fraud, payout idempotency, five end-to-end scenarios)  ·  GitHub Actions  ·  React + TypeScript front end served by Django on Render</text>
+</svg>

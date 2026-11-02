@@ -1,0 +1,20 @@
+{
+ "content": "",
+ "model": "gpt-5.5-2026-04-23",
+ "tool_calls": [
+  {
+   "arguments": "{}",
+   "id": "call_VFdPR9rxpGpHarmROxb4JXT3",
+   "name": "get_mandates"
+  },
+  {
+   "arguments": "{}",
+   "id": "call_PbQvFbTagz4P8v2SBNunQTC9",
+   "name": "get_beneficiaries"
+  }
+ ],
+ "usage": {
+  "input": 938,
+  "output": 81
+ }
+}

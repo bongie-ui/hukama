@@ -1,0 +1,9 @@
+{
+ "content": "For Mama\u2019s monthly support, the balance is **USD 200**.\n\nMonthly caps under \u201cSupport for Mama\u201d are:\n- **Cash:** up to **USD 100/month**\n- **Bundles:** up to **USD 30/month**\n- **Airtime:** up to **USD 20/month**\n\nI can check a specific request if you want to send airtime, bundles, or cash.",
+ "model": "gpt-5.5-2026-04-23",
+ "tool_calls": [],
+ "usage": {
+  "input": 1849,
+  "output": 85
+ }
+}

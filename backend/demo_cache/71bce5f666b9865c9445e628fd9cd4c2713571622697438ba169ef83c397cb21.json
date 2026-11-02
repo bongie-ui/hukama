@@ -1,0 +1,15 @@
+{
+ "content": "",
+ "model": "gpt-5.5-2026-04-23",
+ "tool_calls": [
+  {
+   "arguments": "{\"mandate_id\":\"fcbab244-e12f-4e22-aafd-59a272a60db7\",\"product\":\"airtime\",\"amount\":5,\"payee_id\":\"f50206a0-7266-4075-a908-20e937f8ab59\",\"beneficiary_id\":\"dcfca30d-e3e8-4baf-ace6-61266d7cda57\",\"summary_en\":\"Request for $5 airtime for Mama Siqile Fuyana.\",\"attachments\":[]}",
+   "id": "call_OcoWp8N4OSZYzgCYczPYIivn",
+   "name": "create_request"
+  }
+ ],
+ "usage": {
+  "input": 1351,
+  "output": 124
+ }
+}
