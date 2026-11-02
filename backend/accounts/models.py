@@ -8,6 +8,7 @@ from core.phones import validate_e164
 class Family(BaseModel):
     name = models.CharField(max_length=120)
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="families_created")
+    seed_version = models.PositiveSmallIntegerField(default=0)  # set by seed_demo; 0 for real families
 
     class Meta(BaseModel.Meta):
         verbose_name_plural = "families"

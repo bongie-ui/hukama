@@ -132,9 +132,7 @@ def collection():
                                                  "params": {"amount": 30, "period": "month", "product": "bundles"}}]}),
             req("What each product used this period", "GET",
                 "mandates/{{supportMandateId}}/coverage/?beneficiary={{beneficiaryId}}"),
-            req("Fundings (PayPal and local)", "GET", "mandates/{{mandateId}}/fundings/"),
-            req("Ask a relative at home to contribute (mobile money test mode)", "POST",
-                "mandates/{{mandateId}}/contribute/local/", {"name": "Example Relative", "phone": "0771111111", "amount": "5"}),
+            req("Who funded a mandate", "GET", "mandates/{{mandateId}}/fundings/"),
         ]},
         {"name": "Requests and approvals", "item": [
             req("Requests", "GET", "requests/", tests=[save("requestId", "pm.response.json()[0].id")]),

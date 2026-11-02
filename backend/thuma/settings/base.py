@@ -133,15 +133,6 @@ MANDATE_SIGNING_KEY = os.environ.get("MANDATE_SIGNING_KEY", "")
 # Country code used to normalise local phone numbers (e.g. 0771234567) to E.164.
 DEFAULT_PHONE_COUNTRY_CODE = os.environ.get("DEFAULT_PHONE_COUNTRY_CODE") or "263"
 
-# Paynow test mode: local relatives contribute to pools from mobile money (payments/rails/paynow_inbound.py).
-PAYNOW_INTEGRATION_ID = os.environ.get("PAYNOW_INTEGRATION_ID", "")
-PAYNOW_INTEGRATION_KEY = os.environ.get("PAYNOW_INTEGRATION_KEY", "")
-PAYNOW_AUTH_EMAIL = os.environ.get("PAYNOW_AUTH_EMAIL", "")  # the merchant's own email in test mode
-_public = f"https://{os.environ['RENDER_EXTERNAL_HOSTNAME']}" if os.environ.get("RENDER_EXTERNAL_HOSTNAME") else \
-    os.environ.get("PUBLIC_BASE_URL", "http://127.0.0.1:8000")
-PAYNOW_RESULT_URL = os.environ.get("PAYNOW_RESULT_URL") or f"{_public}/api/webhooks/paynow/"
-PAYNOW_RETURN_URL = os.environ.get("PAYNOW_RETURN_URL") or f"{_public}/"
-
 DEMO_MODE = env_bool("DEMO_MODE", False)
 DEMO_REPLAY = env_bool("DEMO_REPLAY", False)
 

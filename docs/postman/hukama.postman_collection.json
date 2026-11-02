@@ -1017,7 +1017,7 @@
           }
         },
         {
-          "name": "Fundings (PayPal and local)",
+          "name": "Who funded a mandate",
           "request": {
             "method": "GET",
             "header": [
@@ -1040,41 +1040,6 @@
               ]
             },
             "description": ""
-          }
-        },
-        {
-          "name": "Ask a relative at home to contribute (mobile money test mode)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Accept",
-                "value": "application/json"
-              },
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/mandates/{{mandateId}}/contribute/local/",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "mandates",
-                "{{mandateId}}",
-                "contribute",
-                "local",
-                ""
-              ]
-            },
-            "description": "",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"name\": \"Example Relative\",\n  \"phone\": \"0771111111\",\n  \"amount\": \"5\"\n}"
-            }
           }
         }
       ]

@@ -101,17 +101,12 @@ ANNOTATIONS = [
     (mandates.mandate_coverage, None, dict(
         tags=["Mandates"], summary="What each product used this period, and who covered it",
         parameters=[OpenApiParameter("beneficiary", OpenApiTypes.UUID, required=True)], responses=OBJ)),
-    (payments.mandate_fundings, None, dict(tags=["Funding"], summary="Fundings of a mandate (PayPal and local)",
+    (payments.mandate_fundings, None, dict(tags=["Funding"], summary="Who funded a mandate (all through PayPal)",
                                            responses=OBJ)),
     (payments.fund_create_order, None, dict(tags=["Funding"], summary="Start PayPal checkout (in progress)",
                                             request=body("FundInput", amount=money()), responses=OBJ)),
     (payments.fund_capture, None, dict(tags=["Funding"], summary="Capture PayPal checkout (in progress)",
                                        request=body("CaptureInput", order_id=text()), responses=OBJ)),
-    (payments.contribute_local, None, dict(
-        tags=["Funding"], summary="Ask a relative at home to contribute from mobile money (test mode)",
-        request=body("LocalContributionInput", name=text(), phone=text(), amount=money()), responses=OBJ)),
-    (payments.funding_detail, None, dict(tags=["Funding"], summary="A funding's status (polls the rail)",
-                                         responses=OBJ)),
 
     (mandates.requests_, ["GET"], dict(
         tags=["Requests"], summary="Requests, newest first (inbox=1: waiting for this funder)",
@@ -156,8 +151,6 @@ ANNOTATIONS = [
     (agent.dashboard_turn, None, dict(tags=["Dashboard"], summary="One AG Studio agent turn, answered server-side",
                                       request=OBJ, responses=OBJ)),
 
-    (payments.paynow_result, None, dict(tags=["Webhooks"], summary="Paynow result callback (hash-verified)",
-                                        request=OBJ, responses=OBJ)),
     (payments.demo_collect, None, dict(tags=["Demo"], summary="Mark cash collected (simulated last mile)",
                                        request=body("CollectInput", code=text(required=False)), responses=OBJ)),
 ]

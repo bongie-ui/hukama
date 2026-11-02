@@ -1,7 +1,7 @@
 import { money } from "../api";
 import { ActivityList } from "../components/Activity";
 import FundButton from "../components/FundButton";
-import LocalContributions from "../components/LocalContributions";
+import PoolContributions from "../components/PoolContributions";
 import Icon, { TYPE_ICON } from "../components/Icon";
 import Ledger from "../components/Ledger";
 import QuickActions from "../components/QuickActions";
@@ -70,7 +70,7 @@ export default function MandateDetail({ id }: { id: string }) {
       <div className="split">
         <div className="stack" style={{ gap: 28 }}>
           {covered.map((b) => <QuickActions key={b.id} mandate={m} beneficiary={b} onChange={refresh} />)}
-          {m.type === "ISILILO" && <LocalContributions mandate={m} onFunded={refresh} />}
+          {m.type === "ISILILO" && <PoolContributions mandate={m} />}
           {covered.length === 0 && <RequestForm mandate={m} />}
 
           <section className="section" aria-labelledby="req-h">

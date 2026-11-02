@@ -73,7 +73,7 @@
   <rect x="1220" y="160" width="320" height="110" rx="16" class="box"/>
   <text x="1244" y="196" class="t">Money in</text>
   <text x="1244" y="222" class="s">PayPal checkout (Orders)</text>
-  <text x="1244" y="244" class="s">Paynow test mode for relatives at home</text>
+  <text x="1244" y="244" class="s">Pool link: anyone can give with PayPal</text>
 
   <rect x="1220" y="300" width="320" height="120" rx="16" class="box" stroke="#17734b" stroke-width="2.5"/>
   <text x="1244" y="336" class="t">PayPal Payouts</text>

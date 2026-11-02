@@ -15,11 +15,13 @@ from django.utils import timezone
 
 from accounts.models import Family, Membership
 from mandates import services
-from mandates.models import Decision, Funding, LedgerEntry, Mandate, Payee, Request
+from mandates.models import Decision, LedgerEntry, Mandate, Payee, Request
 from payments.models import RailTransaction
 from payments.payouts import reference_for
 
 FAMILY = "Fuyana family"
+# Bump when the demo data changes, so `seed_demo --sync` (run on every deploy) rebuilds it once.
+SEED_VERSION = 2
 MAMA_PHONE = "+263770000001"  # fake number
 # The PayPal sandbox accounts created for the demo (not secrets). An env var with the same name overrides each one.
 SANDBOX_EMAILS = {
@@ -59,11 +61,18 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument("--reset", action="store_true", help="delete the demo family and its users first")
-        parser.add_argument("--if-missing", action="store_true",
-                            help="do nothing if the demo family exists (used by build.sh on every deploy)")
+        parser.add_argument("--if-missing", action="store_true", help="do nothing if the demo family exists")
+        parser.add_argument("--sync", action="store_true",
+                            help="create it if missing, rebuild it if SEED_VERSION changed, else leave it (deploys)")
 
-    def handle(self, *args, reset=False, if_missing=False, **options):
-        if Family.objects.filter(name=FAMILY).exists():
+    def handle(self, *args, reset=False, if_missing=False, sync=False, **options):
+        existing = Family.objects.filter(name=FAMILY).first()
+        if sync and existing is not None:
+            if existing.seed_version == SEED_VERSION:
+                self.stdout.write(f"{FAMILY} is up to date (seed version {SEED_VERSION})")
+                return
+            reset = True
+        if existing is not None:
             if if_missing and not reset:
                 self.stdout.write(f"{FAMILY} already exists; not seeding")
                 return
@@ -105,7 +114,7 @@ class Command(BaseCommand):
             funders.append((user, country, phone, role, sandbox_email(email_var)))
         mmeli, bonginkosi, andile = (f[0] for f in funders)
 
-        family = Family.objects.create(name=FAMILY, created_by=mmeli)
+        family = Family.objects.create(name=FAMILY, created_by=mmeli, seed_version=SEED_VERSION)
         for user, country, phone, role, email in funders:
             Membership.objects.create(user=user, family=family, role=role, country=country, phone=phone,
                                       paypal_email=email)
@@ -170,9 +179,9 @@ class Command(BaseCommand):
                 funding = services.create_funding(mandate, user, Decimal(amount), external_id="SEED-ORDER")
                 services.mark_funding_captured(funding, external_id=f"SEED-{funding.id.hex[:12].upper()}")
 
-        # A relative at home already added to the pool from mobile money (history; live ones use test mode).
-        local = services.create_funding(pool, None, Decimal("25"), rail=Funding.PAYNOW_INBOUND)
-        local.contributor_name, local.contributor_phone = "Auntie Nomsa (Gwanda)", "+263770000030"
+        # A relative outside the funders already gave through the pool's PayPal link (history).
+        local = services.create_funding(pool, None, Decimal("25"))
+        local.contributor_name = "Auntie Nomsa (Gwanda)"
         local.save()
         services.mark_funding_captured(local, external_id="SEED-LOCAL")
 

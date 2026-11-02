@@ -11,7 +11,7 @@ fi
 cd backend
 python manage.py collectstatic --no-input
 python manage.py migrate --no-input
-# Demo deployments seed the demo family once; later deploys keep its data.
+# Demo deployments keep the demo family; it is rebuilt only when seed_demo's SEED_VERSION changes.
 if [ "${DEMO_MODE:-false}" = "true" ]; then
-  python manage.py seed_demo --if-missing
+  python manage.py seed_demo --sync
 fi

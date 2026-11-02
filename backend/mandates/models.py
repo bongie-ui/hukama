@@ -131,9 +131,7 @@ class MandateFunder(BaseModel):
 
 class Funding(BaseModel):
     PAYPAL = "PAYPAL"
-    PAYNOW_INBOUND = "PAYNOW_INBOUND"
-    # Paynow is a third-party brand: people see "Local mobile money" (CLAUDE.md rule 6).
-    RAILS = [(PAYPAL, "PayPal"), (PAYNOW_INBOUND, "Local mobile money (test mode)")]
+    RAILS = [(PAYPAL, "PayPal")]
 
     CREATED = "CREATED"
     CAPTURED = "CAPTURED"
@@ -142,15 +140,14 @@ class Funding(BaseModel):
 
     mandate = models.ForeignKey(Mandate, on_delete=models.PROTECT, related_name="fundings")
     funder = models.ForeignKey(User, null=True, blank=True, on_delete=models.PROTECT,
-                               related_name="fundings")  # null for local Paynow contributors
+                               related_name="fundings")  # null for contributors without an account (pool link)
     amount = money_field()
     rail = models.CharField(max_length=16, choices=RAILS, default=PAYPAL)
-    external_id = models.CharField(max_length=64, blank=True)  # PayPal order / capture id, Paynow reference
+    external_id = models.CharField(max_length=64, blank=True)  # PayPal order / capture id
     status = models.CharField(max_length=10, choices=STATUSES, default=CREATED)
-    # Local contributions (no account): who paid from home, and where to ask the rail for the status.
+    # Contributors without an account (anyone paying through a pool's PayPal link) are known by name only.
     contributor_name = models.CharField(max_length=120, blank=True)
     contributor_phone = models.CharField(max_length=16, blank=True)
-    poll_url = models.URLField(max_length=400, blank=True)
     failure_reason = models.CharField(max_length=200, blank=True)
 
 

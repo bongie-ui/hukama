@@ -23,7 +23,7 @@ function detail(e: LedgerEntry): string {
   if (e.event === "DECIDED") return String(d.reason ?? d.outcome ?? "");
   if (e.event === "ASSESSED") return `Risk ${String(d.level ?? "").toLowerCase()}, score ${d.score ?? 0}`;
   if (e.event === "RULES_CHANGED") return `Version ${d.version}`;
-  if (e.event === "FUNDED") return d.rail === "PAYPAL" ? "Through PayPal" : d.rail === "PAYNOW_INBOUND" ? "Local mobile money (test mode)" : "";
+  if (e.event === "FUNDED") return "Through PayPal";
   if (e.event === "DELIVERED") return d.collected ? "Cash collected at an agent" : `${d.product ?? ""} arrived`;
   if (e.event === "FRAUD_CONFIRMED") return Array.isArray(d.blocked) && d.blocked.length ? `Blocked ${d.blocked.join(", ")}` : "";
   return String(d.product ?? "");

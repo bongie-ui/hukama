@@ -36,6 +36,8 @@ class SeedDemoTests(TestCase):
         from django.core.management import call_command
         from django.core.management.base import CommandError
 
+        from accounts.models import Family
+        from core.management.commands import seed_demo
         from mandates import services, signing
         from mandates.models import Mandate, Request
 
@@ -43,6 +45,12 @@ class SeedDemoTests(TestCase):
         with self.assertRaises(CommandError):
             call_command("seed_demo", stdout=StringIO())
         call_command("seed_demo", "--reset", stdout=StringIO())
+        out = StringIO()
+        call_command("seed_demo", "--sync", stdout=out)
+        self.assertIn("up to date", out.getvalue())
+        Family.objects.update(seed_version=0)  # an older seed is rebuilt by --sync
+        call_command("seed_demo", "--sync", stdout=StringIO())
+        self.assertEqual(Family.objects.get().seed_version, seed_demo.SEED_VERSION)
 
         mandates = list(Mandate.objects.all())
         self.assertEqual(len(mandates), 4)

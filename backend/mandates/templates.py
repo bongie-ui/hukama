@@ -9,10 +9,9 @@ from decimal import Decimal, InvalidOperation
 
 from .models import Evidence, Mandate, Payee
 
-# Funding methods (money in). PayPal is the central rail; Paynow test mode is inbound-only for pools.
+# Funding methods (money in). Everything comes in through PayPal.
 PAYPAL_CHECKOUT = "PAYPAL_CHECKOUT"
 PAYPAL_SUBSCRIPTIONS = "PAYPAL_SUBSCRIPTIONS"
-PAYNOW_INBOUND = "PAYNOW_INBOUND"
 
 PERIODS = ("day", "week", "month", "year")
 
@@ -92,7 +91,7 @@ TEMPLATES = {
             required_rules=("allowed_payees", "requires_invoice"),
             default_rules=({"kind": "requires_invoice", "params": {}},),
             payee_kinds=(Payee.FUNERAL_PROVIDER,),
-            funding=(PAYPAL_CHECKOUT, PAYPAL_SUBSCRIPTIONS, PAYNOW_INBOUND),
+            funding=(PAYPAL_CHECKOUT, PAYPAL_SUBSCRIPTIONS),
         ),
         MandateTemplate(
             type=Mandate.VIKELA,
