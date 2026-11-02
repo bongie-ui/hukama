@@ -53,8 +53,9 @@ def _has_last_mile(tx):
 @transaction.atomic
 def start(tx, now=None):
     """Begin the last mile for a succeeded payout. No-op when nothing happens at home or it already started."""
-    tx = RailTransaction.objects.select_for_update().select_related("request__mandate", "request__beneficiary",
-                                                                    "request__payee").get(pk=tx.pk)
+    # Lock only the transaction row: PostgreSQL refuses FOR UPDATE on the optional (outer-joined) relations.
+    tx = RailTransaction.objects.select_for_update(of=("self",)) \
+        .select_related("request__mandate", "request__beneficiary", "request__payee").get(pk=tx.pk)
     if not _has_last_mile(tx) or tx.last_mile_status != RailTransaction.LAST_MILE_NA:
         return tx
     request = tx.request
@@ -83,8 +84,9 @@ def start(tx, now=None):
 def advance(tx, now=None):
     """Move timed deliveries on: DELIVERING -> DELIVERED, PREPARING -> OUT_FOR_DELIVERY -> DELIVERED."""
     now = now or timezone.now()
-    tx = RailTransaction.objects.select_for_update().select_related("request__mandate", "request__beneficiary",
-                                                                    "request__payee").get(pk=tx.pk)
+    # Lock only the transaction row: PostgreSQL refuses FOR UPDATE on the optional (outer-joined) relations.
+    tx = RailTransaction.objects.select_for_update(of=("self",)) \
+        .select_related("request__mandate", "request__beneficiary", "request__payee").get(pk=tx.pk)
     if tx.last_mile_status not in RailTransaction.IN_TRANSIT:
         return tx
     elapsed = now - datetime.fromisoformat(tx.raw["last_mile_started_at"])
@@ -119,7 +121,7 @@ def advance_all(now=None):
 @transaction.atomic
 def collect(tx, code=None):
     """Mark cash collected (demo button). If `code` is given it must match."""
-    tx = RailTransaction.objects.select_for_update().select_related("request__mandate").get(pk=tx.pk)
+    tx = RailTransaction.objects.select_for_update(of=("self",)).select_related("request__mandate").get(pk=tx.pk)
     if tx.last_mile_status == RailTransaction.COLLECTED:
         return tx
     if tx.last_mile_status != RailTransaction.AWAITING_COLLECTION:

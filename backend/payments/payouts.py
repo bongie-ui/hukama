@@ -70,7 +70,7 @@ def _set_request(request, status):
 @transaction.atomic
 def apply_rail_status(tx, status, raw=None):
     """Move a RailTransaction to `status` (from webhooks, polling or the rail itself). Idempotent."""
-    tx = RailTransaction.objects.select_for_update().select_related("request__mandate").get(pk=tx.pk)
+    tx = RailTransaction.objects.select_for_update(of=("self",)).select_related("request__mandate").get(pk=tx.pk)
     if raw:
         tx.raw = {**tx.raw, "last_update": raw}
     if tx.status == status:

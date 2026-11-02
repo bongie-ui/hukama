@@ -5,6 +5,19 @@ on: [push, pull_request]
 jobs:
   backend:
     runs-on: ubuntu-latest
+    # Same database as Render: SQLite ignores row locks that PostgreSQL rejects.
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: hukama
+          POSTGRES_PASSWORD: hukama
+          POSTGRES_DB: hukama
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DATABASE_URL: postgres://hukama:hukama@localhost:5432/hukama
     defaults:
       run:
         working-directory: backend
