@@ -74,14 +74,14 @@ TEMPLATES = {
         MandateTemplate(
             type=Mandate.ISIKHWAMA,
             label="Isikhwama (Shared support)",
-            purpose="Several funders share caps for airtime, bundles and cash for a registered beneficiary",
+            purpose="Several funders share caps for airtime, bundles, cash and groceries for a registered beneficiary",
             priority="MUST",
             required_rules=("allowed_beneficiaries", "allowed_products"),
             default_rules=(
                 {"kind": "allowed_products", "params": {"products": ["airtime", "bundles", "cash"]}},
             ),
-            payee_kinds=(Payee.MOBILE_MONEY_PROVIDER,),
-            products=("airtime", "bundles", "cash"),
+            payee_kinds=(Payee.MOBILE_MONEY_PROVIDER, Payee.GROCER),
+            products=("airtime", "bundles", "cash", "groceries"),
         ),
         MandateTemplate(
             type=Mandate.ISILILO,

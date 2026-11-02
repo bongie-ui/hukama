@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { api, money, newKey, when } from "../api";
 import { useAction, useApi } from "../hooks";
-import type { Beneficiary, Coverage, Mandate, RequestDetail } from "../types";
+import type { Beneficiary, Coverage, Mandate, Payee, RequestDetail } from "../types";
+import GroceryTile from "./GroceryTile";
 import Icon from "./Icon";
 import { Avatar, ErrorNote, firstName, MoneyInput, Skeleton, StatusPill } from "./ui";
 
@@ -15,6 +16,9 @@ const ACTION: Record<string, { verb: string; preset: string }> = {
 export default function QuickActions({ mandate, beneficiary, onChange }:
   { mandate: Mandate; beneficiary: Beneficiary; onChange: () => void }) {
   const coverage = useApi<Coverage[]>(`/mandates/${mandate.id}/coverage/?beneficiary=${beneficiary.id}`);
+  const payees = useApi<Payee[]>("/payees/");
+  const allowed = mandate.rules.filter((r) => r.kind === "allowed_payees").flatMap((r) => (r.params.payee_ids as string[]) ?? []);
+  const grocer = payees.data?.find((p) => allowed.includes(p.id) && p.products.includes("groceries") && p.catalogue.baskets?.length);
   const refresh = () => {
     void coverage.reload();
     onChange();
@@ -25,15 +29,15 @@ export default function QuickActions({ mandate, beneficiary, onChange }:
         <Avatar name={beneficiary.name} size="lg" />
         <div className="stack-sm" style={{ gap: 2 }}>
           <h2 id={`qa-${beneficiary.id}`}>Support for {firstName(beneficiary.name)}</h2>
-          <span className="small muted">Everyone sees the same limits, so nobody tops up twice.</span>
+          <span className="small muted">Airtime, data, cash and groceries. Everyone sees the same limits, so nobody sends twice.</span>
         </div>
       </div>
       <ErrorNote error={coverage.error} />
       <div className="quick">
         {coverage.loading && !coverage.data && [0, 1, 2].map((i) => <Skeleton key={i} h={210} r={18} />)}
-        {coverage.data?.map((c) => (
-          <ProductTile key={c.product} c={c} mandate={mandate} beneficiary={beneficiary} onDone={refresh} />
-        ))}
+        {coverage.data?.map((c) => c.product === "groceries"
+          ? grocer && <GroceryTile key={c.product} c={c} mandate={mandate} beneficiary={beneficiary} grocer={grocer} onDone={refresh} />
+          : <ProductTile key={c.product} c={c} mandate={mandate} beneficiary={beneficiary} onDone={refresh} />)}
       </div>
     </section>
   );

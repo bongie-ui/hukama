@@ -12,6 +12,7 @@ from accounts import views as accounts
 from agent import views as agent
 from core.views import health
 from mandates import views as mandates
+from mandates.models import Request
 from mandates.serializers import (BeneficiarySerializer, LedgerEntrySerializer, MandateSerializer, PayeeSerializer,
                                   RequestDetailSerializer, RequestSerializer)
 from payments import views as payments
@@ -68,12 +69,14 @@ ANNOTATIONS = [
                                            responses=BeneficiarySerializer(many=True))),
     (mandates.beneficiaries, ["POST"], dict(tags=["Family"], summary="Register someone at home",
                                             request=body("BeneficiaryInput", name=text(), phone=text(),
+                                                         address=text(required=False),
                                                          relationship=text(required=False),
                                                          allowed_products=s.ListField(child=text(), required=False)),
                                             responses=BeneficiarySerializer)),
     (mandates.beneficiary_detail, None, dict(
         tags=["Family"], summary="Edit a beneficiary (a new phone number triggers 72h of extra fraud checks)",
         request=body("BeneficiaryPatch", name=text(required=False), phone=text(required=False),
+                     address=text(required=False),
                      relationship=text(required=False), allowed_products=s.ListField(child=text(), required=False)),
         responses=BeneficiarySerializer)),
     (mandates.payees, ["GET"], dict(tags=["Family"], summary="Who can be paid", responses=PayeeSerializer(many=True))),
@@ -115,9 +118,11 @@ ANNOTATIONS = [
         responses=RequestSerializer(many=True))),
     (mandates.requests_, ["POST"], dict(
         tags=["Requests"], summary="Ask to spend: fraud check, then the rules decide (never pays by itself)",
-        request=body("RequestInput", mandate=uuid(), product=text(), amount=money(), beneficiary=uuid(required=False),
+        request=body("RequestInput", mandate=uuid(), product=text(), amount=money(required=False), beneficiary=uuid(required=False),
                      payee=uuid(required=False), message_text=text(required=False),
-                     uploads=upload_refs(), idempotency_key=text(required=False)),
+                     uploads=upload_refs(), idempotency_key=text(required=False),
+                     basket_id=text(required=False, help_text="Order a basket from the payee's price list"),
+                     fulfilment=s.ChoiceField(Request.FULFILMENTS, required=False)),
         responses=RequestDetailSerializer)),
     (mandates.request_detail, None, dict(tags=["Requests"], summary="Evidence, risk, decisions and payout",
                                          responses=RequestDetailSerializer)),

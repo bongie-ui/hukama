@@ -159,14 +159,14 @@ def funder_contributions(mandate):
 
 # --- Beneficiaries ----------------------------------------------------------------------------------------
 
-def register_beneficiary(*, family, name, phone, registered_by, relationship="", allowed_products=()):
+def register_beneficiary(*, family, name, phone, registered_by, relationship="", allowed_products=(), address=""):
     require_funder(registered_by, family)
     e164 = normalize_phone(phone)
     if not e164:
         raise ServiceError("Enter a valid phone number")
     return Beneficiary.objects.create(family=family, name=name, phone=e164, relationship=relationship,
                                       allowed_products=list(allowed_products), registered_by=registered_by,
-                                      verified_at=timezone.now())
+                                      address=address.strip()[:200], verified_at=timezone.now())
 
 
 def change_beneficiary_phone(beneficiary, phone, user):
@@ -231,8 +231,8 @@ def attach_evidence(request, upload, kind, extractor=None):
 @transaction.atomic
 def submit_request(*, mandate, amount, idempotency_key, channel=Request.APP, requester_user=None,
                    requester_phone="", requester_display="", beneficiary=None, payee=None, product="",
-                   message_text="", evidence=(), uploads=(), summary_en="", intent_analyzer=None, extractor=None,
-                   now=None):
+                   message_text="", evidence=(), uploads=(), summary_en="", fulfilment="", details=None,
+                   intent_analyzer=None, extractor=None, now=None):
     """Create a Request, then run fraud.assess -> policy.evaluate -> execute_decision.
 
     Creating a request never pays by itself; only an APPROVE decision leads to a payout.
@@ -251,10 +251,10 @@ def submit_request(*, mandate, amount, idempotency_key, channel=Request.APP, req
         mandate=mandate, amount=Decimal(amount), idempotency_key=idempotency_key, channel=channel,
         requester_user=requester_user, requester_phone=normalize_phone(requester_phone) or requester_phone,
         requester_display=requester_display, beneficiary=beneficiary, payee=payee, product=product,
-        message_text=message_text, summary_en=summary_en)
+        message_text=message_text, summary_en=summary_en, fulfilment=fulfilment, details=details or {})
     record(mandate, LedgerEntry.REQUESTED, actor_of(requester_user) if requester_user else
            (request.requester_phone or SYSTEM), request=request, amount=request.amount, product=product,
-           channel=channel)
+           channel=channel, **({"fulfilment": fulfilment} if fulfilment else {}))
     for item in evidence:
         request.evidence.create(kind=item["kind"], extracted=item.get("extracted") or {},
                                 model_name=item.get("model_name", ""))
@@ -287,12 +287,39 @@ def reassess(request, intent_analyzer=None, now=None):
     return request
 
 
-def sole_payee(mandate):
-    """The mandate's only allowed payee, e.g. the mobile money provider of a support mandate; else None."""
-    from .models import Payee
-
+def sole_payee(mandate, product=""):
+    """The one allowed payee for `product`: e.g. the mobile money provider for airtime and the grocer for
+    groceries in the same support mandate. Payees that list no products supply anything. None if ambiguous."""
     ids = {str(i) for r in mandate.rules.all() if r.kind == "allowed_payees" for i in r.params.get("payee_ids", [])}
-    return Payee.objects.filter(pk=next(iter(ids))).first() if len(ids) == 1 else None
+    payees = list(Payee.objects.filter(pk__in=ids))
+    if product:
+        payees = [p for p in payees if not p.products or product in p.products] or payees
+    return payees[0] if len(payees) == 1 else None
+
+
+def basket(payee, basket_id):
+    found = next((b for b in (payee.catalogue or {}).get("baskets", []) if b.get("id") == basket_id), None)
+    if found is None:
+        raise ServiceError(f"{payee.name} has no basket called {basket_id!r}")
+    return found
+
+
+def grocery_order(payee, basket_id, fulfilment, beneficiary):
+    """Price an order from the payee's own catalogue (the client never sets the amount).
+    Delivery only ever goes to the beneficiary's registered address. Returns (amount, details)."""
+    if fulfilment not in (Request.COLLECT, Request.DELIVERY):
+        raise ServiceError("Choose collect in store or home delivery")
+    chosen = basket(payee, basket_id)
+    amount = Decimal(str(chosen["price"]))
+    details = {"basket_id": chosen["id"], "basket": chosen["name"], "items": chosen.get("items", []),
+               "basket_price": f"{amount:.2f}", "store": payee.name}
+    if fulfilment == Request.DELIVERY:
+        if beneficiary is None or not beneficiary.address:
+            raise ServiceError("Home delivery needs the beneficiary's registered address")
+        fee = Decimal(str((payee.catalogue or {}).get("delivery_fee", "0")))
+        amount += fee
+        details.update(delivery_fee=f"{fee:.2f}", address=beneficiary.address)
+    return amount, details
 
 
 def execute_decision(request):

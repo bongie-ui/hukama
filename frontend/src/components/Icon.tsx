@@ -32,6 +32,7 @@ const PATHS: Record<string, string> = {
   // Products
   airtime: "M8 3.5h8v17H8Z M11 17.5h2",
   bundles: "M3.5 9.5a12 12 0 0 1 17 0M6.5 12.8a7.5 7.5 0 0 1 11 0M9.5 16a3 3 0 0 1 5 0M12 19v.2",
+  groceries: "M4 9h16l-1.5 10.5h-13ZM8.5 9 11 4M15.5 9 13 4M9.5 13v3M14.5 13v3",
   cash: "M3.5 7h17v10h-17Z M12 14.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5Z M6.5 10v4M17.5 10v4",
 };
 

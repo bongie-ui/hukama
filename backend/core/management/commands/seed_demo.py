@@ -21,8 +21,23 @@ from payments.payouts import reference_for
 
 FAMILY = "Fuyana family"
 # Bump when the demo data changes, so `seed_demo --sync` (run on every deploy) rebuilds it once.
-SEED_VERSION = 2
+SEED_VERSION = 3
 MAMA_PHONE = "+263770000001"  # fake number
+MAMA_ADDRESS = "Stand 1182, Jahunda, Gwanda"  # fictional
+PRODUCTS = {"momo": ["airtime", "bundles", "cash"], "grocer": ["groceries"]}
+GROCER_CATALOGUE = {
+    "delivery_fee": "3.00",
+    "baskets": [
+        {"id": "essentials", "name": "Essentials hamper", "price": "28.00",
+         "items": ["Mealie meal 10 kg", "Cooking oil 2 L", "Sugar 2 kg", "Salt 1 kg", "Tea leaves 250 g"]},
+        {"id": "family-week", "name": "Family week", "price": "45.00",
+         "items": ["Mealie meal 10 kg", "Rice 5 kg", "Cooking oil 2 L", "Sugar 2 kg", "Beans 2 kg",
+                   "Soya chunks 1 kg", "Bath soap x4", "Washing powder 2 kg"]},
+        {"id": "big-shop", "name": "Big monthly shop", "price": "72.00",
+         "items": ["Mealie meal 20 kg", "Rice 10 kg", "Cooking oil 5 L", "Sugar 5 kg", "Beans 5 kg",
+                   "Kapenta 1 kg", "Tinned fish x6", "Toiletries pack", "Washing powder 5 kg"]},
+    ],
+}
 # The PayPal sandbox accounts created for the demo (not secrets). An env var with the same name overrides each one.
 SANDBOX_EMAILS = {
     "DEMO_FUNDER_1_EMAIL": "mmeli.fuyana@personal.example.com",
@@ -31,6 +46,7 @@ SANDBOX_EMAILS = {
     "DEMO_PAYEE_HARDWARE_EMAIL": "hardware@business.example.com",
     "DEMO_PAYEE_SCHOOL_EMAIL": "fees@business.example.com",
     "DEMO_PAYEE_MOBILE_MONEY_EMAIL": "mobilemoney@business.example.com",
+    "DEMO_PAYEE_GROCER_EMAIL": "groceries@business.example.com",
 }
 
 
@@ -49,6 +65,8 @@ PAYEES = [  # key, name, kind, rail, sandbox email (SANDBOX_EMAILS key), phone (
     ("school", "Sunrise Academy", Payee.SCHOOL, Payee.PAYPAL_PAYOUT, "DEMO_PAYEE_SCHOOL_EMAIL", "+263770000020", ""),
     ("momo", "Local Mobile Money", Payee.MOBILE_MONEY_PROVIDER, Payee.LOCAL_MOBILE_MONEY,
      "DEMO_PAYEE_MOBILE_MONEY_EMAIL", "", ""),
+    ("grocer", "Gwanda Fresh Market", Payee.GROCER, Payee.PAYPAL_PAYOUT, "DEMO_PAYEE_GROCER_EMAIL",
+     "+263770000040", ""),
     ("funeral", "Peaceful Rest Funeral Cover", Payee.FUNERAL_PROVIDER, Payee.BILLER_SIM, "", "", "PRF-000123"),
     ("medical", "Imbali Health Medical Aid", Payee.MEDICAL_AID, Payee.BILLER_SIM, "", "", "IHM-000456"),
 ]
@@ -120,13 +138,15 @@ class Command(BaseCommand):
                                       paypal_email=email)
 
         mama = services.register_beneficiary(family=family, name="Mama Siqile Fuyana", phone=MAMA_PHONE,
-                                             relationship="Mother", registered_by=mmeli,
-                                             allowed_products=["airtime", "bundles", "cash"])
+                                             relationship="Mother", registered_by=mmeli, address=MAMA_ADDRESS,
+                                             allowed_products=["airtime", "bundles", "cash", "groceries"])
         payees = {}
         for key, name, kind, rail, email_var, phone, ref in PAYEES:
             email = sandbox_email(email_var) if email_var else ""
             payees[key] = Payee.objects.create(family=family, name=name, kind=kind, rail=rail, paypal_email=email,
-                                               phone=phone, external_ref=ref, verified=True)
+                                               phone=phone, external_ref=ref, verified=True,
+                                               products=PRODUCTS.get(key, []),
+                                               catalogue=GROCER_CATALOGUE if key == "grocer" else {})
 
         build = services.create_mandate(
             family=family, type=Mandate.AKHA, title="Mama's house: foundation", created_by=bonginkosi,
@@ -149,10 +169,11 @@ class Command(BaseCommand):
         support = services.create_mandate(
             family=family, type=Mandate.ISIKHWAMA, title="Support for Mama", created_by=mmeli,
             co_funders=[bonginkosi, andile],
-            purpose_text="The three of us share Mama's airtime, data bundles and cash. No double top-ups.",
+            purpose_text="The three of us share Mama's airtime, data bundles, cash and groceries. No double top-ups.",
             rules=[{"kind": "allowed_beneficiaries", "params": {"beneficiary_ids": [str(mama.id)]}},
-                   {"kind": "allowed_products", "params": {"products": ["airtime", "bundles", "cash"]}},
-                   {"kind": "allowed_payees", "params": {"payee_ids": [str(payees["momo"].id)]}},
+                   {"kind": "allowed_products", "params": {"products": ["airtime", "bundles", "cash", "groceries"]}},
+                   {"kind": "allowed_payees", "params": {"payee_ids": [str(payees["momo"].id),
+                                                                      str(payees["grocer"].id)]}},
                    {"kind": "cap_per_period", "params": {"amount": 30, "period": "month", "product": "bundles",
                                                          "shared": True}},
                    {"kind": "min_interval", "params": {"hours": 24, "product": "bundles"}},
@@ -160,6 +181,9 @@ class Command(BaseCommand):
                                                          "shared": True}},
                    {"kind": "cap_per_period", "params": {"amount": 100, "period": "month", "product": "cash",
                                                          "shared": True}},
+                   {"kind": "cap_per_period", "params": {"amount": 120, "period": "month", "product": "groceries",
+                                                         "shared": True}},
+                   {"kind": "min_interval", "params": {"hours": 72, "product": "groceries"}},
                    {"kind": "escalate_above", "params": {"amount": 50}}])
 
         pool = services.create_mandate(
@@ -174,7 +198,7 @@ class Command(BaseCommand):
         for mandate, amounts in ((build, [(bonginkosi, 300), (mmeli, 200), (andile, 100)]),
                                  (pool, [(mmeli, 100), (bonginkosi, 100), (andile, 100)]),
                                  (fees, [(andile, 250), (mmeli, 150)]),
-                                 (support, [(mmeli, 150), (bonginkosi, 150), (andile, 100)])):
+                                 (support, [(mmeli, 200), (bonginkosi, 200), (andile, 150)])):
             for user, amount in amounts:
                 funding = services.create_funding(mandate, user, Decimal(amount), external_id="SEED-ORDER")
                 services.mark_funding_captured(funding, external_id=f"SEED-{funding.id.hex[:12].upper()}")

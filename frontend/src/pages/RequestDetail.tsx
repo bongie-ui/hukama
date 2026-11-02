@@ -31,8 +31,10 @@ function steps(r: Detail): Step[] {
   const delivered: Step = !tx || tx.status !== "SUCCESS" ? { label: "Received", sub: "", state: "" }
     : lm === "DELIVERING" ? { label: "Received", sub: "Delivering to phone", state: "current" }
     : lm === "AWAITING_COLLECTION" ? { label: "Received", sub: "Ready to collect", state: "current" }
+    : lm === "PREPARING" ? { label: "Received", sub: "Being packed", state: "current" }
+    : lm === "OUT_FOR_DELIVERY" ? { label: "Received", sub: "Out for delivery", state: "current" }
     : lm === "DELIVERED" ? { label: "Received", sub: "Delivered", state: "done" }
-    : lm === "COLLECTED" ? { label: "Received", sub: "Cash collected", state: "done" }
+    : lm === "COLLECTED" ? { label: "Received", sub: r.details.basket ? "Collected in store" : "Cash collected", state: "done" }
     : { label: "Received", sub: `By ${r.payee_name ?? "payee"}`, state: "done" };
   return [
     { label: "Requested", sub: `By ${r.requester}`, state: "done" },
@@ -45,7 +47,8 @@ export default function RequestDetail({ id }: { id: string }) {
   const { session } = useSession();
   const { data: r, error, reload, setData } = useApi<Detail>(`/requests/${id}/`);
   const collect = useAction();
-  const moving = !!r && (r.status === "APPROVED" || r.payment?.status === "PENDING" || r.payment?.last_mile_status === "DELIVERING");
+  const moving = !!r && (r.status === "APPROVED" || r.payment?.status === "PENDING" ||
+    ["DELIVERING", "PREPARING", "OUT_FOR_DELIVERY"].includes(r.payment?.last_mile_status ?? ""));
   usePoll(reload, 2500, moving);
 
   if (error) return <div className="page narrow"><ErrorNote error={error} /></div>;
@@ -59,7 +62,7 @@ export default function RequestDetail({ id }: { id: string }) {
 
       <header className="page-head">
         <div>
-          <div className="row"><StatusPill status={r.status} />{r.payee_simulated && r.payment && <SimTag label={r.payment.simulated ? "Simulated rail" : "Simulated last mile"} />}</div>
+          <div className="row"><StatusPill status={r.status} />{r.payment && (r.payment.simulated || r.payment.last_mile_status !== "N/A") && <SimTag label={r.payment.simulated ? "Simulated rail" : r.details.basket ? "Simulated delivery" : "Simulated last mile"} />}</div>
           <h1>{requestTitle(r)}</h1>
           <div className="row small muted" style={{ gap: 8 }}>
             <Who name={r.requester} size="sm" />
@@ -92,6 +95,25 @@ export default function RequestDetail({ id }: { id: string }) {
         <Notice tone="error" icon="shield">Reported as a scam. Nothing was paid, and the numbers involved are blocked for this family.</Notice>
       )}
 
+      {r.details.basket && (
+        <section className="card stack">
+          <div className="row between">
+            <h3>{r.details.basket}</h3>
+            <span className="pill brand plain">{r.fulfilment === "DELIVERY" ? "Home delivery" : "Collect in store"}</span>
+          </div>
+          <ul className="rules">
+            {(r.details.items ?? []).map((item) => <li key={item}><span className="rule-dot"><Icon name="check" size={14} stroke={2.4} /></span>{item}</li>)}
+          </ul>
+          <dl className="kv">
+            <dt>Store</dt><dd>{r.details.store ?? r.payee_name}</dd>
+            <dt>Basket</dt><dd className="num">{money(r.details.basket_price ?? 0)}</dd>
+            {r.fulfilment === "DELIVERY" && <><dt>Delivery</dt><dd className="num">{money(r.details.delivery_fee ?? 0)}</dd>
+              <dt>Deliver to</dt><dd>{r.details.address} <span className="muted">(registered address)</span></dd></>}
+            <dt>Total</dt><dd className="num">{money(r.amount, r.currency)}</dd>
+          </dl>
+        </section>
+      )}
+
       {tx && (
         <section className="card stack">
           <div className="row between">
@@ -101,7 +123,7 @@ export default function RequestDetail({ id }: { id: string }) {
           {tx.last_mile_status === "AWAITING_COLLECTION" && (
             <div className="row between" style={{ padding: 14, borderRadius: 12, background: "var(--plum-tint)" }}>
               <div className="stack-sm" style={{ gap: 2 }}>
-                <span className="small muted">Collection code sent to {r.beneficiary_name ?? "the beneficiary"}</span>
+                <span className="small muted">Collection code sent to {r.beneficiary_name ?? "the beneficiary"}{r.details.basket ? `, to collect at ${r.payee_name}` : ""}</span>
                 <span className="amount lg" style={{ letterSpacing: ".12em" }}>{tx.collection_code}</span>
               </div>
               {session.demo_mode && (

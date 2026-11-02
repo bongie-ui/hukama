@@ -24,6 +24,8 @@ class Beneficiary(BaseModel):
     name = models.CharField(max_length=120)
     relationship = models.CharField(max_length=60, blank=True)
     phone = models.CharField(max_length=16, validators=[validate_e164])
+    # The only place goods are ever delivered to (a delivery to any other address is impossible by design).
+    address = models.CharField(max_length=200, blank=True)
     allowed_products = models.JSONField(default=list, blank=True)  # e.g. ["airtime", "bundles", "cash"]
     timezone = models.CharField(max_length=40, default=default_timezone)
     registered_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name="+")
@@ -45,9 +47,10 @@ class Payee(BaseModel):
     MOBILE_MONEY_PROVIDER = "MOBILE_MONEY_PROVIDER"
     FUNERAL_PROVIDER = "FUNERAL_PROVIDER"
     MEDICAL_AID = "MEDICAL_AID"
+    GROCER = "GROCER"
     OTHER = "OTHER"
     KINDS = [(k, k.replace("_", " ").title()) for k in
-             (SUPPLIER, SCHOOL, MOBILE_MONEY_PROVIDER, FUNERAL_PROVIDER, MEDICAL_AID, OTHER)]
+             (SUPPLIER, SCHOOL, MOBILE_MONEY_PROVIDER, FUNERAL_PROVIDER, MEDICAL_AID, GROCER, OTHER)]
 
     PAYPAL_PAYOUT = "PAYPAL_PAYOUT"
     LOCAL_MOBILE_MONEY = "LOCAL_MOBILE_MONEY"
@@ -64,6 +67,10 @@ class Payee(BaseModel):
     external_ref = models.CharField(max_length=120, blank=True)  # biller account number etc.
     phone = models.CharField(max_length=16, blank=True, validators=[validate_e164])  # for payee chat
     verified = models.BooleanField(default=False)
+    # What this payee supplies (e.g. ["groceries"]), so a mandate with several payees routes each product.
+    products = models.JSONField(default=list, blank=True)
+    # Optional price list: {"baskets": [{"id", "name", "price", "items": [...]}], "delivery_fee": "3.00"}.
+    catalogue = models.JSONField(default=dict, blank=True)
 
     def __str__(self):
         return self.name
@@ -186,6 +193,12 @@ class Request(BaseModel):
     amount = money_field()
     message_text = models.TextField(blank=True)
     summary_en = models.TextField(blank=True)  # English summary when the message is in another language
+    COLLECT = "COLLECT"
+    DELIVERY = "DELIVERY"
+    FULFILMENTS = [(COLLECT, "Collect in store"), (DELIVERY, "Home delivery")]
+    fulfilment = models.CharField(max_length=10, choices=FULFILMENTS, blank=True)
+    # Snapshot of what was ordered (basket, items, price, delivery fee and address) at request time.
+    details = models.JSONField(default=dict, blank=True)
     idempotency_key = models.CharField(max_length=100, unique=True)
     status = models.CharField(max_length=16, choices=STATUSES, default=NEW)
 

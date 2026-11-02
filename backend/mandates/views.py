@@ -56,7 +56,8 @@ def beneficiaries(request):
     b = services.register_beneficiary(family=family, name=request.data["name"], phone=request.data["phone"],
                                       registered_by=request.user,
                                       relationship=request.data.get("relationship", ""),
-                                      allowed_products=request.data.get("allowed_products") or [])
+                                      allowed_products=request.data.get("allowed_products") or [],
+                                      address=request.data.get("address", ""))
     return Response(BeneficiarySerializer(b).data, status=status.HTTP_201_CREATED)
 
 
@@ -69,7 +70,7 @@ def beneficiary_detail(request, pk):
     data = request.data
     if "phone" in data:
         services.change_beneficiary_phone(b, data["phone"], request.user)
-    fields = [f for f in ("name", "relationship", "allowed_products") if f in data]
+    fields = [f for f in ("name", "relationship", "allowed_products", "address") if f in data]
     for f in fields:
         setattr(b, f, data[f])
     if fields:
@@ -197,7 +198,7 @@ def _settle(family):
     from payments.models import RailTransaction
 
     moving = RailTransaction.objects.filter(request__mandate__family=family).filter(
-        Q(status=RailTransaction.PENDING) | Q(last_mile_status=RailTransaction.DELIVERING)) \
+        Q(status=RailTransaction.PENDING) | Q(last_mile_status__in=RailTransaction.IN_TRANSIT)) \
         .select_related("request__payee")[:SETTLE_LIMIT]
     for tx in moving:
         try:
@@ -223,20 +224,28 @@ def requests_(request):
         return Response(RequestSerializer(qs[:100], many=True).data)
 
     data = request.data
-    _require(data, "mandate", "amount", "product")
+    _require(data, "mandate", "product")
     mandate = get_or_404(family.mandates, pk=data["mandate"])
     beneficiary = get_or_404(family.beneficiaries, pk=data["beneficiary"]) if data.get("beneficiary") else None
     payee = (get_or_404(Payee.objects.filter(Q(family=family) | Q(family__isnull=True)), pk=data["payee"])
-             if data.get("payee") else services.sole_payee(mandate))
+             if data.get("payee") else services.sole_payee(mandate, data["product"]))
+    fulfilment, details, amount = "", {}, data.get("amount")
+    if data.get("basket_id"):  # an order from the payee's own price list: the server sets the amount
+        if payee is None:
+            raise ValidationError({"payee": "Choose who supplies this basket"})
+        amount, details = services.grocery_order(payee, data["basket_id"], data.get("fulfilment"), beneficiary)
+        fulfilment = data["fulfilment"]
+    elif amount in (None, ""):
+        raise ValidationError({"amount": "This field is required."})
     uploads = []
     for item in data.get("uploads") or []:
         if item.get("kind") not in EVIDENCE_KINDS:
             raise ValidationError({"uploads": f"Unknown evidence kind {item.get('kind')}"})
         uploads.append((get_or_404(family.uploads, pk=item.get("upload_id")), item["kind"]))
     req = services.submit_request(
-        mandate=mandate, amount=data["amount"], product=data["product"], beneficiary=beneficiary, payee=payee,
+        mandate=mandate, amount=amount, product=data["product"], beneficiary=beneficiary, payee=payee,
         channel=Request.APP, requester_user=request.user, requester_display=display_name(request.user),
-        message_text=data.get("message_text", ""), uploads=uploads,
+        message_text=data.get("message_text", ""), uploads=uploads, fulfilment=fulfilment, details=details,
         idempotency_key=f"app-{data.get('idempotency_key') or uuid.uuid4()}")
     return Response(RequestDetailSerializer(req).data, status=status.HTTP_201_CREATED)
 

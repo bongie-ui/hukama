@@ -5,7 +5,7 @@ import { Avatar, ErrorNote, Notice, SimTag, Skeleton } from "../components/ui";
 import { useAction, useApi } from "../hooks";
 import type { Beneficiary, Family, Payee } from "../types";
 
-const PRODUCTS = ["airtime", "bundles", "cash"];
+const PRODUCTS = ["airtime", "bundles", "cash", "groceries"];
 const PAYEE_KINDS: [string, string][] = [
   ["SUPPLIER", "Supplier"], ["SCHOOL", "School"], ["FUNERAL_PROVIDER", "Funeral provider"], ["MEDICAL_AID", "Medical aid"], ["OTHER", "Other"],
 ];
@@ -43,7 +43,7 @@ export default function People() {
             {payees.loading && !payees.data && <div style={{ padding: 18 }}><Skeleton h={44} /></div>}
             {payees.data?.map((p) => (
               <div className="list-item" key={p.id}>
-                <span className="type-icon" style={{ width: 38, height: 38 }}><Icon name={p.kind === "SCHOOL" ? "school" : p.kind === "SUPPLIER" ? "build" : p.kind === "MOBILE_MONEY_PROVIDER" ? "airtime" : p.kind === "FUNERAL_PROVIDER" ? "flower" : "health"} size={18} /></span>
+                <span className="type-icon" style={{ width: 38, height: 38 }}><Icon name={p.kind === "SCHOOL" ? "school" : p.kind === "SUPPLIER" ? "build" : p.kind === "MOBILE_MONEY_PROVIDER" ? "airtime" : p.kind === "GROCER" ? "groceries" : p.kind === "FUNERAL_PROVIDER" ? "flower" : "health"} size={18} /></span>
                 <div className="main">
                   <span className="title">{p.name}</span>
                   <span className="sub">{p.kind_label}{p.phone ? ` · ${p.phone}` : ""}</span>
@@ -94,6 +94,7 @@ function BeneficiaryCard({ b, onSaved }: { b: Beneficiary; onSaved: () => void }
         <div className="stack-sm" style={{ gap: 2, minWidth: 0 }}>
           <strong>{b.name}</strong>
           <span className="small muted">{b.relationship} · <span className="num">{b.phone}</span></span>
+          {b.address && <span className="xs muted row" style={{ gap: 4 }}><Icon name="home" size={14} />{b.address}</span>}
         </div>
       </div>
       <div className="row" style={{ gap: 6 }}>{b.allowed_products.map((p) => <span key={p} className="pill brand plain">{p}</span>)}</div>
@@ -119,7 +120,7 @@ function BeneficiaryCard({ b, onSaved }: { b: Beneficiary; onSaved: () => void }
 }
 
 function AddBeneficiary({ onSaved }: { onSaved: () => void }) {
-  const empty = { name: "", relationship: "", phone: "", allowed_products: ["airtime", "bundles"] };
+  const empty = { name: "", relationship: "", phone: "", address: "", allowed_products: ["airtime", "bundles"] };
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState(empty);
   const { busy, error, run } = useAction();
@@ -144,6 +145,8 @@ function AddBeneficiary({ onSaved }: { onSaved: () => void }) {
         <div className="field"><label htmlFor="b-rel">Relationship</label><input id="b-rel" placeholder="Mother" value={form.relationship} onChange={(e) => setForm({ ...form, relationship: e.target.value })} /></div>
         <div className="field"><label htmlFor="b-phone">Phone</label><input id="b-phone" inputMode="tel" placeholder="0771 234 567" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
       </div>
+      <div className="field"><label htmlFor="b-addr">Delivery address <span className="muted">(groceries are only ever delivered here)</span></label>
+        <input id="b-addr" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} placeholder="Stand number, suburb, town" /></div>
       <div className="field">
         <span className="label">What can be sent</span>
         <div className="checks">

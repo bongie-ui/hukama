@@ -44,7 +44,7 @@ class BeneficiarySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Beneficiary
-        fields = ["id", "name", "relationship", "phone", "allowed_products", "timezone", "verified_at",
+        fields = ["id", "name", "relationship", "phone", "address", "allowed_products", "timezone", "verified_at",
                   "phone_changed_at", "phone_recently_changed"]
         read_only_fields = ["verified_at", "phone_changed_at", "timezone"]
 
@@ -61,7 +61,7 @@ class PayeeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Payee
         fields = ["id", "name", "kind", "kind_label", "rail", "rail_label", "paypal_email", "external_ref", "phone",
-                  "verified", "shared", "simulated"]
+                  "verified", "shared", "simulated", "products", "catalogue"]
         read_only_fields = ["verified"]
 
     def get_shared(self, p) -> bool:
@@ -150,7 +150,7 @@ class RequestSerializer(serializers.ModelSerializer):
         fields = ["id", "mandate", "mandate_title", "mandate_type", "currency", "channel", "requester",
                   "requester_phone", "beneficiary", "beneficiary_name", "payee", "payee_name", "payee_simulated",
                   "product", "amount", "message_text", "summary_en", "status", "created_at", "decision", "risk",
-                  "payment"]
+                  "payment", "fulfilment", "details"]
 
     def get_requester(self, r) -> str:
         return person(r)
@@ -247,4 +247,4 @@ class LedgerEntrySerializer(serializers.ModelSerializer):
         if e.actor.startswith("Local: "):  # a relative at home, known by name only
             return e.actor.removeprefix("Local: ")
         return {"POLICY": "Policy engine", "SYSTEM": "Hukama", "PAYPAL": "PayPal",
-                "SIMULATED_RAIL": "Local mobile money (simulated rail)"}.get(e.actor, e.actor)
+                "SIMULATED_RAIL": "Simulated last mile"}.get(e.actor, e.actor)

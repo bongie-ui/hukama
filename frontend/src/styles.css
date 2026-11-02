@@ -586,3 +586,19 @@ a.list-item:hover { background: var(--plum-tint); text-decoration: none; }
 @media (max-width: 899px) { .studio-frame { height: max(560px, calc(100vh - 300px)); } }
 .head-actions { flex-wrap: nowrap; }
 @media (max-width: 760px) { .head-actions { flex-wrap: wrap; } }
+
+/* ---------- Groceries ---------- */
+.baskets, .fulfil { border: 0; margin: 0; padding: 0; display: grid; gap: 8px; min-width: 0; }
+.baskets { grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); }
+.fulfil { grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); }
+.baskets legend, .fulfil legend { margin-bottom: 8px; padding: 0; }
+.basket, .choice {
+  position: relative; display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border-radius: var(--r-md);
+  border: 1px solid var(--line-strong); cursor: pointer; background: var(--surface); transition: border-color .15s ease;
+}
+.choice { flex-direction: row; align-items: flex-start; gap: 10px; }
+.choice svg { margin-top: 2px; flex: none; color: var(--primary); }
+.basket input, .choice input { position: absolute; opacity: 0; pointer-events: none; }
+.basket.on, .choice.on { border-color: var(--primary); background: var(--plum-tint); box-shadow: 0 0 0 1px var(--primary) inset; }
+.basket:has(input:focus-visible), .choice:has(input:focus-visible) { outline: 2px solid var(--focus); outline-offset: 2px; }
+.choice.disabled { opacity: .55; cursor: not-allowed; }

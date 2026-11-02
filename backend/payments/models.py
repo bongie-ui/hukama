@@ -17,8 +17,12 @@ class RailTransaction(BaseModel):
     DELIVERED = "DELIVERED"
     AWAITING_COLLECTION = "AWAITING_COLLECTION"
     COLLECTED = "COLLECTED"
+    PREPARING = "PREPARING"  # goods being packed
+    OUT_FOR_DELIVERY = "OUT_FOR_DELIVERY"
     LAST_MILE_STATUSES = [(s, s.replace("_", " ").title()) for s in
-                          (LAST_MILE_NA, DELIVERING, DELIVERED, AWAITING_COLLECTION, COLLECTED)]
+                          (LAST_MILE_NA, DELIVERING, DELIVERED, AWAITING_COLLECTION, COLLECTED, PREPARING,
+                           OUT_FOR_DELIVERY)]
+    IN_TRANSIT = (DELIVERING, PREPARING, OUT_FOR_DELIVERY)  # advanced on a timer
 
     request = models.ForeignKey("mandates.Request", on_delete=models.PROTECT, related_name="rail_transactions")
     rail = models.CharField(max_length=20)  # Payee.rail value

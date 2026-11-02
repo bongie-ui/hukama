@@ -113,7 +113,8 @@ SPECTACULAR_SETTINGS = {
     # Function views are annotated in thuma/api_schema.py.
     "COMPONENT_SPLIT_REQUEST": True,
     "ENUM_NAME_OVERRIDES": {"RailTransactionStatusEnum": "payments.models.RailTransaction.STATUSES",
-                            "RequestStatusEnum": "mandates.models.Request.STATUSES"},
+                            "RequestStatusEnum": "mandates.models.Request.STATUSES",
+                            "FulfilmentEnum": "mandates.models.Request.FULFILMENTS"},
 }
 
 # The built React app (frontend/dist), served by WhiteNoise at the site root; index.html via core.views.spa.

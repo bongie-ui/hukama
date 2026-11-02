@@ -38,9 +38,11 @@ export function SimTag({ label = "Simulated rail" }: { label?: string }) {
 export function lastMileLabel(p: Payment): string | null {
   switch (p.last_mile_status) {
     case "DELIVERING": return "Delivering to phone";
+    case "PREPARING": return "Being packed";
+    case "OUT_FOR_DELIVERY": return "Out for delivery";
     case "DELIVERED": return "Delivered";
     case "AWAITING_COLLECTION": return "Ready to collect";
-    case "COLLECTED": return "Cash collected";
+    case "COLLECTED": return "Collected";
     default: return null;
   }
 }
@@ -49,7 +51,8 @@ export function lastMileLabel(p: Payment): string | null {
 export function paymentSummary(p: Payment | null): [string, string] | null {
   if (!p) return null;
   const lm = lastMileLabel(p);
-  if (p.status === "SUCCESS") return [lm ?? "Received by payee", lm === "Delivering to phone" ? "info" : "ok"];
+  const moving = ["DELIVERING", "PREPARING", "OUT_FOR_DELIVERY", "AWAITING_COLLECTION"].includes(p.last_mile_status);
+  if (p.status === "SUCCESS") return [lm ?? "Received by payee", moving ? "info" : "ok"];
   if (p.status === "PENDING") return ["Payout pending", "info"];
   return [`Payout ${p.status.toLowerCase()}`, "bad"];
 }

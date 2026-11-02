@@ -38,7 +38,7 @@ TOOLS = [
     _tool("get_beneficiaries", "List the beneficiaries this person can make requests for."),
     _tool("create_request", "Create a payment request. This does not pay: the rules engine decides.", {
         "mandate_id": {"type": "string"},
-        "product": {"type": "string", "description": "e.g. airtime, bundles, cash, materials, school_fees"},
+        "product": {"type": "string", "description": "e.g. airtime, bundles, cash, groceries, materials, school_fees"},
         "amount": {"type": "number"},
         "payee_id": NULLABLE_STR,
         "beneficiary_id": NULLABLE_STR,
@@ -47,6 +47,10 @@ TOOLS = [
             "type": "object", "additionalProperties": False, "required": ["upload_id", "kind"],
             "properties": {"upload_id": {"type": "string"},
                            "kind": {"type": "string", "enum": [k for k, _ in Evidence.KINDS]}}}},
+        "basket_id": {"type": ["string", "null"],
+                      "description": "For groceries: a basket id from get_mandates. The store's price is used."},
+        "fulfilment": {"type": ["string", "null"], "enum": ["COLLECT", "DELIVERY", None],
+                       "description": "For groceries: COLLECT in store, or DELIVERY to the registered address"},
     }),
     _tool("attach_evidence", "Attach an uploaded file to an existing request and re-check it. Never use this "
           "for a revised quote or invoice with a different amount: create a new request instead.", {
@@ -161,12 +165,26 @@ def _rule_text(rule):
     return {"kind": rule.kind, "params": rule.params}
 
 
+def _baskets(mandate):
+    """Baskets the mandate's grocer offers, with the delivery fee (prices come from the store, not the model)."""
+    ids = _rule_ids(mandate, "allowed_payees", "payee_ids")
+    result = []
+    for payee in Payee.objects.filter(pk__in=ids).exclude(catalogue={}):
+        fee = payee.catalogue.get("delivery_fee", "0")
+        result += [{"basket_id": b["id"], "name": b["name"], "price": b["price"], "items": b.get("items", []),
+                    "store": payee.name, "delivery_fee": fee} for b in payee.catalogue.get("baskets", [])]
+    return result
+
+
 def tool_get_mandates(p, conversation, current):
     result = []
     for m in visible_mandates(p):
         item = {"mandate_id": str(m.id), "type": TEMPLATES[m.type].label}
         if p.is_funder or p.beneficiary or p.payee:
             item.update(title=m.title, rules=[_rule_text(r) for r in m.rules.all()])
+        baskets = _baskets(m)
+        if baskets and (p.is_funder or p.beneficiary):
+            item["grocery_baskets"] = baskets
         if p.is_funder:
             item["balance"] = str(services.mandate_balance(m))
             item["currency"] = m.currency
@@ -187,7 +205,7 @@ def tool_get_beneficiaries(p, conversation, current):
 
 
 def tool_create_request(p, conversation, current, mandate_id, product, amount, payee_id, beneficiary_id,
-                        summary_en, attachments):
+                        summary_en, attachments, basket_id=None, fulfilment=None):
     mandate = next((m for m in visible_mandates(p) if str(m.id) == mandate_id), None)
     if mandate is None:
         raise ToolError("No such mandate")
@@ -204,7 +222,14 @@ def tool_create_request(p, conversation, current, mandate_id, product, amount, p
         payee = (Payee.objects.filter(pk=payee_id, family=p.family).first()
                  or Payee.objects.filter(pk=payee_id, family__isnull=True).first())
     if payee is None:
-        payee = services.sole_payee(mandate)
+        payee = services.sole_payee(mandate, product)
+    details = {}
+    if basket_id:
+        if payee is None:
+            raise ToolError("No store found for this basket")
+        amount, details = services.grocery_order(payee, basket_id, fulfilment, beneficiary)  # store price wins
+    else:
+        fulfilment = ""
     uploads = [(_upload(p, a["upload_id"]), a["kind"]) for a in attachments]
 
     request = services.submit_request(
@@ -214,7 +239,7 @@ def tool_create_request(p, conversation, current, mandate_id, product, amount, p
         requester_display=(p.user.get_full_name() or p.user.username) if p.is_funder else
         (p.beneficiary.name if p.beneficiary else p.payee.name if p.payee else p.phone),
         # The fraud check must see the person's own words, never the model's paraphrase.
-        message_text=current.text, summary_en=summary_en,
+        message_text=current.text, summary_en=summary_en, fulfilment=fulfilment or "", details=details,
         idempotency_key=f"chat-{current.id}-{mandate.id}-{product}-{amount}", uploads=uploads)
     current.linked_request = request
     current.save(update_fields=["linked_request", "updated_at"])

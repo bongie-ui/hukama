@@ -37,6 +37,7 @@ export interface Beneficiary {
   name: string;
   relationship: string;
   phone: string;
+  address: string;
   allowed_products: string[];
   verified_at: string | null;
   phone_changed_at: string | null;
@@ -56,6 +57,15 @@ export interface Payee {
   verified: boolean;
   shared: boolean;
   simulated: boolean;
+  products: string[];
+  catalogue: { delivery_fee?: string; baskets?: Basket[] };
+}
+
+export interface Basket {
+  id: string;
+  name: string;
+  price: string;
+  items: string[];
 }
 
 export interface RuleInput {
@@ -137,7 +147,8 @@ export interface Payment {
   external_id: string;
   simulated: boolean;
   status: "PENDING" | "SUCCESS" | "FAILED" | "RETURNED";
-  last_mile_status: "N/A" | "DELIVERING" | "DELIVERED" | "AWAITING_COLLECTION" | "COLLECTED";
+  last_mile_status: "N/A" | "DELIVERING" | "DELIVERED" | "AWAITING_COLLECTION" | "COLLECTED" | "PREPARING"
+    | "OUT_FOR_DELIVERY";
   collection_code: string;
   created_at: string;
   updated_at: string;
@@ -170,6 +181,9 @@ export interface PayRequest {
   decision: { outcome: string; reason: string; decided_by: string } | null;
   risk: Risk | null;
   payment: Payment | null;
+  fulfilment: "" | "COLLECT" | "DELIVERY";
+  details: { basket?: string; items?: string[]; basket_price?: string; delivery_fee?: string; address?: string;
+    store?: string };
 }
 
 export interface RuleResult {

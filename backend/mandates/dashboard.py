@@ -21,7 +21,7 @@ OUTCOME = {
 }
 EVENT = dict(LedgerEntry.EVENTS)
 ACTORS = {"POLICY": "Policy engine", "SYSTEM": "Hukama", "PAYPAL": "PayPal",
-          "SIMULATED_RAIL": "Local mobile money (simulated rail)"}
+          "SIMULATED_RAIL": "Simulated last mile"}
 
 
 def _kind(mandate):

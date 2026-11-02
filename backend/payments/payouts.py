@@ -102,6 +102,6 @@ def refresh(tx):
         if status != tx.status:
             tx = apply_rail_status(tx, status, raw=result.raw)
             changed = True
-    if tx.last_mile_status == RailTransaction.DELIVERING:
+    if tx.last_mile_status in RailTransaction.IN_TRANSIT:
         tx = last_mile.advance(tx)
     return tx, changed
