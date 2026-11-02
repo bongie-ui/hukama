@@ -102,7 +102,7 @@ python, django, django-rest-framework, postgresql, react, typescript, vite, open
 ### "Try it out" links
 
 - Live demo: https://thuma.onrender.com (pick a family member on the sign-in page; no password needed)
-- Source code: https://github.com/bongie-ui/thuma
+- Source code: https://github.com/bongie-ui/hukama
 - Postman collection: **(update later: public Postman link)**
 - API docs: https://thuma.onrender.com/api/docs/
 

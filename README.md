@@ -117,7 +117,7 @@ You need Python 3.12+ and Node 22+.
 **macOS / Linux**
 
 ```bash
-git clone https://github.com/bongie-ui/thuma.git && cd thuma
+git clone https://github.com/bongie-ui/hukama.git && cd hukama
 cp .env.example .env            # fill in the values below
 cd frontend && npm ci && npm run build && cd ..
 cd backend
@@ -131,7 +131,7 @@ python3 -m venv .venv
 **Windows (PowerShell)**
 
 ```powershell
-git clone https://github.com/bongie-ui/thuma.git; cd thuma
+git clone https://github.com/bongie-ui/hukama.git; cd hukama
 copy .env.example .env
 cd frontend; npm ci; npm run build; cd ..
 cd backend

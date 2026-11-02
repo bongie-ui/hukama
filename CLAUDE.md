@@ -110,7 +110,7 @@ Sandbox accounts are all US PayPal accounts; story locations differ.
   - services: `submit_request`, `reassess`, `execute_decision`, `apply_approval`, `inbox`; `payments/payouts.py` idempotent `pay_request` (`thuma-<request id>`) + `apply_rail_status`; `rails.for_payee`
   - `.github/workflows/tests.yml` runs tests + migration check on push
   - Open: `LOCAL_MOBILE_MONEY` still routes to the simulated rail; Phase 4 swaps in the real Payout + last mile. Your `.env` still has `LLM_API_KEY`; rename to `OPENAI_API_KEY` and add `MANDATE_SIGNING_KEY` (see `.env.example`)
-- [x] Phase 3 — Render deploy — 28 Oct: live at https://thuma.onrender.com (Postgres), `/api/health/paypal/` returns connected (sandbox, api-m); repo github.com/bongie-ui/thuma, CI green
+- [x] Phase 3 — Render deploy — 28 Oct: live at https://thuma.onrender.com (Postgres), `/api/health/paypal/` returns connected (sandbox, api-m); repo github.com/bongie-ui/hukama, CI green
   - `render.yaml` (web + Postgres, Frankfurt, free), `build.sh` (pip, frontend if present, collectstatic, migrate), `/api/health/` liveness (DB only) used as Render health check
   - Production: `DEBUG = False` hard-coded, HSTS, secure cookies; `check --deploy` clean; gunicorn + WhiteNoise rehearsed locally
   - Render free tier: web sleeps after 15 min (~1 min wake); no persistent disk (evidence uploads lost on redeploy — store in DB/object storage before Phase 5); upgraded to paid until 2027 (2 Nov)
