@@ -244,5 +244,7 @@ class LedgerEntrySerializer(serializers.ModelSerializer):
         names = self.context.get("user_names", {})
         if e.actor.isdigit():
             return names.get(int(e.actor), "A family member")
+        if e.actor.startswith("Local: "):  # a relative at home, known by name only
+            return e.actor.removeprefix("Local: ")
         return {"POLICY": "Policy engine", "SYSTEM": "Hukama", "PAYPAL": "PayPal",
                 "SIMULATED_RAIL": "Local mobile money (simulated rail)"}.get(e.actor, e.actor)

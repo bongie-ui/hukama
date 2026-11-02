@@ -45,10 +45,30 @@ class SeedDemoTests(TestCase):
         call_command("seed_demo", "--reset", stdout=StringIO())
 
         mandates = list(Mandate.objects.all())
-        self.assertEqual(len(mandates), 3)
+        self.assertEqual(len(mandates), 4)
         for m in mandates:
             self.assertTrue(signing.verify(m))
             self.assertGreater(services.mandate_balance(m), 0)
         history = Request.objects.filter(status=Request.PAID)
         self.assertGreaterEqual(history.count(), 3)  # AMOUNT_SPIKE needs a baseline
         self.assertFalse(history.filter(created_at__gte=services.timezone.now().replace(day=1)).exists())
+
+
+class PostmanCollectionTests(SimpleTestCase):
+    """Every request in the published collection must hit a real route."""
+
+    def test_every_request_resolves(self):
+        import re
+
+        from django.urls import Resolver404, resolve
+
+        from core.management.commands.export_postman import all_requests, collection
+
+        uuid = "00000000-0000-0000-0000-000000000000"
+        for item in all_requests(collection()["item"]):
+            raw = item["request"]["url"]["raw"].replace("{{baseUrl}}", "").split("?")[0]
+            path = re.sub(r"\{\{[A-Za-z]+\}\}", uuid, raw)
+            try:
+                resolve(path)
+            except Resolver404:
+                self.fail(f"{item['name']}: {path} is not a route")

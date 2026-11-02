@@ -132,7 +132,8 @@ class MandateFunder(BaseModel):
 class Funding(BaseModel):
     PAYPAL = "PAYPAL"
     PAYNOW_INBOUND = "PAYNOW_INBOUND"
-    RAILS = [(PAYPAL, "PayPal"), (PAYNOW_INBOUND, "Paynow (test mode)")]
+    # Paynow is a third-party brand: people see "Local mobile money" (CLAUDE.md rule 6).
+    RAILS = [(PAYPAL, "PayPal"), (PAYNOW_INBOUND, "Local mobile money (test mode)")]
 
     CREATED = "CREATED"
     CAPTURED = "CAPTURED"
@@ -144,8 +145,13 @@ class Funding(BaseModel):
                                related_name="fundings")  # null for local Paynow contributors
     amount = money_field()
     rail = models.CharField(max_length=16, choices=RAILS, default=PAYPAL)
-    external_id = models.CharField(max_length=64, blank=True)  # PayPal order / capture id
+    external_id = models.CharField(max_length=64, blank=True)  # PayPal order / capture id, Paynow reference
     status = models.CharField(max_length=10, choices=STATUSES, default=CREATED)
+    # Local contributions (no account): who paid from home, and where to ask the rail for the status.
+    contributor_name = models.CharField(max_length=120, blank=True)
+    contributor_phone = models.CharField(max_length=16, blank=True)
+    poll_url = models.URLField(max_length=400, blank=True)
+    failure_reason = models.CharField(max_length=200, blank=True)
 
 
 class Request(BaseModel):

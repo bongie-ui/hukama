@@ -125,7 +125,9 @@ def mark_funding_captured(funding, external_id=None):
     if external_id:
         funding.external_id = external_id
     funding.save(update_fields=["status", "external_id", "updated_at"])
-    record(funding.mandate, LedgerEntry.FUNDED, actor_of(funding.funder), amount=funding.amount,
+    actor = actor_of(funding.funder) if funding.funder_id or not funding.contributor_name \
+        else f"Local: {funding.contributor_name}"
+    record(funding.mandate, LedgerEntry.FUNDED, actor, amount=funding.amount,
            funding_id=str(funding.id), rail=funding.rail, external_id=funding.external_id)
     return funding
 

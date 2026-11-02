@@ -2,6 +2,7 @@
 
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model, login, logout
+from django.middleware.csrf import get_token
 from django.views.decorators.csrf import ensure_csrf_cookie
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.exceptions import NotFound, ValidationError
@@ -11,6 +12,12 @@ from rest_framework.response import Response
 from mandates.serializers import display_name
 
 from .models import Membership
+
+
+def _with_token(request, data):
+    """API clients without a browser cookie jar (Postman, scripts) send this back as X-CSRFToken.
+    Login rotates the token, so every sign-in response carries the new one."""
+    return {**data, "csrf_token": get_token(request)}
 
 
 def _me(user):
@@ -28,8 +35,8 @@ def _me(user):
 def me(request):
     """Also sets the CSRF cookie the SPA sends back on every write."""
     user = request.user if request.user.is_authenticated else None
-    return Response({"authenticated": user is not None, "user": _me(user) if user else None,
-                     "demo_mode": settings.DEMO_MODE})
+    return Response(_with_token(request, {"authenticated": user is not None, "user": _me(user) if user else None,
+                                          "demo_mode": settings.DEMO_MODE}))
 
 
 @api_view(["POST"])
@@ -39,7 +46,7 @@ def login_view(request):
     if user is None:
         raise ValidationError({"detail": "Wrong username or password"})
     login(request, user)
-    return Response(_me(user))
+    return Response(_with_token(request, _me(user)))
 
 
 @api_view(["POST"])
@@ -70,4 +77,4 @@ def demo_login(request):
     if user is None:
         raise ValidationError({"detail": "No such demo user"})
     login(request, user, backend="django.contrib.auth.backends.ModelBackend")
-    return Response(_me(user))
+    return Response(_with_token(request, _me(user)))

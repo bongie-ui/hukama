@@ -15,7 +15,7 @@ from django.utils import timezone
 
 from accounts.models import Family, Membership
 from mandates import services
-from mandates.models import Decision, LedgerEntry, Mandate, Payee, Request
+from mandates.models import Decision, Funding, LedgerEntry, Mandate, Payee, Request
 from payments.models import RailTransaction
 from payments.payouts import reference_for
 
@@ -153,12 +153,28 @@ class Command(BaseCommand):
                                                          "shared": True}},
                    {"kind": "escalate_above", "params": {"amount": 50}}])
 
+        pool = services.create_mandate(
+            family=family, type=Mandate.ISILILO, title="Family funeral pool", created_by=mmeli,
+            co_funders=[bonginkosi, andile],
+            purpose_text="A pool for family funerals, including bringing someone home from abroad. Relatives at home "
+                         "can add to it from mobile money. Pays the funeral provider directly, on its invoice.",
+            rules=[{"kind": "allowed_payees", "params": {"payee_ids": [str(payees["funeral"].id)]}},
+                   {"kind": "requires_invoice", "params": {}},
+                   {"kind": "escalate_above", "params": {"amount": 500}}])
+
         for mandate, amounts in ((build, [(bonginkosi, 300), (mmeli, 200), (andile, 100)]),
+                                 (pool, [(mmeli, 100), (bonginkosi, 100), (andile, 100)]),
                                  (fees, [(andile, 250), (mmeli, 150)]),
                                  (support, [(mmeli, 150), (bonginkosi, 150), (andile, 100)])):
             for user, amount in amounts:
                 funding = services.create_funding(mandate, user, Decimal(amount), external_id="SEED-ORDER")
                 services.mark_funding_captured(funding, external_id=f"SEED-{funding.id.hex[:12].upper()}")
+
+        # A relative at home already added to the pool from mobile money (history; live ones use test mode).
+        local = services.create_funding(pool, None, Decimal("25"), rail=Funding.PAYNOW_INBOUND)
+        local.contributor_name, local.contributor_phone = "Auntie Nomsa (Gwanda)", "+263770000030"
+        local.save()
+        services.mark_funding_captured(local, external_id="SEED-LOCAL")
 
         self._history(support, mama, payees["momo"], [mmeli, bonginkosi, andile])
 

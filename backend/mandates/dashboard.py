@@ -47,7 +47,7 @@ def tables(family):
                              "funders": m.mandate_funders.count()})
 
     funding_rows = [{"funding_id": str(f.id), "mandate_id": str(f.mandate_id),
-                     "funder": names.get(f.funder_id, "Local contributor"), "amount": _money(f.amount),
+                     "funder": names.get(f.funder_id) or f.contributor_name or "Local contributor", "amount": _money(f.amount),
                      "rail": f.get_rail_display(), "date": f.created_at.date().isoformat()}
                     for f in Funding.objects.filter(mandate__in=mandates, status=Funding.CAPTURED)]
 
@@ -64,7 +64,8 @@ def tables(family):
         })
 
     ledger_rows = [{"entry_id": str(e.id), "mandate_id": str(e.mandate_id), "event": EVENT.get(e.event, e.event),
-                    "actor": names.get(int(e.actor), "Family member") if e.actor.isdigit() else ACTORS.get(e.actor, e.actor),
+                    "actor": names.get(int(e.actor), "Family member") if e.actor.isdigit()
+                    else ACTORS.get(e.actor, e.actor.removeprefix("Local: ")),
                     "amount": _money(e.amount), "date": e.created_at.date().isoformat(),
                     "time": timezone.localtime(e.created_at).strftime("%d %b %H:%M")}
                    for e in LedgerEntry.objects.filter(family=family).order_by("-created_at")[:500]]

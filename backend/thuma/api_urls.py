@@ -35,6 +35,10 @@ urlpatterns = [
     path("mandates/<uuid:pk>/coverage/", mandates.mandate_coverage),
     path("mandates/<uuid:pk>/fund/create-order/", payments.fund_create_order),
     path("mandates/<uuid:pk>/fund/capture/", payments.fund_capture),
+    path("mandates/<uuid:pk>/fundings/", payments.mandate_fundings),
+    path("mandates/<uuid:pk>/contribute/local/", payments.contribute_local),
+    path("fundings/<uuid:pk>/", payments.funding_detail),
+    path("webhooks/paynow/", payments.paynow_result),
 
     path("requests/", mandates.requests_),
     path("requests/<uuid:pk>/", mandates.request_detail),

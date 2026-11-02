@@ -34,7 +34,7 @@ export default function RequestForm({ mandate }: { mandate: Mandate }) {
   const ids = allowedPayeeIds(mandate);
   const options = payees.data?.filter((p) => ids.includes(p.id)) ?? [];
   const [payee, setPayee] = useState("");
-  const [product, setProduct] = useState(mandate.type === "IMFUNDO" ? "school_fees" : mandate.type === "AKHA" ? "materials" : "");
+  const [product, setProduct] = useState(mandate.type === "IMFUNDO" ? "school_fees" : mandate.type === "AKHA" ? "materials" : mandate.type === "ISILILO" ? "funeral" : "");
   const [amount, setAmount] = useState("");
   const [message, setMessage] = useState("");
   const [files, setFiles] = useState<{ file: File; kind: string }[]>([]);
