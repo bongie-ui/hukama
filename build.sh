@@ -11,3 +11,7 @@ fi
 cd backend
 python manage.py collectstatic --no-input
 python manage.py migrate --no-input
+# Demo deployments seed the demo family once; later deploys keep its data.
+if [ "${DEMO_MODE:-false}" = "true" ]; then
+  python manage.py seed_demo --if-missing
+fi

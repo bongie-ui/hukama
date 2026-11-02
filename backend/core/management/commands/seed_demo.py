@@ -59,9 +59,14 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument("--reset", action="store_true", help="delete the demo family and its users first")
+        parser.add_argument("--if-missing", action="store_true",
+                            help="do nothing if the demo family exists (used by build.sh on every deploy)")
 
-    def handle(self, *args, reset=False, **options):
+    def handle(self, *args, reset=False, if_missing=False, **options):
         if Family.objects.filter(name=FAMILY).exists():
+            if if_missing and not reset:
+                self.stdout.write(f"{FAMILY} already exists; not seeding")
+                return
             if not reset:
                 raise CommandError(f"{FAMILY} already exists; use --reset to recreate it")
             self._delete()

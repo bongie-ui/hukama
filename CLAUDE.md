@@ -97,7 +97,7 @@ Sandbox accounts are all US PayPal accounts; story locations differ.
 - [x] Sandbox accounts created; `thuma-platform` linked to platform@thuma.com (~10,000 USD)
 - [x] LLM chosen: OpenAI
 - [ ] Test payouts verified (hardware, school, mobile money)
-- [~] OpenAI smoke test — isiNdebele chat ✓ (28 Oct, gpt-5.5-2026-04-23); handwritten quote photo still to test (needs a real photo in `backend/demo_assets/`)
+- [x] OpenAI smoke test — isiNdebele chat ✓ (28 Oct, gpt-5.5-2026-04-23); handwritten quote photo ✓ (2 Nov: `demo_assets/quote_cement_14.jpg` read as cement_bag 40 × $14 → price_ceiling refusal)
 - [ ] APIMatic Context Plugin installed
 - [x] Phase 1 — Foundations (models, signing, templates) — 27 Oct
   - Settings split: `thuma/settings/{base,local,production}.py` (manage.py → local, wsgi/asgi → production; production refuses to start without `DJANGO_SECRET_KEY` + `MANDATE_SIGNING_KEY`)
@@ -113,7 +113,7 @@ Sandbox accounts are all US PayPal accounts; story locations differ.
 - [x] Phase 3 — Render deploy — 28 Oct: live at https://thuma.onrender.com (Postgres), `/api/health/paypal/` returns connected (sandbox, api-m); repo github.com/bongie-ui/thuma, CI green
   - `render.yaml` (web + Postgres, Frankfurt, free), `build.sh` (pip, frontend if present, collectstatic, migrate), `/api/health/` liveness (DB only) used as Render health check
   - Production: `DEBUG = False` hard-coded, HSTS, secure cookies; `check --deploy` clean; gunicorn + WhiteNoise rehearsed locally
-  - Render free tier: web sleeps after 15 min (~1 min wake); no persistent disk (evidence uploads lost on redeploy — store in DB/object storage before Phase 5); **free Postgres expires 30 days after creation → upgrade before ~29 Nov** so it survives judging (1–15 Dec)
+  - Render free tier: web sleeps after 15 min (~1 min wake); no persistent disk (evidence uploads lost on redeploy — store in DB/object storage before Phase 5); upgraded to paid until 2027 (2 Nov)
 - [ ] Phase 4 — PayPal funding, payouts, mobile money rail, webhooks — in progress (97 tests)
   - Done (no PayPal API code): `payments/last_mile.py` simulated last mile (bundles/airtime DELIVERING→DELIVERED after 3s; cash AWAITING_COLLECTION + 6-digit code + beneficiary chat notice → COLLECTED), started on payout SUCCESS; `manage.py poll_payouts [--watch]`
   - **Blocked on APIMatic Context Plugin (rule 5):** Orders create/capture via `paypal-server-sdk`, `LocalMobileMoneyRail` (real Payout to provider with `{beneficiary_phone, product, thuma_request_id}` note), webhooks (`/api/webhooks/paypal`, signature verification, dedupe), fund/capture + demo collect endpoints; then a real sandbox payout via a Request and a webhook received at `https://thuma.onrender.com/api/webhooks/paypal`
@@ -130,7 +130,10 @@ Sandbox accounts are all US PayPal accounts; story locations differ.
   - `core/management/commands/seed_demo.py [--reset]`: 3 users (`mmeli`, `bonginkosi`, `andile`), Mama, 5 payees, Akha/Imfundo/Isikhwama signed + funded, 3 months of paid history (back-dated, no rails). Sandbox emails (funders + hardware/fees/mobilemoney@business.example.com) are defaults in `SANDBOX_EMAILS`; env vars of the same name override
   - `frontend/`: React 19 + Vite 8 + TS 5.9 (no other deps; tiny hash router). Screens: login/persona switcher, mandates, new mandate (AI draft → edit → sign), mandate detail (contributions, Fund with PayPal, quick actions with "who covered it", request form with evidence, ledger), request detail (fraud card, rule results, what the AI read, payment + last mile, collect button), approvals inbox, chat (+ "talk as…"), people. Django serves `frontend/dist` (WhiteNoise root + `core.views.spa`). CI builds the frontend
   - Verified locally with the real model: scenario 3 (second funder refused, names Andile), 4 (HELD_FRAUD 100, report → numbers blocked), 5 (cash code → collected)
-  - Open: Fund with PayPal answers 503 until Phase 4 (Orders + JS SDK need the APIMatic plugin); `demo_assets/` photos still missing (scenarios 1–2 in the UI need real images); seeding Render needs a way to run `seed_demo` (free tier has no shell)
+  - `backend/demo_assets/`: quotes at $14 and $10.50, foundation photo, Sunrise invoice ($340; use the PNG, extraction rejects PDFs). `build.sh` runs `seed_demo --if-missing` when `DEMO_MODE=true`
+  - Changing `MANDATE_SIGNING_KEY` invalidates every signature (by design): reseed with `seed_demo --reset` locally
+  - Render is on a paid plan until 2027 (no free-tier sleep or Postgres expiry)
+  - Open: Fund with PayPal answers 503 until Phase 4 (Orders + JS SDK need the APIMatic plugin); UI redesign + rebrand agreed (2 Nov), name not chosen yet
 - [ ] Phase 7 — AG Studio dashboard (+ Isililo, Postman)
 - [ ] Phase 8 — Feature freeze, hardening, README
 - [ ] Phase 9 — Video + Devpost text
