@@ -21,6 +21,7 @@ const PATHS: Record<string, string> = {
   doc: "M7 3.5h7l4 4V20.5H7Z M14 3.5V8h4 M9.5 12.5h6 M9.5 16h6",
   logout: "M14 4.5h4.5v15H14M10 8l-4 4 4 4M6 12h10",
   bolt: "M13 3 5 13.5h6L10 21l8-10.5h-6Z",
+  chart: "M4 20.5h16M7 17v-5M12 17V7M17 17v-8",
   wallet: "M4 7.5A2.5 2.5 0 0 1 6.5 5h11V8M4 7.5v10A2.5 2.5 0 0 0 6.5 20H20v-12H6.5A2.5 2.5 0 0 1 4 7.5Zm12 6.5h.5",
   // Mandate types
   build: "M3.5 20.5h17M5 20.5V11l7-5 7 5v9.5M9.5 20.5V15h5v5.5",

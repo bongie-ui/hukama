@@ -12,7 +12,7 @@ from core.api import IsFamilyMember, current_family, get_or_404
 from core.phones import normalize_phone
 from mandates.models import Beneficiary, Payee
 
-from . import chat
+from . import chat, dashboard_ai
 from .models import ChatMessage, Conversation
 
 PERMS = [IsFamilyMember]
@@ -87,3 +87,15 @@ def messages(request, pk):
         .select_related("linked_request").order_by("created_at")
     return Response({"conversation": _conversation_data(conversation),
                      "messages": [_message_data(m, participant) for m in qs]})
+
+
+@api_view(["POST"])
+@permission_classes(PERMS)
+def dashboard_turn(request):
+    """One AG Studio agent turn, answered by our model on the server (the browser never sees the key).
+    Dashboard tools only read and arrange the family's own data."""
+    current_family(request)
+    try:
+        return Response(dashboard_ai.run_turn(request.data))
+    except (dashboard_ai.TurnError, KeyError, TypeError) as exc:
+        raise ValidationError({"detail": f"Invalid dashboard request: {exc}"})

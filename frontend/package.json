@@ -9,6 +9,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "ag-studio": "3.0.0",
+    "ag-studio-react": "3.0.0",
     "react": "19.2.0",
     "react-dom": "19.2.0"
   },

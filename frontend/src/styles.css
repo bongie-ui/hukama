@@ -155,6 +155,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .content { min-width: 0; padding: 32px clamp(16px, 4vw, 48px) 64px; }
 .page { max-width: 1040px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
 .page.narrow { max-width: 760px; }
+.page.wide { max-width: 1440px; }
 
 .topbar, .tabbar { display: none; }
 
@@ -170,7 +171,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
   .topbar .brand { padding: 0; }
   .topbar .brand img { width: 30px; height: 30px; }
   .tabbar {
-    display: grid; grid-template-columns: repeat(4, 1fr); position: fixed; z-index: 30; left: 0; right: 0; bottom: 0;
+    display: grid; grid-template-columns: repeat(5, 1fr); position: fixed; z-index: 30; left: 0; right: 0; bottom: 0;
     background: var(--surface); border-top: 1px solid var(--line);
     padding: 6px 8px calc(6px + env(safe-area-inset-bottom, 0px));
   }
@@ -576,3 +577,10 @@ a.list-item:hover { background: var(--plum-tint); text-decoration: none; }
   .hello h1 { font-size: var(--text-2xl); }
   .page-head > .btn { width: 100%; }
 }
+
+/* ---------- Dashboard (AG Studio) ---------- */
+.studio-frame {
+  height: max(640px, calc(100vh - 210px)); border: 1px solid var(--line); border-radius: var(--r-lg);
+  overflow: hidden; background: var(--surface); box-shadow: var(--shadow-1);
+}
+@media (max-width: 899px) { .studio-frame { height: max(560px, calc(100vh - 300px)); } }

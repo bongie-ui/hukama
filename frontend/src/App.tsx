@@ -4,6 +4,7 @@ import Icon from "./components/Icon";
 import { Avatar, ErrorNote, PageLoading } from "./components/ui";
 import { SessionContext, useApi, usePoll, useSession } from "./hooks";
 import Chat from "./pages/Chat";
+import DashboardPage from "./pages/DashboardPage";
 import Home from "./pages/Home";
 import Inbox from "./pages/Inbox";
 import Login from "./pages/Login";
@@ -48,6 +49,7 @@ export default function App() {
 const NAV = [
   { href: "/", key: "home", label: "Home", icon: "home" },
   { href: "/inbox", key: "inbox", label: "Approvals", icon: "shield" },
+  { href: "/dashboard", key: "dashboard", label: "Dashboard", icon: "chart" },
   { href: "/chat", key: "chat", label: "Assistant", icon: "chat" },
   { href: "/people", key: "people", label: "People", icon: "people" },
 ];
@@ -124,6 +126,7 @@ function Route({ path }: { path: string }) {
   if ((m = match("/requests/:id", path))) return <RequestDetail id={m.id} />;
   if (path.startsWith("/inbox")) return <Inbox />;
   if (path.startsWith("/chat")) return <Chat path={path} />;
+  if (path.startsWith("/dashboard")) return <DashboardPage />;
   if (path.startsWith("/people")) return <People />;
   return (
     <div className="page narrow">

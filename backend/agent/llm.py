@@ -96,23 +96,31 @@ def structured(prompt, schema, *, name, system=None, images=(), fast=False):
     return result, response.model
 
 
-def chat(messages, tools=None, *, fast=False):
-    """One chat turn. Returns {"content", "tool_calls": [{"id", "name", "arguments"}], "model"}."""
+def chat(messages, tools=None, *, fast=False, tool_choice=None, response_format=None):
+    """One chat turn. Returns {"content", "tool_calls": [{"id", "name", "arguments"}], "model", "usage"}."""
     if not is_configured():
         raise LLMError("OpenAI is not configured")
     model = model_name(fast)
-    key = demo_replay.key_for({"kind": "chat", "model": model, "messages": messages, "tools": tools})
+    key = demo_replay.key_for({"kind": "chat", "model": model, "messages": messages, "tools": tools,
+                               "tool_choice": tool_choice, "response_format": response_format})
     if (cached := demo_replay.lookup(key)) is not None:
         return cached
     kwargs = {"model": model, "messages": messages}
     if tools:
         kwargs["tools"] = tools
-    message = _call(**kwargs).choices[0].message
+        if tool_choice:
+            kwargs["tool_choice"] = tool_choice
+    if response_format:
+        kwargs["response_format"] = response_format
+    response = _call(**kwargs)
+    message = response.choices[0].message
     result = {
         "content": message.content or "",
         "tool_calls": [{"id": c.id, "name": c.function.name, "arguments": c.function.arguments}
                        for c in (message.tool_calls or [])],
         "model": model,
+        "usage": {"input": getattr(response.usage, "prompt_tokens", 0),
+                  "output": getattr(response.usage, "completion_tokens", 0)},
     }
     demo_replay.store(key, result)
     return result

@@ -135,7 +135,10 @@ Sandbox accounts are all US PayPal accounts; story locations differ.
   - Render is on a paid plan until 2027 (no free-tier sleep or Postgres expiry)
   - Open: Fund with PayPal answers 503 until Phase 4 (Orders + JS SDK need the APIMatic plugin)
 - [x] Rebrand + UI redesign — 2 Nov: name **Hukama**, logo "Homestead H" (two pillars + coral roof; `frontend/public/hukama-mark.svg`, `favicon.svg`, `apple-touch-icon.png`, `icon-512.png`, `site.webmanifest`), palette plum `#4a1f3d` + coral `#ff8a7a`, Bricolage Grotesque (display) + Manrope (body) from Google Fonts. Design system in `frontend/src/styles.css` (tokens, light/dark); sidebar on desktop, bottom tabs on phones; `components/Icon.tsx` (own stroke icons), avatars, request progress stepper, fraud card, messaging-style chat with "see it from their side" demo personas. Lists settle in-flight payouts (`mandates/views._settle`). Reviewed via headless Chrome screenshots (light, dark, 390px)
-- [ ] Phase 7 — AG Studio dashboard (+ Isililo, Postman)
+- [~] Phase 7 — AG Studio dashboard (+ Isililo, Postman)
+  - Dashboard done (2 Nov): `ag-studio-react`/`ag-studio` 3.0.0 (AG Grid 36.2, AG Charts 14.2), lazy-loaded chunk (~1.5 MB gz) at `#/dashboard`. Data from `GET /api/dashboard/data/` (`mandates/dashboard.py`: mandates, fundings, requests, ledger tables linked by `mandate_id`) + `GET /api/dashboard/summary/`. Default page: Funded / Available / Paid out / Fraud alerts KPIs, spent vs available by mandate, contributions by family member, spend by category, what the rules decided, audit trail grid (`frontend/src/dashboard/report.ts`), branded theme
+  - Studio Agent Framework: Direct LLM Runner with `frontend/src/dashboard/adapter.ts` posting each turn to `POST /api/dashboard/ai/turn/` → `agent/dashboard_ai.py` → `llm.chat` (key stays server-side; provider-hosted tools never offered). Verified live: "Chart airtime, bundles and cash paid out per month" → Page + Widget agents added the chart
+  - Licence: set `VITE_AG_STUDIO_LICENSE_KEY` (build-time, on Render too) once the 45-day trial key arrives; without it Studio shows a watermark. Dashboard edits are not saved yet (reset on reload)
 - [ ] Phase 8 — Feature freeze, hardening, README
 - [ ] Phase 9 — Video + Devpost text
 - [ ] Phase 10 — Submitted

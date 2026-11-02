@@ -19,7 +19,7 @@ from core.api import IsFamilyMember, current_family, current_membership, get_or_
 from core.phones import normalize_phone
 from payments import payouts, rails
 
-from . import services
+from . import dashboard, services
 from .describe import coverage, describe_rule
 from .models import Approval, Evidence, LedgerEntry, Mandate, Payee, Request, Upload
 from .serializers import (BeneficiarySerializer, LedgerEntrySerializer, MandateSerializer, MemberSerializer,
@@ -313,3 +313,20 @@ def family(request):
     members = m.family.memberships.select_related("user").order_by("created_at")
     return Response({"id": str(m.family.id), "name": m.family.name, "role": m.role,
                      "members": MemberSerializer(members, many=True).data})
+
+
+# --- Dashboard --------------------------------------------------------------------------------------------
+
+@api_view(["GET"])
+@permission_classes(PERMS)
+def dashboard_data(request):
+    """Linked tables for the AG Studio dashboard (mandates, fundings, requests, ledger)."""
+    family = current_family(request)
+    _settle(family)
+    return Response(dashboard.tables(family))
+
+
+@api_view(["GET"])
+@permission_classes(PERMS)
+def dashboard_summary(request):
+    return Response(dashboard.summary(current_family(request)))
