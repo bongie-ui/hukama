@@ -96,7 +96,7 @@ Sandbox accounts are all US PayPal accounts; story locations differ.
 - [x] Skeleton, PayPal OAuth client, `/api/health/paypal/` connected
 - [x] Sandbox accounts created; `thuma-platform` linked to platform@thuma.com (~10,000 USD)
 - [x] LLM chosen: OpenAI
-- [ ] Test payouts verified (hardware, school, mobile money)
+- [~] Test payouts verified — hardware ✓ (2 Nov: scenario 1 live, $420 batch `X23RSDH633YY6` SUCCESS in 24s), school ✓ (scenario 2 live, $340 batch `RJTSMWR4PYFBG` SUCCESS); mobile money still on the simulated rail until the Phase 4 `LocalMobileMoneyRail`. The live run caught an overpayment bug (revised $420 quote approving the old $560 request, sandbox batch `QLKTYTLXPQXX8`), fixed in `policy._price_ceiling` (amount ≤ quote total). Local `.env` needs `PAYPAL_BASE_URL=https://api-m.sandbox.paypal.com` (the website URL fails auth)
 - [x] OpenAI smoke test — isiNdebele chat ✓ (28 Oct, gpt-5.5-2026-04-23); handwritten quote photo ✓ (2 Nov: `demo_assets/quote_cement_14.jpg` read as cement_bag 40 × $14 → price_ceiling refusal)
 - [ ] APIMatic Context Plugin installed
 - [x] Phase 1 — Foundations (models, signing, templates) — 27 Oct

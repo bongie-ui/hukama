@@ -53,6 +53,7 @@ Family members abroad fund a **mandate**: money set aside for one purpose, with 
 ### What we saw in testing
 
 - A handwritten quote for 40 bags of cement at $14 is read by the vision model, refused by the $11 price ceiling, and the supplier is asked for a revised quote in plain words.
+- The revised quote at $10.50 plus the foundation photo is approved, and Gwanda Hardware receives a real $420 PayPal sandbox payout within half a minute. Sunrise Academy's $340 invoice is paid the same way.
 - Andile buys Mama's bundles. An hour later Mmeli tries the same thing and is told, "Andile Fuyana already sent bundles ($10.00) at 08:50; wait 24 hours."
 - A "hospital emergency" message from an unknown number scores 100/100 risk and is held. The sender sees only "held until the family confirms with her on her registered number". The funders see every signal, and the assistant's reasoning with quotes from the message.
 
@@ -159,7 +160,6 @@ Zimbabwe
 ## Not built yet (don't claim until done)
 
 - PayPal Orders checkout ("Add funds with PayPal" currently says it's not switched on) and PayPal webhooks: Phase 4, waiting on APIMatic credits
-- A verified end-to-end sandbox payout to Gwanda Hardware / Sunrise Academy (the code calls the real Payouts API but it hasn't been run against the sandbox yet)
 - APIMatic Context Plugin and the PayPal Server SDK
 - Live Paynow test-mode contributions (needs Paynow credentials)
 - AG Studio licence key (the dashboard shows a watermark until it's set)
