@@ -19,7 +19,7 @@ _RAIL_STATUS = {
 
 def reference_for(request):
     """Idempotency key: PayPal rejects a second batch with the same sender_batch_id."""
-    return f"thuma-{request.id}"
+    return f"hukama-{request.id}"
 
 
 def _identifier(request):

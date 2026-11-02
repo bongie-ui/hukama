@@ -1,46 +1,56 @@
 import { money, when } from "../api";
+import { requestTitle } from "../components/Activity";
 import { ApprovalActions, FraudCard } from "../components/Approval";
-import { Empty, ErrorNote, Loading, riskTone } from "../components/ui";
+import Icon from "../components/Icon";
+import { Avatar, Empty, ErrorNote, riskTone, Skeleton } from "../components/ui";
 import { useApi } from "../hooks";
 import type { PayRequest } from "../types";
 
-/** Escalations and fraud holds on mandates this funder funds. Fraud holds first. */
+/** Escalations and fraud holds on mandates this funder funds. Scams first. */
 export default function Inbox() {
   const { data, error, loading, reload } = useApi<PayRequest[]>("/requests/?inbox=1");
   const sorted = [...(data ?? [])].sort((a, b) => Number(b.status === "HELD_FRAUD") - Number(a.status === "HELD_FRAUD"));
 
   return (
-    <>
-      <h1>Approvals</h1>
-      <p className="muted">Requests the rules sent to the family: possible fraud, and anything over an approval limit.</p>
+    <div className="page narrow">
+      <header className="page-head">
+        <div>
+          <h1>Approvals</h1>
+          <p>Requests the rules held back for the family: possible scams, and anything over an approval limit.</p>
+        </div>
+      </header>
       <ErrorNote error={error} />
-      {loading && !data && <Loading />}
-      {data?.length === 0 && <Empty>Nothing is waiting for you.</Empty>}
-      <div className="stack">
+      {loading && !data && <div className="stack"><Skeleton h={260} r={18} /><Skeleton h={160} r={18} /></div>}
+      {data?.length === 0 && (
+        <div className="card"><Empty icon="shield" title="Nothing is waiting for you">When a request needs a funder, it appears here and on everyone's phone.</Empty></div>
+      )}
+      <div className="stack" style={{ gap: 20 }}>
         {sorted.map((r) =>
           r.status === "HELD_FRAUD" && r.risk ? (
-            <div key={r.id}>
-              <FraudCard r={r} />
-              <div className="card">
-                <ApprovalActions r={r} onDone={() => reload()} />
-                <a className="small" href={`#/requests/${r.id}`}>Full details</a>
-              </div>
-            </div>
-          ) : (
-            <div key={r.id} className="card" style={{ borderColor: "var(--warn)" }}>
-              <div className="row between">
-                <strong>{money(r.amount, r.currency)} {r.product}{r.beneficiary_name ? ` for ${r.beneficiary_name}` : ""}</strong>
-                {r.risk && r.risk.level !== "LOW" && <span className={`badge ${riskTone(r.risk.level)}`}>Risk {r.risk.score}</span>}
-              </div>
-              <div className="small muted">{r.requester} · {r.mandate_title} · {when(r.created_at)}</div>
-              <p style={{ margin: "0.5rem 0 0" }}>{r.decision?.reason}</p>
-              {r.message_text && <blockquote className="small muted" style={{ margin: "0.4rem 0 0" }}>“{r.message_text}”</blockquote>}
+            <FraudCard key={r.id} r={r}>
               <ApprovalActions r={r} onDone={() => reload()} />
-              <a className="small" href={`#/requests/${r.id}`}>Full details</a>
-            </div>
+              <a className="small" href={`#/requests/${r.id}`}>Open the full request</a>
+            </FraudCard>
+          ) : (
+            <article key={r.id} className="card stack" style={{ borderColor: "var(--warn)" }}>
+              <div className="row between" style={{ flexWrap: "nowrap", alignItems: "flex-start" }}>
+                <div className="row" style={{ flexWrap: "nowrap", minWidth: 0 }}>
+                  <Avatar name={r.requester} />
+                  <div className="stack-sm" style={{ gap: 2, minWidth: 0 }}>
+                    <h3>{requestTitle(r)}</h3>
+                    <span className="small muted">{r.requester} · {r.mandate_title} · {when(r.created_at)}</span>
+                  </div>
+                </div>
+                <span className="amount md">{money(r.amount, r.currency)}</span>
+              </div>
+              <div className="notice warn"><Icon name="clock" size={18} /><div>{r.decision?.reason}</div></div>
+              {r.message_text && <blockquote className="quote">“{r.message_text}”</blockquote>}
+              {r.risk && r.risk.level !== "LOW" && <span className={`pill ${riskTone(r.risk.level)}`} style={{ alignSelf: "flex-start" }}>{r.risk.level.toLowerCase()} risk · {r.risk.score}</span>}
+              <ApprovalActions r={r} onDone={() => reload()} />
+            </article>
           ),
         )}
       </div>
-    </>
+    </div>
   );
 }

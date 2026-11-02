@@ -19,12 +19,15 @@ export default function FundButton({ mandate, onFunded }: { mandate: Mandate; on
   });
 
   return (
-    <div>
-      <div className="row">
-        <input aria-label="Amount in US dollars" type="number" min="1" step="1" value={amount} style={{ width: "6.5rem" }}
-          onChange={(e) => setAmount(e.target.value)} />
-        <button className="primary" disabled={busy || Number(amount) <= 0 || mandate.status !== "ACTIVE"} onClick={fund}>
-          {busy ? "Opening PayPal…" : "Fund with PayPal"}
+    <div className="stack-sm">
+      <div className="row" style={{ flexWrap: "nowrap" }}>
+        <div className="money-input" style={{ width: 110, flex: "none" }}>
+          <span aria-hidden style={{ color: "rgb(255 255 255 / .7)" }}>$</span>
+          <input className="input" type="number" min="1" step="1" value={amount} aria-label="Amount to add, in US dollars"
+            onChange={(e) => setAmount(e.target.value)} />
+        </div>
+        <button className="btn primary" style={{ flex: 1 }} disabled={busy || Number(amount) <= 0 || mandate.status !== "ACTIVE"} onClick={fund}>
+          {busy ? <span className="spinner" /> : null}Add funds with PayPal
         </button>
       </div>
       <ErrorNote error={error} />

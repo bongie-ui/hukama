@@ -59,7 +59,7 @@ class PayPalPayoutRailTests(SimpleTestCase):
         client.create_payout.return_value = {
             "batch_header": {"payout_batch_id": "BATCH1", "batch_status": "PENDING"}
         }
-        result = PayPalPayoutRail(client).pay(HARDWARE, Decimal("120.50"), "thuma-akha-1")
+        result = PayPalPayoutRail(client).pay(HARDWARE, Decimal("120.50"), "hukama-akha-1")
         client.create_payout.assert_called_once()
         self.assertEqual(client.create_payout.call_args.kwargs["receiver_email"], "hardware@example.com")
         self.assertEqual(result.external_id, "BATCH1")
@@ -70,8 +70,8 @@ class PayPalPayoutRailTests(SimpleTestCase):
         client = mock.Mock()
         client.get_payout_batch.return_value = {
             "batch_header": {"payout_batch_id": "BATCH1", "batch_status": "SUCCESS",
-                             "sender_batch_header": {"sender_batch_id": "thuma-akha-1"}}
+                             "sender_batch_header": {"sender_batch_id": "hukama-akha-1"}}
         }
         result = PayPalPayoutRail(client).status("BATCH1")
         self.assertEqual(result.status, RailStatus.SUCCEEDED)
-        self.assertEqual(result.reference, "thuma-akha-1")
+        self.assertEqual(result.reference, "hukama-akha-1")

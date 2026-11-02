@@ -188,11 +188,29 @@ def _requests(family):
         .select_related("mandate", "beneficiary", "payee", "requester_user", "risk_assessment")
 
 
+SETTLE_LIMIT = 10
+
+
+def _settle(family):
+    """No worker runs on Render: bring a few in-flight payouts up to date before listing them."""
+    from payments.models import RailTransaction
+
+    moving = RailTransaction.objects.filter(request__mandate__family=family).filter(
+        Q(status=RailTransaction.PENDING) | Q(last_mile_status=RailTransaction.DELIVERING)) \
+        .select_related("request__payee")[:SETTLE_LIMIT]
+    for tx in moving:
+        try:
+            payouts.refresh(tx)
+        except rails.RailError:
+            pass
+
+
 @api_view(["GET", "POST"])
 @permission_classes(PERMS)
 def requests_(request):
     family = current_family(request)
     if request.method == "GET":
+        _settle(family)
         if request.query_params.get("inbox"):
             qs = services.inbox(request.user).select_related("requester_user", "risk_assessment")
         else:

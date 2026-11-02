@@ -22,6 +22,6 @@ def spa(request):
     """The built React app. Before the first frontend build, say how to get it."""
     index = settings.FRONTEND_DIST / "index.html"
     if not index.exists():
-        return JsonResponse({"service": "thuma", "frontend": "not built: run `npm run build` in frontend/",
+        return JsonResponse({"service": "hukama", "frontend": "not built: run `npm run build` in frontend/",
                              "api": "/api/docs/"})
     return FileResponse(index.open("rb"), content_type="text/html")

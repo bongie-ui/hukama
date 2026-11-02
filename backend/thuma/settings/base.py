@@ -107,7 +107,7 @@ REST_FRAMEWORK = {
     "EXCEPTION_HANDLER": "core.api.exception_handler",
 }
 SPECTACULAR_SETTINGS = {
-    "TITLE": "Thuma API",
+    "TITLE": "Hukama API",
     "DESCRIPTION": "Purpose-locked family payments: the AI proposes, code decides, PayPal moves the money.",
     "VERSION": "1.0.0",
     # Function views carry no request/response annotations yet; they come with the Postman collection.

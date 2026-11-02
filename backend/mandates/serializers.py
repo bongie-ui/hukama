@@ -215,13 +215,20 @@ class RequestDetailSerializer(RequestSerializer):
     approvals = ApprovalSerializer(many=True, read_only=True)
     rail_transactions = RailTransactionSerializer(many=True, read_only=True)
     allowed_actions = serializers.SerializerMethodField()
+    price_ceilings = serializers.SerializerMethodField()
 
     class Meta(RequestSerializer.Meta):
         fields = RequestSerializer.Meta.fields + ["evidence", "decisions", "approvals", "rail_transactions",
-                                                  "allowed_actions"]
+                                                  "allowed_actions", "price_ceilings"]
 
     def get_allowed_actions(self, r):
         return sorted(services.ALLOWED_ACTIONS.get(r.status, ()))
+
+    def get_price_ceilings(self, r):
+        """So the app can mark quoted lines that break a ceiling, using the same matching as the policy."""
+        return [{"item": rule.params["item"], "max_unit_price": str(rule.params["max_unit_price"]),
+                 "keywords": rule.params.get("keywords") or [rule.params["item"].split("_")[0]]}
+                for rule in r.mandate.rules.all() if rule.kind == "price_ceiling"]
 
 
 class LedgerEntrySerializer(serializers.ModelSerializer):
@@ -237,5 +244,5 @@ class LedgerEntrySerializer(serializers.ModelSerializer):
         names = self.context.get("user_names", {})
         if e.actor.isdigit():
             return names.get(int(e.actor), "A family member")
-        return {"POLICY": "Policy engine", "SYSTEM": "Thuma", "PAYPAL": "PayPal",
+        return {"POLICY": "Policy engine", "SYSTEM": "Hukama", "PAYPAL": "PayPal",
                 "SIMULATED_RAIL": "Local mobile money (simulated rail)"}.get(e.actor, e.actor)

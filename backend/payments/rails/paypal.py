@@ -34,7 +34,7 @@ class PayPalPayoutRail(Rail):
                 amount=amount,
                 currency=currency,
                 reference=reference,
-                note=f"Thuma payment to {payee.name}",
+                note=f"Hukama payment to {payee.name}",
             )
         except PayPalError as exc:
             raise RailError(str(exc)) from exc

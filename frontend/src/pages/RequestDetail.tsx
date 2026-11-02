@@ -1,13 +1,45 @@
 import { api, money, uploadUrl, when } from "../api";
+import { requestTitle } from "../components/Activity";
 import { ApprovalActions, FraudCard, RiskDetails } from "../components/Approval";
+import Icon from "../components/Icon";
 import Ledger from "../components/Ledger";
-import { ErrorNote, Loading, PaymentLine, riskTone, SimTag, StatusBadge } from "../components/ui";
+import { Avatar, ErrorNote, Notice, PageLoading, riskTone, SimTag, StatusPill, Who } from "../components/ui";
 import { useAction, useApi, usePoll, useSession } from "../hooks";
 import type { RequestDetail as Detail } from "../types";
 
 const KIND: Record<string, string> = {
   QUOTE: "Quote", INVOICE: "Invoice", MILESTONE_PHOTO: "Progress photo", RECEIPT: "Receipt", OTHER: "File",
 };
+
+type Step = { label: string; sub: string; state: "done" | "current" | "stop" | "hold" | "" };
+
+function steps(r: Detail): Step[] {
+  const risk = r.risk;
+  const tx = r.payment;
+  const s = r.status;
+  const decided: Step = s === "REFUSED" ? { label: "Rules", sub: "Refused", state: "stop" }
+    : s === "ESCALATED" ? { label: "Rules", sub: "Needs a funder", state: "hold" }
+    : s === "HELD_FRAUD" ? { label: "Rules", sub: "Held for a call home", state: "hold" }
+    : s === "CONFIRMED_FRAUD" ? { label: "Rules", sub: "Reported as scam", state: "stop" }
+    : ["APPROVED", "PAID", "FAILED"].includes(s) ? { label: "Rules", sub: "All rules passed", state: "done" }
+    : { label: "Rules", sub: "Checking", state: "current" };
+  const paid: Step = !tx ? { label: "PayPal payout", sub: "Not sent", state: "" }
+    : tx.status === "SUCCESS" ? { label: "PayPal payout", sub: tx.simulated ? "Sent (simulated)" : "Sent", state: "done" }
+    : tx.status === "PENDING" ? { label: "PayPal payout", sub: "Processing", state: "current" }
+    : { label: "PayPal payout", sub: tx.status.toLowerCase(), state: "stop" };
+  const lm = tx?.last_mile_status;
+  const delivered: Step = !tx || tx.status !== "SUCCESS" ? { label: "Received", sub: "", state: "" }
+    : lm === "DELIVERING" ? { label: "Received", sub: "Delivering to phone", state: "current" }
+    : lm === "AWAITING_COLLECTION" ? { label: "Received", sub: "Ready to collect", state: "current" }
+    : lm === "DELIVERED" ? { label: "Received", sub: "Delivered", state: "done" }
+    : lm === "COLLECTED" ? { label: "Received", sub: "Cash collected", state: "done" }
+    : { label: "Received", sub: `By ${r.payee_name ?? "payee"}`, state: "done" };
+  return [
+    { label: "Requested", sub: `By ${r.requester}`, state: "done" },
+    { label: "Fraud check", sub: risk ? `${risk.level.toLowerCase()} risk` : "Running", state: risk ? (risk.level === "HIGH" ? "stop" : risk.level === "MEDIUM" ? "hold" : "done") : "current" },
+    decided, paid, delivered,
+  ];
+}
 
 export default function RequestDetail({ id }: { id: string }) {
   const { session } = useSession();
@@ -16,154 +48,192 @@ export default function RequestDetail({ id }: { id: string }) {
   const moving = !!r && (r.status === "APPROVED" || r.payment?.status === "PENDING" || r.payment?.last_mile_status === "DELIVERING");
   usePoll(reload, 2500, moving);
 
-  if (error) return <ErrorNote error={error} />;
-  if (!r) return <Loading />;
+  if (error) return <div className="page narrow"><ErrorNote error={error} /></div>;
+  if (!r) return <PageLoading />;
   const decision = r.decisions[r.decisions.length - 1];
   const tx = r.payment;
 
   return (
-    <>
-      <a href={`#/mandates/${r.mandate}`} className="small">← {r.mandate_title}</a>
-      <div className="section-title" style={{ marginTop: "0.5rem" }}>
+    <div className="page narrow">
+      <a href={`#/mandates/${r.mandate}`} className="back"><Icon name="back" size={16} />{r.mandate_title}</a>
+
+      <header className="page-head">
         <div>
-          <h1>{money(r.amount, r.currency)} {r.product.replace(/_/g, " ")}{r.beneficiary_name ? ` for ${r.beneficiary_name}` : ""}</h1>
-          <div className="muted small">
-            Asked by {r.requester}{r.requester_phone ? ` (${r.requester_phone})` : ""} via {r.channel.toLowerCase()} · {when(r.created_at)}
-            {r.payee_name ? ` · pays ${r.payee_name}` : ""}
+          <div className="row"><StatusPill status={r.status} />{r.payee_simulated && r.payment && <SimTag label={r.payment.simulated ? "Simulated rail" : "Simulated last mile"} />}</div>
+          <h1>{requestTitle(r)}</h1>
+          <div className="row small muted" style={{ gap: 8 }}>
+            <Who name={r.requester} size="sm" />
+            <span>{r.requester}{r.requester_phone && r.requester !== r.requester_phone ? ` · ${r.requester_phone}` : ""} · via {r.channel === "CHAT" ? "the assistant" : "the app"} · {when(r.created_at)}</span>
           </div>
         </div>
-        <StatusBadge status={r.status} />
-      </div>
+        <span className="amount lg">{money(r.amount, r.currency)}</span>
+      </header>
+
+      <div className="card"><ol className="stepper" aria-label="Progress">
+        {steps(r).map((s) => (
+          <li key={s.label} className={s.state}>
+            <span className="bar" aria-hidden />
+            <div><strong>{s.label}</strong><div className="s">{s.sub}</div></div>
+          </li>
+        ))}
+      </ol></div>
 
       {r.status === "HELD_FRAUD" && r.risk && (
-        <>
-          <FraudCard r={r} />
-          <div className="card"><ApprovalActions r={r} onDone={setData} /></div>
-        </>
+        <FraudCard r={r}><ApprovalActions r={r} onDone={setData} /></FraudCard>
       )}
       {r.status === "ESCALATED" && (
-        <div className="card" style={{ borderColor: "var(--warn)" }}>
-          <h3>A funder needs to decide</h3>
-          <p>{decision?.reason}</p>
+        <section className="card stack" style={{ borderColor: "var(--warn)" }}>
+          <div className="row"><span className="icon-circle" style={{ background: "var(--warn-soft)", color: "var(--warn)" }}><Icon name="clock" /></span>
+            <div className="stack-sm" style={{ gap: 2 }}><h3>Your decision is needed</h3><span className="small muted">{decision?.reason}</span></div></div>
           <ApprovalActions r={r} onDone={setData} />
-        </div>
+        </section>
       )}
-      {r.status === "CONFIRMED_FRAUD" && <div className="notice error">Reported as fraud. Nothing was paid and the numbers involved are blocked for this family.</div>}
-
-      {(r.message_text || r.summary_en) && (
-        <div className="card section">
-          {r.message_text && <blockquote style={{ margin: 0 }}>“{r.message_text}”</blockquote>}
-          {r.summary_en && r.summary_en !== r.message_text && <p className="small muted" style={{ margin: "0.4rem 0 0" }}>In English: {r.summary_en}</p>}
-        </div>
+      {r.status === "CONFIRMED_FRAUD" && (
+        <Notice tone="error" icon="shield">Reported as a scam. Nothing was paid, and the numbers involved are blocked for this family.</Notice>
       )}
 
       {tx && (
-        <div className="card section">
-          <h3>Payment</h3>
-          <PaymentLine payment={tx} payeeSimulated={r.payee_simulated} />
-          <p className="small muted" style={{ margin: "0.5rem 0 0" }}>
-            Reference <span className="mono">{tx.reference}</span>{tx.external_id ? <> · PayPal <span className="mono">{tx.external_id}</span></> : null}
-          </p>
-          {tx.last_mile_status === "AWAITING_COLLECTION" && session.demo_mode && (
-            <div className="row" style={{ marginTop: "0.6rem" }}>
-              <button disabled={collect.busy} onClick={() => collect.run(async () => {
-                await api.post(`/demo/last-mile/${tx.id}/collect/`, { code: tx.collection_code });
-                await reload();
-              })}>Mark cash collected</button>
-              <SimTag label="Demo: simulated agent" />
+        <section className="card stack">
+          <div className="row between">
+            <h3>Payment</h3>
+            {tx.simulated ? <SimTag /> : <span className="pill brand plain">PayPal Payout</span>}
+          </div>
+          {tx.last_mile_status === "AWAITING_COLLECTION" && (
+            <div className="row between" style={{ padding: 14, borderRadius: 12, background: "var(--plum-tint)" }}>
+              <div className="stack-sm" style={{ gap: 2 }}>
+                <span className="small muted">Collection code sent to {r.beneficiary_name ?? "the beneficiary"}</span>
+                <span className="amount lg" style={{ letterSpacing: ".12em" }}>{tx.collection_code}</span>
+              </div>
+              {session.demo_mode && (
+                <button className="btn outline sm" disabled={collect.busy} onClick={() => collect.run(async () => {
+                  await api.post(`/demo/last-mile/${tx.id}/collect/`, { code: tx.collection_code });
+                  await reload();
+                })}>Mark collected <SimTag label="Demo" /></button>
+              )}
             </div>
           )}
+          <dl className="kv">
+            <dt>Paid to</dt><dd>{r.payee_name}</dd>
+            <dt>Reference</dt><dd className="mono">{tx.reference}</dd>
+            {tx.external_id && <><dt>PayPal batch</dt><dd className="mono">{tx.external_id}</dd></>}
+          </dl>
           <ErrorNote error={collect.error} />
-        </div>
+        </section>
       )}
 
       {decision && (
-        <div className="card section">
+        <section className="card stack">
           <div className="row between">
-            <h3 style={{ margin: 0 }}>Why</h3>
-            <span className="small muted">{decision.decided_by === "POLICY" ? "Decided by the rules engine" : "Decided after a funder's answer"}</span>
+            <h3>Why</h3>
+            <span className="xs muted">{decision.decided_by === "POLICY" ? "Decided by the rules engine" : "After a funder's answer"}</span>
           </div>
-          <p style={{ marginTop: "0.4rem" }}>{decision.reason}</p>
-          <ul className="rules rule-results">
-            {decision.rule_results.map((x, i) => (
-              <li key={i} className={x.passed ? "" : "fail"}><span className="tick">{x.passed ? "✓" : "✗"}</span>{x.detail}</li>
+          <p className="ink-2">{decision.reason}</p>
+          <ul className="rules">
+            {decision.rule_results.filter((x) => !(x.passed && x.detail.startsWith("Does not apply"))).map((x, i) => (
+              <li key={i}>
+                <span className={`rule-dot ${x.passed ? "pass" : "fail"}`}><Icon name={x.passed ? "check" : "x"} size={14} stroke={2.4} /></span>
+                <span>{x.detail}</span>
+              </li>
             ))}
           </ul>
-        </div>
+        </section>
       )}
 
-      {r.risk && r.status !== "HELD_FRAUD" && (
-        <div className="card section">
-          <div className="row between">
-            <h3 style={{ margin: 0 }}>Fraud and risk check</h3>
-            <span className={`badge ${riskTone(r.risk.level)}`}>{r.risk.level.toLowerCase()} · {r.risk.score}</span>
-          </div>
-          {r.risk.signals.length === 0 && r.risk.ai_flags.length === 0 && <p className="small muted">Nothing unusual.</p>}
-          <RiskDetails r={r} />
-        </div>
+      {r.message_text && r.status !== "HELD_FRAUD" && (
+        <section className="card stack">
+          <h3>Message</h3>
+          <blockquote className="quote">“{r.message_text}”</blockquote>
+          {r.summary_en && r.summary_en !== r.message_text && <span className="small muted">In English: {r.summary_en}</span>}
+        </section>
       )}
 
       {r.evidence.length > 0 && (
-        <div className="card section">
-          <h3>What the assistant read</h3>
-          <div className="stack">
-            {r.evidence.map((e) => (
-              <div key={e.id} className="row" style={{ alignItems: "flex-start" }}>
-                {e.upload_id && e.content_type?.startsWith("image/") && (
-                  <a href={uploadUrl(e.upload_id)} target="_blank" rel="noreferrer">
-                    <img src={uploadUrl(e.upload_id)} alt={e.upload_name ?? KIND[e.kind]} style={{ width: 96, height: 96, objectFit: "cover", borderRadius: 8 }} />
-                  </a>
-                )}
-                <div style={{ flex: 1 }}>
-                  <strong>{KIND[e.kind] ?? e.kind}</strong> <span className="small muted">{e.upload_name}</span>
-                  <Extracted data={e.extracted} />
-                </div>
+        <section className="card stack">
+          <div className="row" style={{ gap: 8 }}><Icon name="sparkle" size={18} /><h3>What the assistant read</h3></div>
+          {r.evidence.map((e) => (
+            <div key={e.id} className="evidence">
+              {e.upload_id && e.content_type?.startsWith("image/")
+                ? <a href={uploadUrl(e.upload_id)} target="_blank" rel="noreferrer"><img src={uploadUrl(e.upload_id)} alt={e.upload_name ?? KIND[e.kind]} /></a>
+                : <span className="placeholder"><Icon name="doc" size={28} /></span>}
+              <div className="stack-sm" style={{ minWidth: 0 }}>
+                <strong>{KIND[e.kind] ?? e.kind}</strong>
+                <Extracted data={e.extracted} ceilings={r.price_ceilings} />
               </div>
-            ))}
+            </div>
+          ))}
+        </section>
+      )}
+
+      {r.risk && r.status !== "HELD_FRAUD" && (
+        <section className="card stack">
+          <div className="row between">
+            <h3>Fraud check</h3>
+            <span className={`pill ${riskTone(r.risk.level)}`}>{r.risk.level.toLowerCase()} risk · {r.risk.score}</span>
           </div>
-        </div>
+          <RiskDetails r={r} />
+        </section>
       )}
 
       {r.approvals.length > 0 && (
-        <div className="card section">
+        <section className="card stack">
           <h3>Funder answers</h3>
-          <ul className="timeline">
-            {r.approvals.map((a) => (
-              <li key={a.id}><span className="t small muted">{when(a.created_at)}</span><span><strong>{a.user_name}</strong>: {a.action.replace(/_/g, " ").toLowerCase()}{a.note ? `: “${a.note}”` : ""}</span><span /></li>
-            ))}
-          </ul>
-        </div>
+          {r.approvals.map((a) => (
+            <div key={a.id} className="row" style={{ alignItems: "flex-start", flexWrap: "nowrap" }}>
+              <Avatar name={a.user_name} size="sm" />
+              <div className="stack-sm" style={{ gap: 2 }}>
+                <span className="small"><strong>{a.user_name}</strong> · {a.action.replace(/_/g, " ").toLowerCase()} · <span className="muted">{when(a.created_at)}</span></span>
+                {a.note && <span className="small ink-2">“{a.note}”</span>}
+              </div>
+            </div>
+          ))}
+        </section>
       )}
 
-      <div className="card section">
-        <h3>Ledger</h3>
+      <section className="card stack">
+        <h3>Audit trail</h3>
         <Ledger key={`${r.status}-${tx?.status}-${tx?.last_mile_status}`} query={`request=${r.id}`} />
-      </div>
-    </>
+      </section>
+    </div>
   );
 }
 
-function Extracted({ data }: { data: Record<string, unknown> }) {
+type Line = { name: string; key?: string; quantity?: number; unit_price?: number };
+
+/** Same matching as the policy engine's price_ceiling rule: item key, or a keyword in the line's name. */
+function overCeiling(line: Line, ceilings: Detail["price_ceilings"]) {
+  return ceilings.some((c) => (line.key === c.item || c.keywords.some((k) => line.name?.toLowerCase().includes(k.toLowerCase())))
+    && line.unit_price != null && line.unit_price > Number(c.max_unit_price));
+}
+
+function Extracted({ data, ceilings }: { data: Record<string, unknown>; ceilings: Detail["price_ceilings"] }) {
   if (!data || Object.keys(data).length === 0) {
-    return <p className="small notice warn" style={{ margin: "0.3rem 0 0" }}>Could not be read, so rules that need it fail.</p>;
+    return <span className="small" style={{ color: "var(--warn)", fontWeight: 600 }}>Could not be read, so rules that need it fail. Send a clearer photo.</span>;
   }
   if ("verdict" in data) {
     const tone = data.verdict === "matches" ? "ok" : data.verdict === "unclear" ? "warn" : "bad";
     return (
-      <div className="small">
-        <span className={`badge ${tone}`}>{String(data.verdict).replace(/_/g, " ")}</span>{" "}
-        Saw: {String(data.observed ?? "")}{data.expected ? ` · Expected: ${String(data.expected)}` : ""}
+      <div className="stack-sm small">
+        <span className={`pill ${tone}`} style={{ alignSelf: "flex-start" }}>{data.verdict === "matches" ? "Matches the milestone" : String(data.verdict).replace(/_/g, " ")}</span>
+        <span className="ink-2">Saw: {String(data.observed ?? "")}</span>
+        {data.expected ? <span className="muted">Expected: {String(data.expected)}</span> : null}
       </div>
     );
   }
-  const items = (data.items as { name: string; quantity?: number; unit_price?: number }[]) ?? [];
+  const items = (data.items as Line[]) ?? [];
   return (
-    <div className="small">
-      {data.supplier ? <div>From {String(data.supplier)}</div> : null}
-      {items.map((it, i) => (
-        <div key={i}>{it.quantity ? `${it.quantity} × ` : ""}{it.name}{it.unit_price != null ? ` at ${money(it.unit_price)}` : ""}</div>
-      ))}
-      {data.total != null && <div><strong>Total {money(data.total as number)}</strong></div>}
+    <div className="stack-sm small">
+      {data.supplier ? <span className="muted">From {String(data.supplier)}{data.date ? ` · ${String(data.date)}` : ""}</span> : null}
+      <table className="lineitems">
+        <tbody>
+          {items.map((it, i) => (
+            <tr key={i} className={overCeiling(it, ceilings) ? "over" : ""}>
+              <td>{it.quantity ? `${it.quantity} × ` : ""}{it.name}</td>
+              <td>{it.unit_price != null ? money(it.unit_price) : ""}</td>
+            </tr>
+          ))}
+          {data.total != null && <tr><td><strong>Total</strong></td><td><strong>{money(data.total as number)}</strong></td></tr>}
+        </tbody>
+      </table>
     </div>
   );
 }

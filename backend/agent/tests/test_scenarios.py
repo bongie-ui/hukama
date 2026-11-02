@@ -70,7 +70,7 @@ class Scenario1InflatedQuote(ScenarioBase):
         req = Request.objects.filter(channel=Request.CHAT).latest("created_at")
         self.assertEqual(req.amount, Decimal("420"))
         self.assertEqual(req.status, Request.APPROVED)
-        self.assertEqual(self.pay_references(), [f"thuma-{req.id}"])
+        self.assertEqual(self.pay_references(), [f"hukama-{req.id}"])
         self.assertEqual(self.for_payee.return_value.pay.call_args.args[0].identifier, "supplier@example.com")
         apply_rail_status(req.rail_transactions.get(), RailTransaction.SUCCESS)
         req.refresh_from_db()

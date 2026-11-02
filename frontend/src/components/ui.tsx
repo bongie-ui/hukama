@@ -1,16 +1,19 @@
 import type { ReactNode } from "react";
-import { money, when } from "../api";
-import type { PayRequest, Payment, RequestStatus } from "../types";
+import { money } from "../api";
+import type { Payment, RequestStatus } from "../types";
+import Icon from "./Icon";
+
+// ---- Status --------------------------------------------------------------------------------------------
 
 const STATUS: Record<RequestStatus, [string, string]> = {
   NEW: ["New", ""],
   ASSESSED: ["Checking", "info"],
-  APPROVED: ["Approved, paying", "info"],
+  APPROVED: ["Paying", "info"],
   PAID: ["Paid", "ok"],
   REFUSED: ["Refused", "bad"],
-  ESCALATED: ["Needs a funder", "warn"],
+  ESCALATED: ["Needs approval", "warn"],
   HELD_FRAUD: ["Held: possible fraud", "bad"],
-  CONFIRMED_FRAUD: ["Fraud confirmed", "bad"],
+  CONFIRMED_FRAUD: ["Fraud reported", "bad"],
   FAILED: ["Payment failed", "bad"],
   CANCELLED: ["Cancelled", ""],
 };
@@ -19,85 +22,151 @@ export function statusTone(status: RequestStatus) {
   return STATUS[status]?.[1] ?? "";
 }
 
-export function StatusBadge({ status }: { status: RequestStatus }) {
+export function StatusPill({ status }: { status: RequestStatus }) {
   const [label, tone] = STATUS[status] ?? [status, ""];
-  return <span className={`badge ${tone}`}>{label}</span>;
-}
-
-export function SimTag({ label = "Simulated rail" }: { label?: string }) {
-  return <span className="sim" title="This step is simulated; no real money moves on it">{label}</span>;
-}
-
-export function Loading({ what = "Loading" }: { what?: string }) {
-  return <p className="muted row"><span className="spinner" /> {what}…</p>;
-}
-
-export function ErrorNote({ error }: { error: string | null | undefined }) {
-  return error ? <div className="notice error" role="alert">{error}</div> : null;
-}
-
-export function Empty({ children }: { children: ReactNode }) {
-  return <div className="card empty">{children}</div>;
+  return <span className={`pill ${tone}`}>{label}</span>;
 }
 
 export function riskTone(level: string) {
   return level === "HIGH" ? "bad" : level === "MEDIUM" ? "warn" : "ok";
 }
 
+export function SimTag({ label = "Simulated rail" }: { label?: string }) {
+  return <span className="sim" title="This step is simulated in the demo; no real money moves on it">{label}</span>;
+}
+
 export function lastMileLabel(p: Payment): string | null {
   switch (p.last_mile_status) {
-    case "DELIVERING": return "Delivering to the phone";
+    case "DELIVERING": return "Delivering to phone";
     case "DELIVERED": return "Delivered";
-    case "AWAITING_COLLECTION": return `Awaiting collection (code ${p.collection_code})`;
+    case "AWAITING_COLLECTION": return "Ready to collect";
     case "COLLECTED": return "Cash collected";
     default: return null;
   }
 }
 
-export function PaymentLine({ payment, payeeSimulated }: { payment: Payment; payeeSimulated?: boolean }) {
-  const lastMile = lastMileLabel(payment);
-  const payout = payment.simulated
-    ? "Simulated payout"
-    : payment.status === "SUCCESS" ? "PayPal Payout sent" : payment.status === "PENDING" ? "PayPal Payout pending"
-    : `PayPal Payout ${payment.status.toLowerCase()}`;
+/** One-line payment state for lists. */
+export function paymentSummary(p: Payment | null): [string, string] | null {
+  if (!p) return null;
+  const lm = lastMileLabel(p);
+  if (p.status === "SUCCESS") return [lm ?? "Received by payee", lm === "Delivering to phone" ? "info" : "ok"];
+  if (p.status === "PENDING") return ["Payout pending", "info"];
+  return [`Payout ${p.status.toLowerCase()}`, "bad"];
+}
+
+// ---- Feedback ------------------------------------------------------------------------------------------
+
+export function ErrorNote({ error }: { error: string | null | undefined }) {
+  if (!error) return null;
+  return <div className="notice error" role="alert"><Icon name="alert" size={18} />{error}</div>;
+}
+
+export function Notice({ tone = "info", icon = "alert", children }: { tone?: string; icon?: string; children: ReactNode }) {
+  return <div className={`notice ${tone}`}><Icon name={icon} size={18} /><div>{children}</div></div>;
+}
+
+export function Empty({ icon = "sparkle", title, children }: { icon?: string; title: string; children?: ReactNode }) {
   return (
-    <span className="row small">
-      <span className={`badge ${payment.status === "SUCCESS" ? "ok" : payment.status === "PENDING" ? "info" : "bad"}`}>
-        {payout}
-      </span>
-      {payment.simulated && <SimTag />}
-      {lastMile && <span className="badge brand">{lastMile}</span>}
-      {lastMile && payeeSimulated && !payment.simulated && <SimTag label="Simulated last mile" />}
+    <div className="empty">
+      <span className="icon-circle"><Icon name={icon} size={24} /></span>
+      <strong>{title}</strong>
+      {children && <div className="small">{children}</div>}
+    </div>
+  );
+}
+
+export function Skeleton({ h = 18, w = "100%", r }: { h?: number; w?: number | string; r?: number }) {
+  return <div className="skeleton" style={{ height: h, width: w, borderRadius: r }} aria-hidden />;
+}
+
+export function LoadingCards({ n = 3, h = 180 }: { n?: number; h?: number }) {
+  return (
+    <div className="grid-cards" aria-busy="true" aria-label="Loading">
+      {Array.from({ length: n }, (_, i) => <Skeleton key={i} h={h} r={18} />)}
+    </div>
+  );
+}
+
+export function PageLoading() {
+  return (
+    <div className="page" aria-busy="true" aria-label="Loading">
+      <Skeleton h={34} w="40%" />
+      <Skeleton h={160} r={24} />
+      <LoadingCards n={2} h={140} />
+    </div>
+  );
+}
+
+// ---- People --------------------------------------------------------------------------------------------
+
+const AVATAR_COLORS = ["#4a1f3d", "#b9443a", "#1f6b5c", "#2f4f8f", "#7a5a12", "#6b2f73"];
+
+function hash(text: string) {
+  let h = 0;
+  for (const ch of text) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return h;
+}
+
+export function personColor(name: string) {
+  return AVATAR_COLORS[hash(name) % AVATAR_COLORS.length];
+}
+
+export function initials(name: string) {
+  const parts = name.replace(/\(.*\)/, "").trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (/^\+?\d/.test(parts[0])) return "#";
+  // First two names, so "Mama Siqile Fuyana" (MS) and "Mmeli Fuyana" (MF) stay distinct.
+  return (parts[0][0] + (parts[1]?.[0] ?? "")).toUpperCase();
+}
+
+export function Avatar({ name, size = "", title }: { name: string; size?: "" | "sm" | "lg"; title?: string }) {
+  return (
+    <span className={`avatar ${size}`} style={{ background: personColor(name) }} title={title ?? name} aria-hidden={!title}>
+      {initials(name)}
     </span>
   );
 }
 
-export function RequestRow({ r, showMandate = true }: { r: PayRequest; showMandate?: boolean }) {
+export function isPhoneOnly(name: string) {
+  return !/[a-z]/i.test(name);
+}
+
+/** A person's avatar, or a phone icon for someone known only by number. */
+export function Who({ name, size = "" }: { name: string; size?: "" | "sm" | "lg" }) {
+  if (isPhoneOnly(name)) {
+    const px = size === "sm" ? 28 : size === "lg" ? 48 : 36;
+    return <span className="icon-circle" style={{ width: px, height: px }}><Icon name="phone" size={px / 2} /></span>;
+  }
+  return <Avatar name={name} size={size} />;
+}
+
+export function firstName(name: string) {
+  return name.split(/\s+/)[0] ?? name;
+}
+
+// ---- Money ---------------------------------------------------------------------------------------------
+
+export function Money({ value, currency = "USD", size = "md" }: { value: string | number; currency?: string; size?: "md" | "lg" | "xl" }) {
+  return <span className={`amount ${size}`}>{money(value, currency)}</span>;
+}
+
+export function MoneyInput({ id, value, onChange, label, min = 1 }:
+  { id: string; value: string; onChange: (v: string) => void; label: string; min?: number }) {
   return (
-    <a className="card card-link req" href={`#/requests/${r.id}`}>
-      <div className="main">
-        <div className="row between">
-          <strong>{r.product ? r.product.replace(/_/g, " ") : "Request"}{r.beneficiary_name ? ` for ${r.beneficiary_name}` : ""}</strong>
-          <span className="amt">{money(r.amount, r.currency)}</span>
-        </div>
-        <div className="small muted">
-          {r.requester}{r.requester_phone && r.requester !== r.requester_phone ? ` (${r.requester_phone})` : ""}
-          {" · "}{when(r.created_at)}{showMandate ? ` · ${r.mandate_title}` : ""}
-          {r.payee_name ? ` · to ${r.payee_name}` : ""}
-        </div>
-        <div className="row" style={{ marginTop: "0.35rem" }}>
-          <StatusBadge status={r.status} />
-          {r.risk && r.risk.level !== "LOW" && (
-            <span className={`badge ${riskTone(r.risk.level)}`}>Risk {r.risk.level.toLowerCase()} · {r.risk.score}</span>
-          )}
-          {r.payment && <PaymentLine payment={r.payment} payeeSimulated={r.payee_simulated} />}
-        </div>
-        {r.decision && r.status !== "PAID" && r.status !== "APPROVED" && (
-          <p className="small muted" style={{ margin: "0.35rem 0 0" }}>{r.decision.reason}</p>
-        )}
-      </div>
-    </a>
+    <div className="money-input">
+      <span aria-hidden>$</span>
+      <input id={id} className="input" type="number" inputMode="decimal" min={min} step="0.01" value={value}
+        aria-label={label} onChange={(e) => onChange(e.target.value)} />
+    </div>
   );
 }
 
-export const FUNDER_COLORS = ["#0f5c4c", "#c9952a", "#5b7fbf", "#b35c7a", "#6f8f3d"];
+/** "Akha (Build)" -> ["Akha", "Build"] */
+export function splitType(label: string): [string, string] {
+  const m = label.match(/^(.*?)\s*\((.*)\)$/);
+  return m ? [m[1], m[2]] : [label, ""];
+}
+
+export function productLabel(product: string) {
+  return product ? product.replace(/_/g, " ") : "payment";
+}

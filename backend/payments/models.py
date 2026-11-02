@@ -23,7 +23,7 @@ class RailTransaction(BaseModel):
     request = models.ForeignKey("mandates.Request", on_delete=models.PROTECT, related_name="rail_transactions")
     rail = models.CharField(max_length=20)  # Payee.rail value
     amount = money_field()
-    reference = models.CharField(max_length=64)  # thuma-<request id>; PayPal sender_batch_id
+    reference = models.CharField(max_length=64)  # hukama-<request id>; PayPal sender_batch_id
     external_id = models.CharField(max_length=64, blank=True)  # payout batch / item id
     simulated = models.BooleanField(default=False)
     status = models.CharField(max_length=10, choices=STATUSES, default=PENDING)

@@ -41,7 +41,7 @@ class BuildMandateRuleTests(TestCase):
         self.assertEqual(req.latest_decision.outcome, Decision.APPROVE)
         self.assertEqual(req.status, Request.APPROVED)  # payout pending
         tx = req.rail_transactions.get()
-        self.assertEqual(tx.reference, f"thuma-{req.id}")
+        self.assertEqual(tx.reference, f"hukama-{req.id}")
 
     def test_price_ceiling_fails(self):
         req = self.build(evidence=(quote(14), FOUNDATION_OK))

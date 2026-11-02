@@ -1,0 +1,13 @@
+{
+  "name": "Hukama",
+  "short_name": "Hukama",
+  "description": "Family money, spent the way you agreed.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8f6f7",
+  "theme_color": "#4a1f3d",
+  "icons": [
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "./api";
-import { Loading } from "./components/ui";
+import Icon from "./components/Icon";
+import { Avatar, ErrorNote, PageLoading } from "./components/ui";
 import { SessionContext, useApi, usePoll, useSession } from "./hooks";
 import Chat from "./pages/Chat";
 import Home from "./pages/Home";
@@ -31,7 +32,11 @@ export default function App() {
   }, [refresh]);
 
   if (!session) {
-    return <main>{error ? <div className="notice error">{error} <button onClick={refresh}>Retry</button></div> : <Loading />}</main>;
+    return (
+      <main className="content">
+        {error ? <div className="page narrow"><ErrorNote error={error} /><button className="btn" onClick={refresh}>Try again</button></div> : <PageLoading />}
+      </main>
+    );
   }
   return (
     <SessionContext.Provider value={{ session, refresh }}>
@@ -40,38 +45,73 @@ export default function App() {
   );
 }
 
+const NAV = [
+  { href: "/", key: "home", label: "Home", icon: "home" },
+  { href: "/inbox", key: "inbox", label: "Approvals", icon: "shield" },
+  { href: "/chat", key: "chat", label: "Assistant", icon: "chat" },
+  { href: "/people", key: "people", label: "People", icon: "people" },
+];
+
 function Shell() {
   const path = usePath();
+  const { session, refresh } = useSession();
   const inbox = useApi<PayRequest[]>("/requests/?inbox=1");
   usePoll(inbox.reload, 15000, true);
   useEffect(() => {
-    void inbox.reload();
-    // Refresh the inbox count whenever the page changes (an approval may have cleared it).
+    void inbox.reload(); // an approval elsewhere may have cleared the count
   }, [path]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const section = path.split("/")[1] || "home";
-  const tab = (href: string, label: string, key: string, count?: number) => (
-    <a href={`#${href}`} className={section === key || (key === "home" && section === "mandates") ? "active" : ""}>
-      {label}
-      {count ? <span className="count">{count}</span> : null}
-    </a>
-  );
+  const section = path.split(/[/?]/)[1] || "home";
+  const active = (key: string) => section === key || (key === "home" && (section === "mandates" || section === "requests"));
+  const count = inbox.data?.length ?? 0;
+  const user = session.user!;
+  const logout = async () => {
+    await api.post("/auth/logout/");
+    window.location.hash = "/";
+    await refresh();
+  };
 
   return (
-    <div className="app">
+    <div className="shell">
+      <aside className="sidebar" aria-label="Main">
+        <a className="brand" href="#/"><img src="/favicon.svg" alt="" /><span>Hukama</span></a>
+        {NAV.map((n) => (
+          <a key={n.key} className="navlink" href={`#${n.href}`} aria-current={active(n.key) ? "page" : undefined}>
+            <Icon name={n.icon} />{n.label}
+            {n.key === "inbox" && count > 0 && <span className="count" aria-label={`${count} waiting`}>{count}</span>}
+          </a>
+        ))}
+        <a className="navlink" href="#/mandates/new" style={{ marginTop: 8 }}><Icon name="plus" />New mandate</a>
+        <div className="me">
+          <Avatar name={user.name} />
+          <div>
+            <strong>{user.name}</strong>
+            <span className="xs muted">{user.family?.name}</span>
+          </div>
+          <button className="btn ghost icon-only" onClick={logout} title={session.demo_mode ? "Switch person" : "Log out"}
+            aria-label={session.demo_mode ? "Switch person" : "Log out"}><Icon name="logout" /></button>
+        </div>
+      </aside>
+
       <header className="topbar">
-        <a className="logo" href="#/"><img src="/favicon.svg" alt="" />Thuma</a>
-        <nav className="nav" aria-label="Main">
-          {tab("/", "Mandates", "home")}
-          {tab("/inbox", "Approvals", "inbox", inbox.data?.length)}
-          {tab("/chat", "Chat", "chat")}
-          {tab("/people", "People", "people")}
-        </nav>
-        <Who />
+        <a className="brand" href="#/"><img src="/favicon.svg" alt="" /><span>Hukama</span></a>
+        <button className="btn ghost sm" onClick={logout} aria-label={session.demo_mode ? "Switch person" : "Log out"}>
+          <Avatar name={user.name} size="sm" />{session.demo_mode ? "Switch" : "Log out"}
+        </button>
       </header>
-      <main>
+
+      <main className="content" id="main">
         <Route path={path} />
       </main>
+
+      <nav className="tabbar" aria-label="Main">
+        {NAV.map((n) => (
+          <a key={n.key} href={`#${n.href}`} aria-current={active(n.key) ? "page" : undefined}>
+            <Icon name={n.icon} size={22} />{n.label}
+            {n.key === "inbox" && count > 0 && <span className="count">{count}</span>}
+          </a>
+        ))}
+      </nav>
     </div>
   );
 }
@@ -85,21 +125,9 @@ function Route({ path }: { path: string }) {
   if (path.startsWith("/inbox")) return <Inbox />;
   if (path.startsWith("/chat")) return <Chat path={path} />;
   if (path.startsWith("/people")) return <People />;
-  return <div className="card empty">Page not found. <a href="#/">Go to your mandates</a></div>;
-}
-
-function Who() {
-  const { session, refresh } = useSession();
-  const user = session.user!;
-  const logout = async () => {
-    await api.post("/auth/logout/");
-    window.location.hash = "/";
-    await refresh();
-  };
   return (
-    <div className="who">
-      <span className="name">{user.name}{user.family ? ` · ${user.family.name}` : ""}</span>
-      <button className="small" onClick={logout}>{session.demo_mode ? "Switch person" : "Log out"}</button>
+    <div className="page narrow">
+      <div className="card"><div className="empty"><strong>Page not found</strong><a href="#/">Go home</a></div></div>
     </div>
   );
 }

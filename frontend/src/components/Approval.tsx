@@ -1,108 +1,134 @@
 import { useState } from "react";
-import { api, money } from "../api";
+import { api, money, when } from "../api";
 import { useAction } from "../hooks";
 import type { PayRequest, RequestDetail } from "../types";
-import { ErrorNote, riskTone } from "./ui";
+import Icon from "./Icon";
+import { ErrorNote, firstName, productLabel } from "./ui";
 
 const FLAG_LABEL: Record<string, string> = {
   URGENCY_PRESSURE: "Urgency pressure",
-  IMPERSONATION: "Impersonation",
-  THIRD_PARTY_PAYMENT: "Pay someone else",
+  IMPERSONATION: "Pretending to be family",
+  THIRD_PARTY_PAYMENT: "Asks to pay someone else",
   EMERGENCY_STORY: "Emergency story",
   CREDENTIAL_REQUEST: "Asks for a PIN or code",
   REVERSAL_SCAM: "Reversal scam",
   PRIZE_SCAM: "Prize scam",
   STYLE_MISMATCH: "Doesn't sound like them",
   PURPOSE_MISMATCH: "Not what the money is for",
-  OTHER: "Other",
+  OTHER: "Something else",
 };
 
-/** The red card every funder sees when a request is held for possible fraud. */
-export function FraudCard({ r }: { r: PayRequest }) {
+/** The card every funder sees when a request is held for possible fraud. */
+export function FraudCard({ r, children }: { r: PayRequest; children?: React.ReactNode }) {
   const risk = r.risk!;
   return (
-    <div className="card fraud">
-      <div className="row between">
-        <h3 style={{ margin: 0 }}>Possible fraud: do not pay yet</h3>
-        <span className={`badge ${riskTone(risk.level)}`}>Risk {risk.score}/100</span>
+    <article className="fraud" aria-labelledby={`fraud-${r.id}`}>
+      <div className="fraud-head">
+        <Icon name="alert" size={22} />
+        <h3 id={`fraud-${r.id}`}>Possible scam. Nothing has been paid.</h3>
+        <span className="score">Risk {risk.score}/100</span>
       </div>
-      <p className="small" style={{ marginTop: "0.4rem" }}>
-        {money(r.amount, r.currency)} {r.product} {r.beneficiary_name ? `for ${r.beneficiary_name}` : ""}, asked by{" "}
-        <strong>{r.requester}</strong>{r.requester_phone ? ` from ${r.requester_phone}` : ""}.
-      </p>
-      {r.message_text && <blockquote>{r.message_text}</blockquote>}
-      <div className="verify">
-        <strong>Before anyone pays:</strong>
-        <p style={{ margin: "0.3rem 0 0" }}>{risk.suggested_verification}</p>
+      <div className="fraud-body">
+        <div className="stack-sm">
+          <span className="small muted">
+            {r.requester_phone || r.requester} asked for <strong className="num" style={{ color: "var(--ink)" }}>{money(r.amount, r.currency)}</strong> {productLabel(r.product)}
+            {r.beneficiary_name ? ` for ${firstName(r.beneficiary_name)}` : ""} · {when(r.created_at)}
+          </span>
+          {r.message_text && <blockquote className="quote">“{r.message_text}”</blockquote>}
+        </div>
+        <div className="verify">
+          <Icon name="phone" size={20} />
+          <div><strong>Before anyone pays</strong>{risk.suggested_verification}</div>
+        </div>
+        <RiskDetails r={r} />
+        {children}
       </div>
-      <RiskDetails r={r} />
-    </div>
+    </article>
   );
 }
 
 export function RiskDetails({ r }: { r: PayRequest }) {
   const risk = r.risk!;
   return (
-    <>
+    <div className="split" style={{ gap: 20 }}>
       {risk.signals.length > 0 && (
-        <>
-          <strong className="small">Checks that fired</strong>
+        <div className="stack-sm">
+          <span className="eyebrow">Checks that fired</span>
           <ul className="signals">
-            {risk.signals.map((s) => <li key={s.signal}><span className="w">+{s.weight}</span>{s.detail}</li>)}
+            {risk.signals.map((s) => <li key={s.signal}><span className="w">+{s.weight}</span><span>{s.detail}</span></li>)}
           </ul>
-        </>
+        </div>
       )}
       {risk.ai_flags.length > 0 && (
-        <>
-          <strong className="small">What the assistant noticed</strong>
-          <ul className="signals">
+        <div className="stack-sm">
+          <span className="eyebrow row" style={{ gap: 6 }}><Icon name="sparkle" size={14} />What the assistant noticed</span>
+          <div className="flags">
             {risk.ai_flags.map((f, i) => (
-              <li key={i}>
-                <span className="badge bad">{FLAG_LABEL[f.flag] ?? f.flag}</span> {f.reason}
-                {f.quote && <span className="muted"> “{f.quote}”</span>}
-              </li>
+              <div key={i} className="flag">
+                <strong>{FLAG_LABEL[f.flag] ?? f.flag}</strong>
+                <span className="ink-2">{f.reason}</span>
+                {f.quote && <q>{f.quote}</q>}
+              </div>
             ))}
-          </ul>
-        </>
+          </div>
+        </div>
       )}
-      {risk.ai_summary && <p className="small muted">{risk.ai_summary}</p>}
-    </>
+      {risk.signals.length === 0 && risk.ai_flags.length === 0 && <p className="small muted">Nothing unusual about this request.</p>}
+    </div>
   );
 }
 
-/** Approve / reject an escalation; verify or report a fraud hold. Only actions the backend allows are shown. */
+/** Approve or reject an escalation; verify or report a fraud hold. Only actions the backend allows are shown. */
 export function ApprovalActions({ r, onDone }:
   { r: PayRequest & { allowed_actions?: string[] }; onDone: (r: RequestDetail) => void }) {
   const [note, setNote] = useState("");
+  const [confirmReport, setConfirmReport] = useState(false);
   const { busy, error, run } = useAction();
   const allowed = r.allowed_actions ?? (r.status === "HELD_FRAUD" ? ["VERIFIED_SAFE", "REJECT", "REPORT_FRAUD"]
     : r.status === "ESCALATED" ? ["APPROVE", "REJECT", "REPORT_FRAUD"] : []);
   if (allowed.length === 0) return null;
-
-  const act = (action: string) => run(async () => {
-    if (action === "REPORT_FRAUD" && !window.confirm("Report this as fraud? The request is cancelled and the numbers in it are blocked for your family.")) return;
-    onDone(await api.post<RequestDetail>(`/requests/${r.id}/approval/`, { action, note }));
-  });
   const held = r.status === "HELD_FRAUD";
 
+  const act = (action: string) => run(async () => {
+    onDone(await api.post<RequestDetail>(`/requests/${r.id}/approval/`, { action, note }));
+  });
+
+  if (confirmReport) {
+    return (
+      <div className="stack" style={{ padding: 14, borderRadius: 12, background: "var(--bad-soft)" }}>
+        <strong style={{ color: "var(--bad)" }}>Report this as a scam?</strong>
+        <span className="small ink-2">The request is cancelled and every unregistered number in it is blocked for your family.</span>
+        <div className="row">
+          <button className="btn danger" disabled={busy} onClick={() => act("REPORT_FRAUD")}>{busy ? <span className="spinner" /> : null}Yes, report scam</button>
+          <button className="btn outline" disabled={busy} onClick={() => setConfirmReport(false)}>Go back</button>
+        </div>
+        <ErrorNote error={error} />
+      </div>
+    );
+  }
+
   return (
-    <div className="stack" style={{ marginTop: "0.75rem" }}>
-      <div>
-        <label htmlFor={`note-${r.id}`}>{held ? "How did you verify it?" : "Note (optional)"}</label>
+    <div className="stack">
+      <div className="field">
+        <label htmlFor={`note-${r.id}`}>{held ? "How did you check?" : "Note for the family (optional)"}</label>
         <input id={`note-${r.id}`} value={note} onChange={(e) => setNote(e.target.value)}
-          placeholder={held ? "e.g. Called her on the registered number; she did not ask for this" : ""} />
+          placeholder={held ? "e.g. Called Mama on her registered number; she asked for this" : ""} />
+        {held && <span className="hint">Paying a held request needs a note saying how you confirmed it.</span>}
       </div>
       <div className="row">
-        {allowed.includes("APPROVE") && <button className="primary" disabled={busy} onClick={() => act("APPROVE")}>Approve</button>}
-        {allowed.includes("VERIFIED_SAFE") && (
-          <button disabled={busy || !note.trim()} onClick={() => act("VERIFIED_SAFE")} title="Needs a note saying how you verified">
-            I verified it, pay
-          </button>
+        {allowed.includes("REPORT_FRAUD") && held && (
+          <button className="btn danger" disabled={busy} onClick={() => setConfirmReport(true)}><Icon name="alert" size={18} />Report scam</button>
         )}
-        {allowed.includes("REJECT") && <button disabled={busy} onClick={() => act("REJECT")}>Reject</button>}
-        {allowed.includes("REPORT_FRAUD") && <button className="danger solid" disabled={busy} onClick={() => act("REPORT_FRAUD")}>Report fraud</button>}
+        {allowed.includes("APPROVE") && <button className="btn primary" disabled={busy} onClick={() => act("APPROVE")}><Icon name="check" size={18} />Approve and pay</button>}
+        {allowed.includes("VERIFIED_SAFE") && (
+          <button className="btn outline" disabled={busy || !note.trim()} onClick={() => act("VERIFIED_SAFE")}>I confirmed it, pay</button>
+        )}
+        {allowed.includes("REJECT") && <button className="btn outline" disabled={busy} onClick={() => act("REJECT")}>Decline</button>}
+        {allowed.includes("REPORT_FRAUD") && !held && (
+          <button className="btn ghost" disabled={busy} onClick={() => setConfirmReport(true)}>Report scam</button>
+        )}
       </div>
-      <p className="small muted" style={{ margin: 0 }}>Approving re-checks every hard rule and the balance. A funder can never override a refusal.</p>
+      <span className="xs muted">Paying still re-checks every rule and the balance. A refusal by the rules can never be overridden.</span>
       <ErrorNote error={error} />
     </div>
   );

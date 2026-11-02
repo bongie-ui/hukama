@@ -3,7 +3,8 @@ import { api, newKey } from "../api";
 import { useAction, useApi } from "../hooks";
 import { navigate } from "../router";
 import type { Mandate, Payee, RequestDetail } from "../types";
-import { ErrorNote } from "./ui";
+import Icon from "./Icon";
+import { ErrorNote, MoneyInput } from "./ui";
 
 export const EVIDENCE_KINDS: [string, string][] = [
   ["QUOTE", "Quote"], ["INVOICE", "Invoice"], ["MILESTONE_PHOTO", "Progress photo"], ["RECEIPT", "Receipt"], ["OTHER", "Other"],
@@ -19,13 +20,21 @@ function allowedPayeeIds(m: Mandate) {
   return m.rules.filter((r) => r.kind === "allowed_payees").flatMap((r) => (r.params.payee_ids as string[]) ?? []);
 }
 
+function guessKind(file: File) {
+  const n = file.name.toLowerCase();
+  if (n.includes("invoice")) return "INVOICE";
+  if (n.includes("quote")) return "QUOTE";
+  if (n.includes("receipt")) return "RECEIPT";
+  return file.type.startsWith("image/") ? "MILESTONE_PHOTO" : "OTHER";
+}
+
 /** Ask to pay a supplier, school or provider from a mandate, with quotes, invoices or photos attached. */
 export default function RequestForm({ mandate }: { mandate: Mandate }) {
   const payees = useApi<Payee[]>("/payees/");
   const ids = allowedPayeeIds(mandate);
   const options = payees.data?.filter((p) => ids.includes(p.id)) ?? [];
   const [payee, setPayee] = useState("");
-  const [product, setProduct] = useState("");
+  const [product, setProduct] = useState(mandate.type === "IMFUNDO" ? "school_fees" : mandate.type === "AKHA" ? "materials" : "");
   const [amount, setAmount] = useState("");
   const [message, setMessage] = useState("");
   const [files, setFiles] = useState<{ file: File; kind: string }[]>([]);
@@ -42,53 +51,57 @@ export default function RequestForm({ mandate }: { mandate: Mandate }) {
   });
 
   return (
-    <div className="card">
-      <h3>Request a payment</h3>
-      <div className="grid" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(180px, 1fr))" }}>
-        <div>
+    <section className="card stack" aria-labelledby="rf-h" style={{ gap: 16 }}>
+      <div className="stack-sm">
+        <h2 id="rf-h">Request a payment</h2>
+        <span className="small muted">Attach the quote, invoice or progress photo. The assistant reads it and the rules decide.</span>
+      </div>
+      <div className="form-grid">
+        <div className="field">
           <label htmlFor="rf-payee">Pay</label>
           <select id="rf-payee" value={payee || options[0]?.id || ""} onChange={(e) => setPayee(e.target.value)}>
             {options.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </select>
         </div>
-        <div>
+        <div className="field">
           <label htmlFor="rf-product">For</label>
-          <input id="rf-product" placeholder="materials, school_fees…" value={product} onChange={(e) => setProduct(e.target.value)} />
+          <input id="rf-product" placeholder="materials" value={product} onChange={(e) => setProduct(e.target.value)} />
         </div>
-        <div>
-          <label htmlFor="rf-amount">Amount (USD)</label>
-          <input id="rf-amount" type="number" min="1" step="0.01" value={amount} onChange={(e) => setAmount(e.target.value)} />
+        <div className="field">
+          <label htmlFor="rf-amount">Amount</label>
+          <MoneyInput id="rf-amount" label="Amount in US dollars" value={amount} onChange={setAmount} />
         </div>
       </div>
       <div className="field">
-        <label htmlFor="rf-msg">Note</label>
-        <input id="rf-msg" value={message} onChange={(e) => setMessage(e.target.value)} />
+        <label htmlFor="rf-msg">Note <span className="muted">(optional)</span></label>
+        <input id="rf-msg" value={message} onChange={(e) => setMessage(e.target.value)} placeholder="e.g. Cement for the foundation" />
       </div>
       <div className="field">
-        <label htmlFor="rf-files">Quotes, invoices or photos</label>
-        <input id="rf-files" type="file" accept="image/*,application/pdf" multiple
-          onChange={(e) => setFiles([...files, ...Array.from(e.target.files ?? []).map((file) => ({ file, kind: "QUOTE" }))])} />
+        <span className="label">Documents</span>
+        <label className="btn outline" style={{ alignSelf: "flex-start" }}>
+          <Icon name="clip" size={18} />Attach quote, invoice or photo
+          <input type="file" accept="image/*" multiple hidden
+            onChange={(e) => { setFiles([...files, ...Array.from(e.target.files ?? []).map((file) => ({ file, kind: guessKind(file) }))]); e.target.value = ""; }} />
+        </label>
         {files.length > 0 && (
-          <div className="chips" style={{ padding: "0.4rem 0 0", background: "none" }}>
+          <div className="row" style={{ gap: 6 }}>
             {files.map((f, i) => (
               <span className="chip" key={i}>
                 {f.file.name}
-                <select aria-label="What is this file?" value={f.kind}
+                <select aria-label={`What is ${f.file.name}?`} value={f.kind}
                   onChange={(e) => setFiles(files.map((x, j) => (j === i ? { ...x, kind: e.target.value } : x)))}>
                   {EVIDENCE_KINDS.map(([k, l]) => <option key={k} value={k}>{l}</option>)}
                 </select>
-                <button className="link-btn" aria-label={`Remove ${f.file.name}`} onClick={() => setFiles(files.filter((_, j) => j !== i))}>×</button>
+                <button aria-label={`Remove ${f.file.name}`} onClick={() => setFiles(files.filter((_, j) => j !== i))}><Icon name="x" size={12} /></button>
               </span>
             ))}
           </div>
         )}
       </div>
-      <div className="field">
-        <button className="primary" disabled={busy || !product || Number(amount) <= 0 || options.length === 0} onClick={submit}>
-          {busy ? <><span className="spinner" /> Reading documents and checking rules…</> : "Submit for checking"}
-        </button>
-      </div>
+      <button className="btn primary lg" disabled={busy || !product || Number(amount) <= 0 || options.length === 0} onClick={submit}>
+        {busy ? <><span className="spinner" />Reading documents and checking the rules…</> : "Submit for checking"}
+      </button>
       <ErrorNote error={error} />
-    </div>
+    </section>
   );
 }

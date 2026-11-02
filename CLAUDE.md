@@ -1,10 +1,10 @@
-# CLAUDE.md — Thuma
+# CLAUDE.md — Hukama
 
 Context file for Claude Code. Read this first, then follow **`docs/BUILD_SPEC.md`** (the detailed build plan, data model, phases and acceptance tests). When the two disagree, BUILD_SPEC.md wins on implementation detail; this file wins on product rules.
 
 ## What we're building
 
-**Thuma** ("send" in isiNdebele) — purpose-locked diaspora remittances. Family members abroad fund **mandates** (signed rules for how money may be spent). An **AI agent** handles requests from family, suppliers and schools, reads quotes/invoices/photos, flags possible fraud, and proposes payments. A deterministic **policy engine** decides. **PayPal** moves the money.
+**Hukama** ("kinship" in Shona; renamed from Thuma on 2 Nov) — purpose-locked diaspora remittances. Family members abroad fund **mandates** (signed rules for how money may be spent). An **AI agent** handles requests from family, suppliers and schools, reads quotes/invoices/photos, flags possible fraud, and proposes payments. A deterministic **policy engine** decides. **PayPal** moves the money.
 
 Built for the **PayPal AI Hackathon** (Devpost). Builder: Bonginkosi, Gwanda, Zimbabwe. Submit by **11 Nov 2026** (deadline 12 Nov, 12:00 PT = 21:00 Harare).
 
@@ -80,7 +80,7 @@ Sandbox accounts are all US PayPal accounts; story locations differ.
 ## Coding conventions
 
 - PayPal code only in `payments/` (`paypal_client.py` + `rails/`); never from views.
-- Every payout goes through the policy engine and the `Rail` interface; idempotent (`sender_batch_id = thuma-<request id>`).
+- Every payout goes through the policy engine and the `Rail` interface; idempotent (`sender_batch_id = hukama-<request id>`). Internal names (Django package `thuma`, Render service `thuma`, repo, `platform@thuma.com`) stay; only user-visible text says Hukama.
 - Every state change writes an append-only `LedgerEntry`.
 - Small, testable functions. Tests first for policy and fraud. `python manage.py test` passes before every commit.
 - Never commit `.env`, sandbox passwords or real personal data.
@@ -133,7 +133,8 @@ Sandbox accounts are all US PayPal accounts; story locations differ.
   - `backend/demo_assets/`: quotes at $14 and $10.50, foundation photo, Sunrise invoice ($340; use the PNG, extraction rejects PDFs). `build.sh` runs `seed_demo --if-missing` when `DEMO_MODE=true`
   - Changing `MANDATE_SIGNING_KEY` invalidates every signature (by design): reseed with `seed_demo --reset` locally
   - Render is on a paid plan until 2027 (no free-tier sleep or Postgres expiry)
-  - Open: Fund with PayPal answers 503 until Phase 4 (Orders + JS SDK need the APIMatic plugin); UI redesign + rebrand agreed (2 Nov), name not chosen yet
+  - Open: Fund with PayPal answers 503 until Phase 4 (Orders + JS SDK need the APIMatic plugin)
+- [x] Rebrand + UI redesign — 2 Nov: name **Hukama**, logo "Homestead H" (two pillars + coral roof; `frontend/public/hukama-mark.svg`, `favicon.svg`, `apple-touch-icon.png`, `icon-512.png`, `site.webmanifest`), palette plum `#4a1f3d` + coral `#ff8a7a`, Bricolage Grotesque (display) + Manrope (body) from Google Fonts. Design system in `frontend/src/styles.css` (tokens, light/dark); sidebar on desktop, bottom tabs on phones; `components/Icon.tsx` (own stroke icons), avatars, request progress stepper, fraud card, messaging-style chat with "see it from their side" demo personas. Lists settle in-flight payouts (`mandates/views._settle`). Reviewed via headless Chrome screenshots (light, dark, 390px)
 - [ ] Phase 7 — AG Studio dashboard (+ Isililo, Postman)
 - [ ] Phase 8 — Feature freeze, hardening, README
 - [ ] Phase 9 — Video + Devpost text

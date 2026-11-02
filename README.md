@@ -1,4 +1,4 @@
-# Thuma
+# Hukama
 
 **Purpose-locked diaspora remittances.** An AI agent that turns diaspora remittances into purpose-locked payments, paying builders, undertakers and insurers directly, only when the rules you set are met.
 

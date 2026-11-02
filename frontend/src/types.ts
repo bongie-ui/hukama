@@ -195,6 +195,7 @@ export interface RequestDetail extends PayRequest {
   approvals: { id: string; user_name: string; action: string; note: string; created_at: string }[];
   rail_transactions: Payment[];
   allowed_actions: string[];
+  price_ceilings: { item: string; max_unit_price: string; keywords: string[] }[];
 }
 
 export interface LedgerEntry {
