@@ -145,6 +145,7 @@ def collection():
         {"name": "Dashboard", "item": [
             req("Summary", "GET", "dashboard/summary/"),
             req("Tables for AG Studio", "GET", "dashboard/data/"),
+            req("The family's saved dashboard layout", "GET", "dashboard/layout/"),
         ]},
         {"name": "Assistant", "item": [
             req("My conversation", "POST", "chat/conversations/", tests=[save("myConversationId", "pm.response.json().id")]),

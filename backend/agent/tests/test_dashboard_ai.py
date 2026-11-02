@@ -82,9 +82,31 @@ class DashboardApiTests(TestCase):
         mandate = self.f.support_mandate()
         self.client.force_authenticate(self.f.owner)
         data = self.client.get("/api/dashboard/data/").data
-        self.assertEqual(set(data), {"mandates", "fundings", "requests", "ledger"})
+        self.assertEqual(set(data), {"mandates", "fundings", "requests", "ledger", "flows"})
+        self.assertIn({"from": "Funder1", "to": mandate.title, "stage": "Funded", "amount": 1000.0}, data["flows"])
+        self.assertIn({"from": mandate.title, "to": "Still available", "stage": "Available", "amount": 1000.0},
+                      data["flows"])
         self.assertEqual(data["mandates"][0]["mandate_id"], str(mandate.id))
         self.assertEqual(data["fundings"][0]["amount"], 1000.0)
         summary = self.client.get("/api/dashboard/summary/").data
         self.assertEqual((summary["funded"], summary["available"]), ("1000.00", "1000.00"))
         json.dumps(data)  # plain JSON for the browser
+
+
+class DashboardLayoutTests(TestCase):
+    def test_layout_is_saved_per_family_and_can_be_reset(self):
+        f = Fixtures()
+        client = APIClient()
+        client.force_authenticate(f.owner)
+        self.assertIsNone(client.get("/api/dashboard/layout/").data["state"])
+        state = {"pages": [{"id": "p", "widgets": {}}], "selectedPageId": "p"}
+        self.assertEqual(client.put("/api/dashboard/layout/", {"state": state}, format="json").status_code, 200)
+        client.force_authenticate(f.funders[1])  # every member sees the family's layout
+        self.assertEqual(client.get("/api/dashboard/layout/").data["state"], state)
+        other = Fixtures(prefix="o-")
+        client.force_authenticate(other.owner)
+        self.assertIsNone(client.get("/api/dashboard/layout/").data["state"])
+        client.force_authenticate(f.owner)
+        self.assertEqual(client.put("/api/dashboard/layout/", {"state": {"nope": 1}}, format="json").status_code, 400)
+        client.delete("/api/dashboard/layout/")
+        self.assertIsNone(client.get("/api/dashboard/layout/").data["state"])

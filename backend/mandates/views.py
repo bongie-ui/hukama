@@ -3,6 +3,7 @@
 Views only translate HTTP to services; every state change goes through mandates.services.
 """
 
+import json
 import uuid
 
 from django.db.models import Q
@@ -330,3 +331,30 @@ def dashboard_data(request):
 @permission_classes(PERMS)
 def dashboard_summary(request):
     return Response(dashboard.summary(current_family(request)))
+
+
+MAX_LAYOUT_BYTES = 256 * 1024
+
+
+@api_view(["GET", "PUT", "DELETE"])
+@permission_classes(PERMS)
+def dashboard_layout(request):
+    """The family's saved dashboard (shared by every member). DELETE goes back to the default report."""
+    from accounts.models import DashboardLayout
+
+    family = current_family(request)
+    if request.method == "GET":
+        layout = DashboardLayout.objects.filter(family=family).first()
+        return Response({"state": layout.state if layout else None,
+                         "updated_at": layout.updated_at if layout else None})
+    if request.method == "DELETE":
+        DashboardLayout.objects.filter(family=family).delete()
+        return Response({"state": None})
+    state = request.data.get("state")
+    if not isinstance(state, dict) or not isinstance(state.get("pages"), list):
+        raise ValidationError({"state": "Send the dashboard state with its pages"})
+    if len(json.dumps(state)) > MAX_LAYOUT_BYTES:
+        raise ValidationError({"state": "This dashboard is too large to save"})
+    layout, _ = DashboardLayout.objects.update_or_create(family=family, defaults={"state": state,
+                                                                                "updated_by": request.user})
+    return Response({"state": layout.state, "updated_at": layout.updated_at})

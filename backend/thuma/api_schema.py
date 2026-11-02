@@ -150,6 +150,8 @@ ANNOTATIONS = [
 
     (mandates.dashboard_data, None, dict(tags=["Dashboard"], summary="Tables for the AG Studio dashboard",
                                          responses=OBJ)),
+    (mandates.dashboard_layout, None, dict(tags=["Dashboard"], summary="The family's saved dashboard layout",
+                                           request=body("LayoutInput", state=s.DictField()), responses=OBJ)),
     (mandates.dashboard_summary, None, dict(tags=["Dashboard"], summary="Headline numbers", responses=OBJ)),
     (agent.dashboard_turn, None, dict(tags=["Dashboard"], summary="One AG Studio agent turn, answered server-side",
                                       request=OBJ, responses=OBJ)),

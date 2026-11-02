@@ -584,3 +584,5 @@ a.list-item:hover { background: var(--plum-tint); text-decoration: none; }
   overflow: hidden; background: var(--surface); box-shadow: var(--shadow-1);
 }
 @media (max-width: 899px) { .studio-frame { height: max(560px, calc(100vh - 300px)); } }
+.head-actions { flex-wrap: nowrap; }
+@media (max-width: 760px) { .head-actions { flex-wrap: wrap; } }

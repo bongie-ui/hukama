@@ -70,7 +70,28 @@ def tables(family):
                     "time": timezone.localtime(e.created_at).strftime("%d %b %H:%M")}
                    for e in LedgerEntry.objects.filter(family=family).order_by("-created_at")[:500]]
 
-    return {"mandates": mandate_rows, "fundings": funding_rows, "requests": request_rows, "ledger": ledger_rows}
+    return {"mandates": mandate_rows, "fundings": funding_rows, "requests": request_rows, "ledger": ledger_rows,
+            "flows": flows(mandate_rows, funding_rows, request_rows)}
+
+
+def flows(mandate_rows, funding_rows, request_rows):
+    """Money flow rows for the Sankey widget: who funded each mandate, and where each mandate's money went.
+
+    A node name must not appear on both sides of one stage, so spend categories are labelled as spending."""
+    titles = {m["mandate_id"]: m["mandate"] for m in mandate_rows}
+    totals = {}
+    for f in funding_rows:
+        key = (f["funder"], titles[f["mandate_id"]], "Funded")
+        totals[key] = totals.get(key, 0) + f["amount"]
+    for r in request_rows:
+        if r["paid"]:
+            key = (titles[r["mandate_id"]], f"Spent: {r['category']}", "Spent")
+            totals[key] = totals.get(key, 0) + r["paid"]
+    for m in mandate_rows:
+        if m["available"] > 0:
+            totals[(m["mandate"], "Still available", "Available")] = m["available"]
+    return [{"from": a, "to": b, "stage": stage, "amount": round(amount, 2)}
+            for (a, b, stage), amount in totals.items()]
 
 
 def summary(family):

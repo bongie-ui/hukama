@@ -1,9 +1,0 @@
-{
- "content": "Sure \u2014 how much airtime should I request for Mama?",
- "model": "gpt-5.5-2026-04-23",
- "tool_calls": [],
- "usage": {
-  "input": 1106,
-  "output": 107
- }
-}

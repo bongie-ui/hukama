@@ -38,3 +38,12 @@ class Membership(BaseModel):
 
     def __str__(self):
         return f"{self.user} in {self.family} ({self.role})"
+
+
+class DashboardLayout(BaseModel):
+    """The family's AG Studio report (pages, widgets, layout): configuration only, never data."""
+
+    family = models.OneToOneField(Family, on_delete=models.CASCADE, related_name="dashboard_layout")
+    state = models.JSONField(default=dict)
+    updated_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
+                                   related_name="+")

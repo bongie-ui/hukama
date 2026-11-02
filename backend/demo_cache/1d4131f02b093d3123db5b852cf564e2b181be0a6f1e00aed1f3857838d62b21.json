@@ -1,9 +1,0 @@
-{
- "content": "Mama\u2019s airtime cap is **USD 20 per month**.\n\nI can see the cap and remaining mandate balance, but not a month-to-date airtime total from this view. If you have a request ID for an airtime request, I can check its status.",
- "model": "gpt-5.5-2026-04-23",
- "tool_calls": [],
- "usage": {
-  "input": 1852,
-  "output": 58
- }
-}

@@ -54,6 +54,7 @@ urlpatterns = [
 
     path("dashboard/data/", mandates.dashboard_data),
     path("dashboard/summary/", mandates.dashboard_summary),
+    path("dashboard/layout/", mandates.dashboard_layout),
     path("dashboard/ai/turn/", agent.dashboard_turn),
 
     path("demo/last-mile/<uuid:pk>/collect/", payments.demo_collect),

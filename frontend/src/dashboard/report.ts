@@ -7,6 +7,7 @@ export interface DashboardTables {
   fundings: Record<string, unknown>[];
   requests: Record<string, unknown>[];
   ledger: Record<string, unknown>[];
+  flows: Record<string, unknown>[];
 }
 
 const text = (id: string, name: string, hide = false): AgFieldDefinition => ({ id, name, format: "textFormat", hide });
@@ -47,6 +48,12 @@ export function dataModel(t: DashboardTables): AgDataSourcesDefinition {
           int("risk_score", "Risk score"), int("fraud_alert", "Fraud alerts"), day("date", "Date")],
       },
       {
+        id: "flows", name: "Money flow",
+        description: "Where the money came from and went: family member -> mandate (Funded), mandate -> 'Spent: <category>' (Spent), mandate -> 'Still available' (Available).",
+        data: t.flows,
+        fields: [text("from", "From"), text("to", "To"), text("stage", "Stage"), usd("amount", "Amount")],
+      },
+      {
         id: "ledger", name: "Audit trail", description: "Append-only record of every event.",
         data: withDates(t.ledger),
         fields: [text("entry_id", "Entry id", true), text("mandate_id", "Mandate id", true), text("time", "When"),
@@ -81,6 +88,11 @@ export const initialReport = {
         available: kpi("mandates.available", "Available to spend"),
         paid: kpi("requests.paid", "Paid out"),
         fraud: kpi("requests.fraud_alert", "Fraud alerts"),
+        moneyFlow: {
+          type: "money-flow",
+          dataMapping: { from: [{ id: "flows.from" }], to: [{ id: "flows.to" }], value: [{ id: "flows.amount", aggregation: "sum" }] },
+          format: { title: { enabled: true, text: "Where the money came from and went" } },
+        },
         byMandate: titled("column-chart-grouped", "Spent and available by mandate", {
           categoryKey: [{ id: "mandates.mandate" }],
           valueKey: [{ id: "mandates.spent", aggregation: "sum" }, { id: "mandates.available", aggregation: "sum" }],
@@ -111,11 +123,12 @@ export const initialReport = {
         available: { xTrack: 6, yTrack: 0, xSpan: 6, ySpan: 6 },
         paid: { xTrack: 12, yTrack: 0, xSpan: 6, ySpan: 6 },
         fraud: { xTrack: 18, yTrack: 0, xSpan: 6, ySpan: 6 },
-        byMandate: { xTrack: 0, yTrack: 6, xSpan: 12, ySpan: 18 },
-        byFunder: { xTrack: 12, yTrack: 6, xSpan: 12, ySpan: 18 },
-        byCategory: { xTrack: 0, yTrack: 24, xSpan: 12, ySpan: 18 },
-        outcomes: { xTrack: 12, yTrack: 24, xSpan: 12, ySpan: 18 },
-        ledger: { xTrack: 0, yTrack: 42, xSpan: 24, ySpan: 22 },
+        moneyFlow: { xTrack: 0, yTrack: 6, xSpan: 24, ySpan: 24 },
+        byMandate: { xTrack: 0, yTrack: 30, xSpan: 12, ySpan: 18 },
+        byFunder: { xTrack: 12, yTrack: 30, xSpan: 12, ySpan: 18 },
+        byCategory: { xTrack: 0, yTrack: 48, xSpan: 12, ySpan: 18 },
+        outcomes: { xTrack: 12, yTrack: 48, xSpan: 12, ySpan: 18 },
+        ledger: { xTrack: 0, yTrack: 66, xSpan: 24, ySpan: 22 },
       },
     },
   ],

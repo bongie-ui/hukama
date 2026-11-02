@@ -1,9 +1,0 @@
-{
- "content": "Isicelo se-airtime sika $5 sesifakiwe futhi sivunyelwe.\n\nRequest ID: e5db521a-e81a-4cb9-be6b-312974cd00d4  \nInkokhelo isesimeni esithi: PENDING.",
- "model": "gpt-5.5-2026-04-23",
- "tool_calls": [],
- "usage": {
-  "input": 1585,
-  "output": 60
- }
-}
