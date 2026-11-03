@@ -47,6 +47,45 @@ def require_funder(user, family):
     return m
 
 
+@transaction.atomic
+def invite_member(family, by, *, email, first_name, last_name="", role=Membership.FUNDER, country="", phone="",
+                  paypal_email=""):
+    """Admin adds a family member. A new person gets an account and a one-time temporary password to pass on.
+    Returns (membership, temporary_password or None when the person already had an account)."""
+    from django.contrib.auth import get_user_model
+    from django.core.validators import validate_email
+    from django.core.exceptions import ValidationError
+
+    m = membership(by, family)
+    if m is None or m.role != Membership.ADMIN:
+        raise ServiceError("Only the family's admin can invite members")
+    email = (email or "").strip().lower()
+    try:
+        validate_email(email)
+    except ValidationError:
+        raise ServiceError("Enter a valid email address")
+    if not (first_name or "").strip():
+        raise ServiceError("Enter their first name")
+    if role not in (Membership.FUNDER, Membership.VIEWER):
+        raise ServiceError("Invite members as a funder or a viewer")
+    if phone:
+        phone = normalize_phone(phone)
+        if not phone:
+            raise ServiceError("Enter the phone number with its country code")
+    User = get_user_model()
+    user = User.objects.filter(email__iexact=email).first()
+    password = None
+    if user is None:
+        password = secrets.token_urlsafe(9)
+        user = User.objects.create_user(username=email, email=email, password=password,
+                                        first_name=first_name.strip(), last_name=(last_name or "").strip())
+    elif Membership.objects.filter(user=user).exists():
+        raise ServiceError("This person already belongs to a family")
+    member = Membership.objects.create(user=user, family=family, role=role, country=(country or "").upper()[:2],
+                                       phone=phone or "", paypal_email=paypal_email or email)
+    return member, password
+
+
 # --- Mandates ---------------------------------------------------------------------------------------------
 
 def _normalise_rules(rules):

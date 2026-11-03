@@ -65,6 +65,8 @@ ANNOTATIONS = [
                                      request=body("DemoLoginInput", username=text()), responses=OBJ)),
 
     (mandates.family, None, dict(tags=["Family"], summary="The caller's family and its members", responses=OBJ)),
+    (mandates.family_invite, None, dict(tags=["Family"], summary="Invite a family member (admin only)",
+                                        request=OBJ, responses=OBJ)),
     (mandates.beneficiaries, ["GET"], dict(tags=["Family"], summary="People the family supports",
                                            responses=BeneficiarySerializer(many=True))),
     (mandates.beneficiaries, ["POST"], dict(tags=["Family"], summary="Register someone at home",

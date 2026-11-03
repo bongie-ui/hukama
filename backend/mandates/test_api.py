@@ -74,6 +74,34 @@ class AuthTests(ApiBase):
         self.assertTrue(client.get("/api/auth/me/").data["authenticated"])
 
 
+class InviteTests(ApiBase):
+    def invite(self, **extra):
+        return self.post("/api/family/invite/", {"email": "New.Person@example.com", "first_name": "New",
+                                                 "country": "ca", "phone": "+1 416 555 0100", **extra})
+
+    def test_admin_invites_a_new_person_who_can_sign_in(self):
+        r = self.invite()
+        self.assertEqual(r.status_code, 201, r.data)
+        self.assertEqual((r.data["username"], r.data["role"], r.data["country"], r.data["phone"]),
+                         ("new.person@example.com", "FUNDER", "CA", "+14165550100"))
+        client = APIClient()
+        signed_in = client.post("/api/auth/login/", {"username": "new.person@example.com",
+                                                     "password": r.data["temporary_password"]}, format="json")
+        self.assertEqual(signed_in.status_code, 200)
+        self.assertEqual(len(self.client.get("/api/family/").data["members"]), 4)
+
+    def test_only_the_admin_and_only_people_without_a_family(self):
+        self.login(self.f.funders[1])
+        self.assertEqual(self.invite().status_code, 400)
+        self.login(self.f.owner)
+        self.assertEqual(self.invite(email="not-an-email").status_code, 400)
+        self.assertEqual(self.invite(role="ADMIN").status_code, 400)
+        other = Fixtures(prefix="o-").owner
+        other.email = "taken@example.com"
+        other.save()
+        self.assertEqual(self.invite(email="taken@example.com").status_code, 400)
+
+
 class MandateApiTests(ApiBase):
     def test_list_shows_rules_in_plain_words_balance_and_contributions(self):
         mandate = self.f.build_mandate()

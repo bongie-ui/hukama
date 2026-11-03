@@ -24,6 +24,7 @@ urlpatterns = [
     path("auth/demo-login/", accounts.demo_login),
 
     path("family/", mandates.family),
+    path("family/invite/", mandates.family_invite),
     path("beneficiaries/", mandates.beneficiaries),
     path("beneficiaries/<uuid:pk>/", mandates.beneficiary_detail),
     path("payees/", mandates.payees),

@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Family, Membership
+from .models import DashboardLayout, Family, Membership
 
 
 class MembershipInline(admin.TabularInline):
@@ -18,3 +18,8 @@ class FamilyAdmin(admin.ModelAdmin):
 class MembershipAdmin(admin.ModelAdmin):
     list_display = ("user", "family", "role", "country", "paypal_email")
     list_filter = ("role", "country")
+
+
+@admin.register(DashboardLayout)
+class DashboardLayoutAdmin(admin.ModelAdmin):
+    list_display = ("family", "updated_at")

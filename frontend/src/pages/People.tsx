@@ -67,11 +67,12 @@ export default function People() {
               <Avatar name={m.name} size="lg" />
               <div className="stack-sm" style={{ gap: 2, minWidth: 0 }}>
                 <strong>{m.name}</strong>
-                <span className="small muted">{COUNTRY[m.country] ?? m.country}{m.role === "ADMIN" ? " · admin" : " · funder"}</span>
+                <span className="small muted">{COUNTRY[m.country] ?? m.country}{m.role === "ADMIN" ? " · admin" : m.role === "VIEWER" ? " · viewer" : " · funder"}</span>
               </div>
             </div>
           ))}
         </div>
+        {family.data?.role === "ADMIN" && <InviteMember onSaved={family.reload} />}
       </section>
     </div>
   );
@@ -162,6 +163,64 @@ function AddBeneficiary({ onSaved }: { onSaved: () => void }) {
       </div>
       <div className="row">
         <button className="btn primary" disabled={busy || !form.name || !form.phone} onClick={save}>Register</button>
+        <button className="btn outline" onClick={() => setOpen(false)}>Cancel</button>
+      </div>
+      <ErrorNote error={error} />
+    </div>
+  );
+}
+
+function InviteMember({ onSaved }: { onSaved: () => void }) {
+  const empty = { first_name: "", last_name: "", email: "", country: "", phone: "", role: "FUNDER" };
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState(empty);
+  const [sent, setSent] = useState<{ name: string; email: string; password: string | null } | null>(null);
+  const { busy, error, run } = useAction();
+  const save = () => run(async () => {
+    const r = await api.post<{ name: string; username: string; temporary_password: string | null }>("/family/invite/", form);
+    setSent({ name: r.name, email: form.email, password: r.temporary_password });
+    setOpen(false);
+    setForm(empty);
+    onSaved();
+  });
+  const set = (k: keyof typeof empty) => (e: { target: { value: string } }) => setForm({ ...form, [k]: e.target.value });
+
+  if (!open) return (
+    <div className="stack" style={{ gap: 12 }}>
+      {sent && (
+        <Notice tone="ok" icon="check">
+          {sent.name} is in the family.{sent.password
+            ? <> Send them, privately: sign in with <strong>{sent.email}</strong> and the temporary password <strong className="num">{sent.password}</strong>. It is shown only once.</>
+            : " They already had an account and can sign in as usual."}
+        </Notice>
+      )}
+      <button className="btn outline" style={{ alignSelf: "flex-start" }} onClick={() => { setOpen(true); setSent(null); }}><Icon name="plus" size={18} />Invite a family member</button>
+    </div>
+  );
+  return (
+    <div className="card stack">
+      <div className="stack-sm"><h3>Invite a family member</h3><span className="small muted">Funders can add money and make requests. Viewers can only see what happens.</span></div>
+      <div className="form-grid">
+        <div className="field"><label htmlFor="i-first">First name</label><input id="i-first" value={form.first_name} onChange={set("first_name")} /></div>
+        <div className="field"><label htmlFor="i-last">Last name</label><input id="i-last" value={form.last_name} onChange={set("last_name")} /></div>
+        <div className="field"><label htmlFor="i-email">Email</label><input id="i-email" type="email" value={form.email} onChange={set("email")} /></div>
+        <div className="field"><label htmlFor="i-phone">Phone <span className="muted">(with country code)</span></label><input id="i-phone" inputMode="tel" value={form.phone} onChange={set("phone")} /></div>
+        <div className="field">
+          <label htmlFor="i-country">Lives in</label>
+          <select id="i-country" value={form.country} onChange={set("country")}>
+            <option value="">Choose…</option>
+            {Object.entries(COUNTRY).map(([code, name]) => <option key={code} value={code}>{name}</option>)}
+          </select>
+        </div>
+        <div className="field">
+          <label htmlFor="i-role">Role</label>
+          <select id="i-role" value={form.role} onChange={set("role")}>
+            <option value="FUNDER">Funder</option><option value="VIEWER">Viewer</option>
+          </select>
+        </div>
+      </div>
+      <div className="row">
+        <button className="btn primary" disabled={busy || !form.first_name || !form.email} onClick={save}>Invite</button>
         <button className="btn outline" onClick={() => setOpen(false)}>Cancel</button>
       </div>
       <ErrorNote error={error} />

@@ -6,6 +6,7 @@ Views only translate HTTP to services; every state change goes through mandates.
 import json
 import uuid
 
+from accounts.models import Membership
 from django.db.models import Q
 from django.http import HttpResponse
 from rest_framework import status
@@ -332,6 +333,19 @@ def family(request):
     members = m.family.memberships.select_related("user").order_by("created_at")
     return Response({"id": str(m.family.id), "name": m.family.name, "role": m.role,
                      "members": MemberSerializer(members, many=True).data})
+
+
+@api_view(["POST"])
+@permission_classes(PERMS)
+def family_invite(request):
+    """The admin adds a member; a new person's temporary password is returned once, to pass on privately."""
+    d = request.data
+    member, password = services.invite_member(
+        current_family(request), request.user, email=d.get("email"), first_name=d.get("first_name"),
+        last_name=d.get("last_name", ""), role=d.get("role") or Membership.FUNDER, country=d.get("country", ""),
+        phone=d.get("phone", ""), paypal_email=d.get("paypal_email", ""))
+    return Response({**MemberSerializer(member).data, "temporary_password": password},
+                    status=status.HTTP_201_CREATED)
 
 
 # --- Dashboard --------------------------------------------------------------------------------------------

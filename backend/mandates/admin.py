@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import (Approval, Beneficiary, BlockedPhone, Decision, Evidence, Funding, LedgerEntry, Mandate,
+from .models import (Upload, Approval, Beneficiary, BlockedPhone, Decision, Evidence, Funding, LedgerEntry, Mandate,
                      MandateFunder, Payee, Request, RiskAssessment, Rule)
 
 
@@ -85,3 +85,9 @@ class LedgerEntryAdmin(admin.ModelAdmin):
 
 
 admin.site.register([Evidence, Decision, Approval, MandateFunder, Rule])
+
+
+@admin.register(Upload)
+class UploadAdmin(admin.ModelAdmin):
+    list_display = ("name", "family", "content_type", "size", "created_at")
+    exclude = ("data",)  # file bytes are served by the app, not shown here
