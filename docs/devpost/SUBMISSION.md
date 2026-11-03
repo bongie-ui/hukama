@@ -103,7 +103,7 @@ paypal-orders, paypal-server-sdk, paypal-js-sdk, paypal-webhooks, apimatic
 
 - Live demo: https://thuma.onrender.com (pick a family member on the sign-in page; no password needed)
 - Source code: https://github.com/bongie-ui/hukama
-- Postman collection: https://www.postman.com/bongiebf/workspace/hukama
+- Postman collection: https://documenter.getpostman.com/view/43618475/2sBYHXRJVS
 - API docs: https://thuma.onrender.com/api/docs/
 
 ### Image gallery (upload in this order)
