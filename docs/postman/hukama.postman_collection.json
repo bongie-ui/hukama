@@ -51,6 +51,10 @@
       "value": ""
     },
     {
+      "key": "coverMandateId",
+      "value": ""
+    },
+    {
       "key": "csrfToken",
       "value": ""
     }
@@ -1044,6 +1048,123 @@
             },
             "description": ""
           }
+        }
+      ]
+    },
+    {
+      "name": "Cover premiums (PayPal Subscriptions)",
+      "item": [
+        {
+          "name": "Find the cover mandate",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/mandates/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mandates",
+                ""
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "const m = pm.response.json().find(x => x.premium !== null);",
+                  "pm.collectionVariables.set('coverMandateId', m.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Monthly premium and its subscriptions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/mandates/{{coverMandateId}}/premium/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mandates",
+                "{{coverMandateId}}",
+                "premium",
+                ""
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Start a monthly premium (returns the PayPal approval link)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/mandates/{{coverMandateId}}/premium/start/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "mandates",
+                "{{coverMandateId}}",
+                "premium",
+                "start",
+                ""
+              ]
+            },
+            "description": "Creates a PayPal subscription for the premium and returns `approve_url`. Open it and approve with a PayPal sandbox buyer account; each premium PayPal collects then funds the mandate once and is paid to the cover provider by the rules. Refused (400) when a premium is already active."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('approval link or a clear refusal', () => pm.expect(pm.response.code).to.be.oneOf([201, 400, 502, 503]));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },

@@ -41,7 +41,7 @@ In the **Assistant** tab, *See it from their side* lets you write as Mama, as Gw
 
 **Also try:** **Support for Mama → Groceries**: pick *Family week*, choose *Deliver home*, and watch it go from packing to delivered; the **Family funeral pool**'s share link (open it signed out); **Funeral cover: Peaceful Rest → Start monthly premium with PayPal** (approve with a sandbox buyer account); a request on **Mama's house: foundation** with the photos in [`backend/demo_assets/`](backend/demo_assets) (a handwritten quote at $14 a bag is refused by the $11 ceiling; the revised $10.50 quote plus the foundation photo is paid by PayPal Payout), and **Dashboard → Build with AI**.
 
-A [Postman collection](docs/postman/) replays scenarios 3 and 4 with assertions. API docs: https://thuma.onrender.com/api/docs/
+The **[public Postman workspace](https://www.postman.com/bongiebf/workspace/hukama)** has the full API (40 requests) and the hosted-demo environment: fork it and run **1. Try it in 3 minutes**, which replays scenarios 3 and 4 with assertions (also in [`docs/postman/`](docs/postman/)). API docs: https://thuma.onrender.com/api/docs/
 
 ## How it works
 
@@ -113,7 +113,7 @@ The person who sent a held message never sees why it was held. Funders see every
 | **OpenAI** | Tool-calling chat agent (multilingual), vision for quotes, invoices and photos, structured outputs for drafting mandates, scam intent analysis. All calls go through one wrapper (`backend/agent/llm.py`) with retries, timeouts and a demo replay cache |
 | **AG Studio** (AG Grid + AG Charts) | Family dashboard, saved per family: a custom **Money flow** widget (family member → mandate → what it was spent on), each sibling's contributions, spend by category, fraud alerts, audit trail. Its Agent Framework builds charts from plain language (and can place the custom widget), with every turn proxied through our server |
 | **Render** | One web service (Django serving the built React app) + PostgreSQL |
-| **Postman** | Public collection that replays the demo with assertions (`docs/postman/`) |
+| **Postman** | [Public workspace](https://www.postman.com/bongiebf/workspace/hukama): the whole API plus a tour that replays the demo with assertions, published and checked with the Postman CLI |
 | Django, DRF, React, TypeScript, Vite, GitHub Actions | App, API, tests on every push |
 
 ## Run it locally
@@ -172,7 +172,7 @@ cd backend && .venv/bin/python manage.py test     # Windows: .venv\Scripts\pytho
 
 These cover every rule kind, shared caps across funders, signature tampering, fraud signals (and that AI can only add risk), payout idempotency, the last mile, grocery pricing and delivery, the pool link, the dashboard AI proxy and saved layouts, and scenarios 1–5 end to end. PayPal and the model are mocked; tests never call them. GitHub Actions runs the tests and the frontend build on every push.
 
-Regenerate the Postman collection with `python manage.py export_postman`.
+Regenerate the Postman collection with `python manage.py export_postman` (then migrate it with `postman collection migrate` and `postman workspace push` to update the public workspace).
 
 ## PayPal sandbox accounts
 

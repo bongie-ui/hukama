@@ -1,6 +1,6 @@
 # Devpost submission: Hukama
 
-Paste-ready text for the three Devpost edit pages. Sections marked **(update later)** change once the Postman link and the video exist. Do not claim anything listed under "Not built yet" until it is.
+Paste-ready text for the three Devpost edit pages. Sections marked **(update later)** change once the video exists. Do not claim anything listed under "Not built yet" until it is.
 
 ---
 
@@ -66,7 +66,7 @@ Family members abroad fund a **mandate**: money set aside for one purpose, with 
 - **Frontend:** React + TypeScript + Vite, served by Django on one Render service. Mobile-first, light and dark modes, with its own design system and logo.
 - **Dashboard:** AG Studio (built on AG Grid and AG Charts) shows funds by mandate, each sibling's contributions, spend by category, fraud alerts and the full audit trail. Its Agent Framework lets you say "chart cash paid out per month" and the chart appears. The agents' model calls go through our own server, so the API key never reaches the browser.
 - **Pool link:** a funeral pool can be shared on WhatsApp; relatives and friends anywhere see what has been raised and give with PayPal.
-- **Postman:** A public collection whose first folder replays the demo scenarios with assertions.
+- **Postman:** A public workspace with the whole API (40 requests) and a first folder that replays the demo scenarios against the hosted app with assertions (11 requests, 19 checks, passing).
 - **Quality:** 169 automated tests (policy engine, fraud signals, payout idempotency, the five demo scenarios end to end with PayPal and the model mocked). GitHub Actions runs them on every push.
 
 ## Challenges we ran into
@@ -103,7 +103,7 @@ paypal-orders, paypal-server-sdk, paypal-js-sdk, paypal-webhooks, apimatic
 
 - Live demo: https://thuma.onrender.com (pick a family member on the sign-in page; no password needed)
 - Source code: https://github.com/bongie-ui/hukama
-- Postman collection: **(update later: public Postman link)**
+- Postman collection: https://www.postman.com/bongiebf/workspace/hukama
 - API docs: https://thuma.onrender.com/api/docs/
 
 ### Image gallery (upload in this order)

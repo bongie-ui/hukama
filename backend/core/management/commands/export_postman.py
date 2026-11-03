@@ -137,6 +137,19 @@ def collection():
                 "mandates/{{supportMandateId}}/coverage/?beneficiary={{beneficiaryId}}"),
             req("Who funded a mandate", "GET", "mandates/{{mandateId}}/fundings/"),
         ]},
+        {"name": "Cover premiums (PayPal Subscriptions)", "item": [
+            req("Find the cover mandate", "GET", "mandates/", tests=[
+                OK, "const m = pm.response.json().find(x => x.premium !== null);",
+                save("coverMandateId", "m.id")]),
+            req("Monthly premium and its subscriptions", "GET", "mandates/{{coverMandateId}}/premium/", tests=[OK]),
+            req("Start a monthly premium (returns the PayPal approval link)", "POST",
+                "mandates/{{coverMandateId}}/premium/start/", tests=[
+                    "pm.test('approval link or a clear refusal', () => pm.expect(pm.response.code).to.be.oneOf([201, 400, 502, 503]));"],
+                description="Creates a PayPal subscription for the premium and returns `approve_url`. Open it and "
+                            "approve with a PayPal sandbox buyer account; each premium PayPal collects then funds "
+                            "the mandate once and is paid to the cover provider by the rules. Refused (400) when "
+                            "a premium is already active."),
+        ]},
         {"name": "Requests and approvals", "item": [
             req("Requests", "GET", "requests/", tests=[save("requestId", "pm.response.json()[0].id")]),
             req("Request detail (evidence, risk, decision, payout)", "GET", "requests/{{requestId}}/"),
@@ -161,7 +174,8 @@ def collection():
                                 "OpenAPI schema: {{baseUrl}}/api/schema/ and docs: {{baseUrl}}/api/docs/."},
         "event": [{"listen": "prerequest", "script": {"type": "text/javascript", "exec": PRE_REQUEST}}],
         "variable": [{"key": k, "value": ""} for k in ("supportMandateId", "beneficiaryId", "strangerConversationId",
-                                                       "heldRequestId", "mandateId", "requestId", "myConversationId", "csrfToken")],
+                                                       "heldRequestId", "mandateId", "requestId", "myConversationId", "coverMandateId",
+                                                       "csrfToken")],
         "item": folders,
     }
 
