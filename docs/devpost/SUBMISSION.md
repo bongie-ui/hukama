@@ -1,6 +1,6 @@
 # Devpost submission: Hukama
 
-Paste-ready text for the three Devpost edit pages. Sections marked **(update later)** change once Phase 4 (PayPal checkout, webhooks) and the video are done. Do not claim anything listed under "Not built yet" until it is.
+Paste-ready text for the three Devpost edit pages. Sections marked **(update later)** change once the Postman link and the video exist. Do not claim anything listed under "Not built yet" until it is.
 
 ---
 
@@ -61,7 +61,8 @@ Family members abroad fund a **mandate**: money set aside for one purpose, with 
 
 - **Backend:** Django + Django REST Framework, PostgreSQL on Render. Every state change writes an append-only ledger entry, and mandate rules are signed with HMAC-SHA256: if anyone edits them in the database, nothing gets paid.
 - **AI:** OpenAI models for chat with tool calling, structured outputs for drafting mandates from plain language, vision for quotes, invoices and photos, and fraud intent analysis. Every model call goes through one wrapper with retries, timeouts and a demo replay cache.
-- **PayPal:** PayPal Payouts pays suppliers, schools and the local mobile money provider, idempotently (`sender_batch_id` = `hukama-<request id>`, so a retry can never pay twice). **(update later: PayPal Orders checkout via the APIMatic-generated PayPal Server SDK, webhooks)**
+- **PayPal, end to end:** money comes in through **PayPal checkout** (Orders v2 via the APIMatic-generated **PayPal Server SDK**, **JS SDK v6** buttons), for funders and for anyone with a pool's link. Money goes out by **PayPal Payouts** to suppliers, schools, the grocer and the local mobile money provider, idempotently (`sender_batch_id` = `hukama-<request id>`). **PayPal webhooks** update captures and payouts the moment they happen; every event is signature-verified with PayPal and applied once.
+- **APIMatic:** the PayPal integration was written in Claude Code with the **APIMatic Context Plugin for PayPal**, which supplied the SDK's exact models, endpoints and idempotency parameters.
 - **Frontend:** React + TypeScript + Vite, served by Django on one Render service. Mobile-first, light and dark modes, with its own design system and logo.
 - **Dashboard:** AG Studio (built on AG Grid and AG Charts) shows funds by mandate, each sibling's contributions, spend by category, fraud alerts and the full audit trail. Its Agent Framework lets you say "chart cash paid out per month" and the chart appears. The agents' model calls go through our own server, so the API key never reaches the browser.
 - **Pool link:** a funeral pool can be shared on WhatsApp; relatives and friends anywhere see what has been raised and give with PayPal.
@@ -97,7 +98,7 @@ Families don't want an app that sends money. They want one that keeps a promise,
 
 python, django, django-rest-framework, postgresql, react, typescript, vite, openai, paypal, paypal-payouts, ag-studio, ag-grid, ag-charts, render, postman, github-actions
 
-**(update later)** add: paypal-orders, paypal-server-sdk, apimatic, paypal-webhooks
+paypal-orders, paypal-server-sdk, paypal-js-sdk, paypal-webhooks, apimatic
 
 ### "Try it out" links
 
@@ -128,7 +129,10 @@ python, django, django-rest-framework, postgresql, react, typescript, vite, open
 Answer whichever of these the form asks; the wording below fits the usual hackathon questions.
 
 **Which PayPal technologies does your project use?**
-PayPal Payouts (sandbox) pays suppliers, schools and the local mobile money provider directly, idempotently, only after the rules engine approves. Each mandate shows every funder's contribution. **(update later:** PayPal Orders v2 via the APIMatic-generated PayPal Server SDK and the JavaScript SDK for "Add funds with PayPal"; PayPal Webhooks for capture and payout status.**)**
+- **PayPal Orders v2** through the APIMatic-generated **PayPal Server SDK**: funders add money to a mandate, and anyone with a pool's link gives to it. Create and capture are idempotent, and money only counts after a completed capture for the exact amount.
+- **PayPal JavaScript SDK v6**: the "Pay with PayPal" buttons.
+- **PayPal Payouts**: suppliers, schools, the grocer and the local mobile money provider are paid directly, only after the rules engine approves.
+- **PayPal Webhooks**: capture and payout events, verified with PayPal's signature check and applied once.
 
 **How does your project use AI?**
 - OpenAI models with tool calling run a multilingual assistant (English, isiNdebele, Shona) for funders, beneficiaries and payees. Its tools can only create requests and read; none can pay.
@@ -137,8 +141,8 @@ PayPal Payouts (sandbox) pays suppliers, schools and the local mobile money prov
 - Intent analysis flags scam patterns, adding risk only.
 - AG Studio's Agent Framework builds dashboard charts from natural language, through our own server.
 
-**Did you use APIMatic?** **(update later)**
-Planned: the APIMatic Context Plugin while writing the PayPal integration, and the APIMatic-generated PayPal Server SDK for Orders. Only claim this once it's actually used.
+**Did you use APIMatic?**
+Yes. The PayPal integration was built in Claude Code with the **APIMatic Context Plugin for PayPal** (ContextMatic), which supplied the PayPal Server SDK's models, endpoints and parameters (for example `paypal_request_id` for idempotent create and capture). The app uses the APIMatic-generated **PayPal Server SDK** (`paypal-server-sdk`) for Orders v2.
 
 **Testing instructions for judges**
 1. Open https://thuma.onrender.com. The free tier was upgraded, so it shouldn't need to wake up.
@@ -159,9 +163,6 @@ Zimbabwe
 
 ## Not built yet (don't claim until done)
 
-- PayPal Orders checkout ("Add funds with PayPal" currently says it's not switched on) and PayPal webhooks: Phase 4, waiting on APIMatic credits
-- APIMatic Context Plugin and the PayPal Server SDK
-- Giving through a pool link with PayPal checkout (same Phase 4 work)
 - AG Studio licence key (the dashboard shows a watermark until it's set)
 - Funeral cover and medical aid premiums
 - The video

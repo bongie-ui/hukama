@@ -7,9 +7,10 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 from core.api import IsFamilyMember, current_family, get_or_404
+from mandates.models import Funding
 
-from . import last_mile
-from .models import RailTransaction
+from . import checkout, last_mile, webhooks
+from .models import RailTransaction, WebhookEvent
 from .paypal_client import PayPalError, get_client
 
 
@@ -27,22 +28,49 @@ def paypal_health(request):
     except PayPalError as exc:
         return Response({**base, "status": "error", "detail": str(exc),
                          "paypal_status": exc.status_code}, status=502)
-    return Response({**base, "status": "connected"})
+    last = WebhookEvent.objects.order_by("-created_at").values("event_type", "created_at").first()
+    return Response({**base, "status": "connected", "webhooks_received": WebhookEvent.objects.count(),
+                     "last_webhook": last})
+
+
+def _checkout_error(exc):
+    return Response({"detail": str(exc)}, status=502)
+
+
+@api_view(["GET"])
+@authentication_classes([])
+@permission_classes([AllowAny])
+def paypal_config(request):
+    """What the browser needs to show PayPal buttons (the client id is public by design)."""
+    sandbox = checkout.is_sandbox()
+    return Response({"enabled": checkout.is_configured(), "client_id": settings.PAYPAL_CLIENT_ID,
+                     "sdk_url": "https://www.sandbox.paypal.com/web-sdk/v6/core" if sandbox
+                     else "https://www.paypal.com/web-sdk/v6/core", "environment": "sandbox" if sandbox else "live"})
 
 
 @api_view(["POST"])
 @permission_classes([IsFamilyMember])
 def fund_create_order(request, pk):
-    """PayPal Orders checkout. Phase 4 builds it with the APIMatic PayPal Server SDK (CLAUDE.md rule 5)."""
-    get_or_404(current_family(request).mandates, pk=pk)
-    return Response({"detail": "Funding with PayPal is not switched on yet."}, status=503)
+    """A funder starts PayPal checkout for a mandate they fund. Returns the PayPal order id for the button."""
+    mandate = get_or_404(current_family(request).mandates, pk=pk)
+    try:
+        funding = checkout.start(mandate, request.data.get("amount"), funder=request.user)
+    except checkout.CheckoutError as exc:
+        return _checkout_error(exc)
+    return Response({"order_id": funding.paypal_order_id, "funding_id": str(funding.id)}, status=201)
 
 
 @api_view(["POST"])
 @permission_classes([IsFamilyMember])
 def fund_capture(request, pk):
-    get_or_404(current_family(request).mandates, pk=pk)
-    return Response({"detail": "Funding with PayPal is not switched on yet."}, status=503)
+    """After the funder approves in PayPal: capture, then the money counts towards the mandate."""
+    funding = get_or_404(Funding.objects.filter(mandate__family=current_family(request), mandate_id=pk,
+                                                funder=request.user), paypal_order_id=request.data.get("order_id") or "-")
+    try:
+        funding = checkout.finish(funding)
+    except checkout.CheckoutError as exc:
+        return _checkout_error(exc)
+    return Response(_funding_data(funding))
 
 
 @api_view(["POST"])
@@ -115,6 +143,41 @@ def public_pool(request, token):
 @authentication_classes([])
 @permission_classes([AllowAny])
 def public_contribute(request, token):
-    """Give to a pool with PayPal checkout (Orders v2). Built with the PayPal Server SDK in Phase 4."""
-    _public_pool(token)
-    return Response({"detail": "PayPal checkout for this pool opens soon."}, status=503)
+    """Anyone with the link starts PayPal checkout for the pool. Nothing counts until PayPal captures it."""
+    mandate = _public_pool(token)
+    name = (request.data.get("name") or "").strip()
+    if not name:
+        raise ValidationError({"name": "Tell the family who is giving"})
+    try:
+        funding = checkout.start(mandate, request.data.get("amount"), contributor_name=name,
+                                 message=request.data.get("message") or "")
+    except checkout.CheckoutError as exc:
+        return _checkout_error(exc)
+    return Response({"order_id": funding.paypal_order_id}, status=201)
+
+
+@api_view(["POST"])
+@authentication_classes([])
+@permission_classes([AllowAny])
+def public_capture(request, token):
+    """After the giver approves in PayPal: capture and thank them."""
+    mandate = _public_pool(token)
+    funding = get_or_404(mandate.fundings.filter(funder__isnull=True),
+                         paypal_order_id=request.data.get("order_id") or "-")
+    try:
+        funding = checkout.finish(funding)
+    except checkout.CheckoutError as exc:
+        return _checkout_error(exc)
+    return Response({"status": funding.status, "amount": f"{funding.amount:.2f}", "name": _public_name(funding)})
+
+
+@api_view(["POST"])
+@authentication_classes([])
+@permission_classes([AllowAny])
+def paypal_webhook(request):
+    """PayPal event notifications. Nothing changes unless PayPal verifies the signature."""
+    try:
+        outcome = webhooks.receive(request.headers, request.data)
+    except webhooks.WebhookError as exc:
+        return Response({"detail": str(exc)}, status=400)
+    return Response({"result": outcome})

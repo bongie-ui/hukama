@@ -64,7 +64,7 @@ A [Postman collection](docs/postman/) replays scenarios 3 and 4 with assertions.
 
 **Groceries:** pick a basket from the family's store (prices come from the store's own list, so nobody can type an amount), then *collect in store* (Mama gets a code) or *home delivery* to her **registered address only**. The store is paid by PayPal Payout; packing and delivery are simulated.
 
-**Pool link:** the pool owner shares `…/#/give/<link>` on WhatsApp. Relatives and friends see what has been raised and give with PayPal checkout; givers appear by first name and initial.
+**Pool link:** the pool owner shares `…/#/give/<link>` on WhatsApp. Relatives and friends see what has been raised and give with PayPal; givers appear by first name and initial.
 
 New mandates are drafted by the AI from plain words, shown as readable rules, edited, then signed by the funder.
 
@@ -92,10 +92,10 @@ The person who sent a held message never sees why it was held. Funders see every
 
 | Part | Status |
 |---|---|
-| PayPal Payouts to suppliers, schools and the grocer | **Real (sandbox).** Verified end to end on 2 Nov 2026: $420 to Gwanda Hardware, $340 to Sunrise Academy, $48 to Gwanda Fresh Market |
-| Funding a mandate, or giving through a pool link, with PayPal checkout (Orders v2, APIMatic-generated PayPal Server SDK, JS SDK) | **In progress.** The buttons say checkout is not switched on yet; demo mandates are pre-funded |
-| PayPal Webhooks | **In progress.** Payout status is polled meanwhile |
-| Payout to the local mobile money provider's PayPal account | **Simulated rail for now.** Becomes a real PayPal Payout with the checkout work |
+| PayPal Payouts to suppliers, schools and the grocer | **Real (sandbox).** Verified end to end: $420 to Gwanda Hardware, $340 to Sunrise Academy, $48 to Gwanda Fresh Market |
+| Payout to the local mobile money provider's PayPal account | **Real (sandbox).** A PayPal Payout whose note says which registered phone to credit with what. Verified: $10 bundles, batch `9QACHG3ETUYBG` |
+| Funding a mandate, and giving through a pool link | **Real (sandbox).** PayPal checkout: Orders v2 via the APIMatic-generated **PayPal Server SDK** (built with the APIMatic Context Plugin), **JS SDK v6** buttons, idempotent create and capture, amount and funding id checked before money counts |
+| PayPal Webhooks | **Real (sandbox).** Captures and payouts; every event signature-verified with PayPal, stored once, applied idempotently. Polling stays as a fallback |
 | Last mile at home: airtime, data, cash or groceries with a collection code, grocery packing and delivery | **Simulated** (no public sandbox exists). Labelled in the app |
 | Billers (funeral cover, medical aid) | **Simulated** |
 | AI: chat agent, vision, rule drafting, fraud intent, dashboard agents | **Real** (OpenAI), always called from the server |
@@ -105,7 +105,9 @@ The person who sent a held message never sees why it was held. Funders see every
 | Tool | Used for |
 |---|---|
 | **PayPal Payouts** | Paying suppliers, schools, the grocer and the mobile money provider, only after the policy engine approves |
-| **PayPal Orders + JS SDK** via the **APIMatic**-generated **PayPal Server SDK** | Funding mandates and giving through a pool link *(in progress)* |
+| **PayPal Orders v2** via the **APIMatic**-generated **PayPal Server SDK** (`paypal-server-sdk`) | Funding mandates and giving through a pool link. Written with the **APIMatic Context Plugin** in Claude Code |
+| **PayPal JS SDK v6** | The "Pay with PayPal" buttons |
+| **PayPal Webhooks** | Capture and payout events, verified with `verify-webhook-signature`, deduplicated |
 | **OpenAI** | Tool-calling chat agent (multilingual), vision for quotes, invoices and photos, structured outputs for drafting mandates, scam intent analysis. All calls go through one wrapper (`backend/agent/llm.py`) with retries, timeouts and a demo replay cache |
 | **AG Studio** (AG Grid + AG Charts) | Family dashboard, saved per family: a custom **Money flow** widget (family member → mandate → what it was spent on), each sibling's contributions, spend by category, fraud alerts, audit trail. Its Agent Framework builds charts from plain language (and can place the custom widget), with every turn proxied through our server |
 | **Render** | One web service (Django serving the built React app) + PostgreSQL |
@@ -154,6 +156,7 @@ For frontend work with hot reload, keep `runserver` going and run `npm run dev` 
 | `MANDATE_SIGNING_KEY` | Any long random string. Changing it later invalidates signatures: run `seed_demo --reset` |
 | `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET` | Sandbox app credentials |
 | `PAYPAL_BASE_URL` | `https://api-m.sandbox.paypal.com` (the API host, not the website) |
+| `PAYPAL_WEBHOOK_ID` | Optional: the app finds its webhook by URL. Register it once with `python manage.py register_webhook https://<your-host>` |
 | `OPENAI_API_KEY`, `OPENAI_MODEL`, `OPENAI_MODEL_FAST` | The agent, vision, fraud analysis and dashboard AI. Without them, requests still work using rules-only fraud checks |
 | `VITE_AG_STUDIO_LICENSE_KEY` | Removes the AG Studio watermark (read at build time) |
 

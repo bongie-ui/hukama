@@ -50,8 +50,8 @@ class PoolLinkTests(TestCase):
         self.assertEqual(APIClient().get(f"/api/public/pools/{token}/").status_code, 404)
         self.assertEqual(APIClient().get("/api/public/pools/nope/").status_code, 404)
 
-    def test_giving_waits_for_paypal_checkout(self):
+    def test_giving_needs_paypal_and_records_nothing_without_it(self):
         token = self.share().data["contribute_token"]
         r = APIClient().post(f"/api/public/pools/{token}/contribute/", {"name": "A", "amount": "10"}, format="json")
-        self.assertEqual(r.status_code, 503)
+        self.assertEqual(r.status_code, 502)  # PayPal not configured in tests
         self.assertEqual(self.pool.fundings.count(), 1)  # nothing recorded until PayPal captures

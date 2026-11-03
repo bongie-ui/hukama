@@ -4,6 +4,7 @@ djangorestframework==3.18.3
 drf-spectacular==0.30.0
 gunicorn==26.2.0
 openai==3.40.0
+paypal-server-sdk==2.0.0
 psycopg2-binary==2.9.13
 python-dotenv==1.2.4
 requests==2.34.2

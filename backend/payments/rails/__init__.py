@@ -1,10 +1,11 @@
 """Rail router: look up a payout rail by name. Mandate config names rails; core logic never branches on them."""
 
 from .base import Payee, Rail, RailError, RailResult, RailStatus
-from .paypal import PayPalPayoutRail
+from .paypal import LocalMobileMoneyRail, PayPalPayoutRail
 from .simulated import SimulatedBillerRail, SimulatedMobileMoneyRail
 
-_RAILS = {rail.name: rail for rail in (PayPalPayoutRail(), SimulatedBillerRail(), SimulatedMobileMoneyRail())}
+_RAILS = {rail.name: rail for rail in (PayPalPayoutRail(), LocalMobileMoneyRail(), SimulatedBillerRail(),
+                                       SimulatedMobileMoneyRail())}
 
 
 def get_rail(name: str) -> Rail:
@@ -14,11 +15,10 @@ def get_rail(name: str) -> Rail:
         raise RailError(f"Unknown rail: {name}")
 
 
-# Payee.rail -> rail name. LOCAL_MOBILE_MONEY uses the simulated rail until the Phase 4
-# LocalMobileMoneyRail (real PayPal Payout to the provider + simulated last mile) replaces it.
+# Payee.rail -> rail name. Local mobile money is a real PayPal Payout to the provider (last mile simulated).
 _PAYEE_RAILS = {
     "PAYPAL_PAYOUT": "paypal_payouts",
-    "LOCAL_MOBILE_MONEY": "mobile_money",
+    "LOCAL_MOBILE_MONEY": "local_mobile_money",
     "BILLER_SIM": "biller",
 }
 

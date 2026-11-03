@@ -1,4 +1,5 @@
-"""REAL rail: PayPal Payouts (sandbox). Pays suppliers, schools and funeral providers."""
+"""REAL rails on PayPal Payouts (sandbox): suppliers, schools and grocers are paid directly, and the local
+mobile money provider is paid for what it then delivers to the beneficiary's phone."""
 
 from decimal import Decimal
 
@@ -34,7 +35,7 @@ class PayPalPayoutRail(Rail):
                 amount=amount,
                 currency=currency,
                 reference=reference,
-                note=f"Hukama payment to {payee.name}",
+                note=payee.note or f"Hukama payment to {payee.name}",
             )
         except PayPalError as exc:
             raise RailError(str(exc)) from exc
@@ -57,3 +58,11 @@ class PayPalPayoutRail(Rail):
             simulated=False,
             raw=data,
         )
+
+
+class LocalMobileMoneyRail(PayPalPayoutRail):
+    """Step 1 of the mobile money rail: a real PayPal Payout to the provider's business account. The payout
+    note tells the provider which registered phone to credit and with what (BUILD_SPEC §8). Step 2, delivery to
+    the phone, is simulated in payments/last_mile.py."""
+
+    name = "local_mobile_money"

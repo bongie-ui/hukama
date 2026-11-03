@@ -22,6 +22,8 @@ class Payee:
     name: str
     # Rail-specific address: PayPal email, mobile money wallet number, biller account number.
     identifier: str
+    # What the receiver needs to act on the payment (e.g. which phone a mobile money provider credits).
+    note: str = ""
 
 
 @dataclass

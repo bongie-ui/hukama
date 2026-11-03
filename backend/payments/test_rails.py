@@ -1,7 +1,7 @@
 from decimal import Decimal
 from unittest import mock
 
-from django.test import SimpleTestCase
+from django.test import SimpleTestCase, TestCase
 
 from .rails import Payee, RailError, RailStatus, available_rails, get_rail
 from .rails.paypal import PayPalPayoutRail
@@ -75,3 +75,33 @@ class PayPalPayoutRailTests(SimpleTestCase):
         result = PayPalPayoutRail(client).status("BATCH1")
         self.assertEqual(result.status, RailStatus.SUCCEEDED)
         self.assertEqual(result.reference, "hukama-akha-1")
+
+
+class LocalMobileMoneyRailTests(TestCase):
+    """Mobile money is a real PayPal Payout to the provider; the note says which registered phone to credit."""
+
+    def test_provider_payees_route_to_the_real_payout_rail(self):
+        from types import SimpleNamespace
+        from payments import rails
+        rail = rails.for_payee(SimpleNamespace(rail="LOCAL_MOBILE_MONEY"))
+        self.assertEqual((rail.name, rail.simulated), ("local_mobile_money", False))
+
+    def test_payout_note_names_the_registered_phone_product_and_request(self):
+        import json
+
+        from core.testing import Fixtures
+        from mandates import services
+
+        f = Fixtures()
+        mandate = f.support_mandate()
+        client = mock.Mock()
+        client.create_payout.return_value = {"batch_header": {"payout_batch_id": "B1", "batch_status": "PENDING"}}
+        with mock.patch("payments.rails.paypal.get_client", return_value=client):
+            req = services.submit_request(mandate=mandate, amount=Decimal("10"), product="bundles",
+                                          beneficiary=f.beneficiary, payee=f.provider, requester_user=f.owner,
+                                          idempotency_key="lmm-1", intent_analyzer=lambda c: {"ai_risk": 0})
+        kwargs = client.create_payout.call_args.kwargs
+        self.assertEqual(kwargs["receiver_email"], "momo@example.com")
+        self.assertEqual(json.loads(kwargs["note"]), {"beneficiary_phone": "+263770000099", "product": "bundles",
+                                                      "hukama_request_id": str(req.id)})
+        self.assertFalse(req.rail_transactions.get().simulated)

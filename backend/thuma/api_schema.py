@@ -112,13 +112,19 @@ ANNOTATIONS = [
     (payments.public_pool, None, dict(tags=["Public pool"], summary="A pool as seen through its link (no sign-in)",
                                       responses=OBJ)),
     (payments.public_contribute, None, dict(
-        tags=["Public pool"], summary="Give to a pool with PayPal checkout (in progress)",
+        tags=["Public pool"], summary="Start PayPal checkout to give to a pool",
         request=body("PublicContributionInput", name=text(), amount=money(), message=text(required=False)),
         responses=OBJ)),
-    (payments.fund_create_order, None, dict(tags=["Funding"], summary="Start PayPal checkout (in progress)",
+    (payments.fund_create_order, None, dict(tags=["Funding"], summary="Start PayPal checkout (Orders v2) for a mandate",
                                             request=body("FundInput", amount=money()), responses=OBJ)),
-    (payments.fund_capture, None, dict(tags=["Funding"], summary="Capture PayPal checkout (in progress)",
+    (payments.fund_capture, None, dict(tags=["Funding"], summary="Capture an approved PayPal order",
                                        request=body("CaptureInput", order_id=text()), responses=OBJ)),
+    (payments.public_capture, None, dict(tags=["Public pool"], summary="Capture a gift approved in PayPal",
+                                         request=body("PublicCaptureInput", order_id=text()), responses=OBJ)),
+    (payments.paypal_webhook, None, dict(tags=["Webhooks"], summary="PayPal webhook (signature-verified)",
+                                         request=OBJ, responses=OBJ)),
+    (payments.paypal_config, None, dict(tags=["Health"], summary="Public PayPal client id and JS SDK address",
+                                        responses=OBJ)),
 
     (mandates.requests_, ["GET"], dict(
         tags=["Requests"], summary="Requests, newest first (inbox=1: waiting for this funder)",

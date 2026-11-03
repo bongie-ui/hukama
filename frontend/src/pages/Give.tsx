@@ -1,8 +1,9 @@
-import { useState, type FormEvent } from "react";
+import { useRef, useState } from "react";
 import { api, money, when } from "../api";
 import Icon from "../components/Icon";
-import { Avatar, ErrorNote, Notice, Skeleton } from "../components/ui";
-import { useAction, useApi } from "../hooks";
+import PayPalButton from "../components/PayPalButton";
+import { Avatar, Notice, Skeleton } from "../components/ui";
+import { useApi } from "../hooks";
 
 interface PublicPool {
   title: string;
@@ -22,12 +23,10 @@ export default function Give({ token }: { token: string }) {
   const [amount, setAmount] = useState("25");
   const [name, setName] = useState("");
   const [message, setMessage] = useState("");
-  const { busy, error, run } = useAction();
-
-  const give = (e: FormEvent) => {
-    e.preventDefault();
-    void run(() => api.post(`/public/pools/${encodeURIComponent(token)}/contribute/`, { name, amount, message }));
-  };
+  const [thanks, setThanks] = useState<string | null>(null);
+  const form = useRef({ amount, name, message });
+  form.current = { amount, name, message };
+  const base = `/public/pools/${encodeURIComponent(token)}`;
 
   return (
     <div className="give">
@@ -52,8 +51,15 @@ export default function Give({ token }: { token: string }) {
               </div>
             </section>
 
-            <form className="card stack" onSubmit={give} style={{ gap: 16 }}>
+            {thanks ? (
+              <div className="card stack" style={{ gap: 12 }}>
+                <Notice tone="ok" icon="check"><strong>Thank you, {thanks}.</strong> Your gift reached the family through PayPal.</Notice>
+                <button className="btn outline" onClick={() => setThanks(null)}>Give again</button>
+              </div>
+            ) : (
+            <div className="card stack" style={{ gap: 16 }}>
               <h2>Give to this pool</h2>
+              <span className="small muted">Amount {money(amount || 0)}. You'll confirm it in PayPal.</span>
               <div className="field">
                 <span className="label">Amount</span>
                 <div className="row" style={{ gap: 8 }}>
@@ -68,21 +74,26 @@ export default function Give({ token }: { token: string }) {
               </div>
               <div className="field">
                 <label htmlFor="g-name">Your name</label>
-                <input id="g-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="So the family knows who gave" required />
+                <input id="g-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="So the family knows who gave" />
               </div>
               <div className="field">
                 <label htmlFor="g-msg">A message to the family <span className="muted">(optional)</span></label>
                 <input id="g-msg" value={message} onChange={(e) => setMessage(e.target.value)} />
               </div>
-              <button className="btn primary lg" disabled={busy || !name.trim() || Number(amount) <= 0}>
-                {busy ? <span className="spinner" /> : null}Give {money(amount || 0)} with PayPal
-              </button>
-              {error && (error.includes("opens soon")
-                ? <Notice tone="info" icon="clock">PayPal checkout for pools is being switched on. Please try again soon.</Notice>
-                : <ErrorNote error={error} />)}
+              <PayPalButton
+                validate={() => !form.current.name.trim() ? "Tell the family who is giving"
+                  : Number(form.current.amount) >= 1 ? null : "Enter an amount of at least $1"}
+                createOrder={async () => (await api.post<{ order_id: string }>(`${base}/contribute/`, form.current)).order_id}
+                onApprove={async (orderId) => {
+                  const r = await api.post<{ name: string }>(`${base}/capture/`, { order_id: orderId });
+                  setThanks(r.name);
+                  void pool.reload();
+                }}
+              />
               <span className="xs muted row" style={{ gap: 6 }}><Icon name="lock" size={14} />
                 Paid securely with PayPal. The money can only be spent the way the family agreed, and every payment is recorded.</span>
-            </form>
+            </div>
+            )}
 
             {pool.data.recent.length > 0 && (
               <section className="card stack">

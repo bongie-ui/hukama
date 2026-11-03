@@ -152,7 +152,9 @@ class Funding(BaseModel):
                                related_name="fundings")  # null for contributors without an account (pool link)
     amount = money_field()
     rail = models.CharField(max_length=16, choices=RAILS, default=PAYPAL)
-    external_id = models.CharField(max_length=64, blank=True)  # PayPal order / capture id
+    external_id = models.CharField(max_length=64, blank=True)  # PayPal capture id once captured
+    paypal_order_id = models.CharField(max_length=64, blank=True, db_index=True)  # Orders v2 order id
+    message = models.CharField(max_length=200, blank=True)  # optional note from someone giving via a pool link
     status = models.CharField(max_length=10, choices=STATUSES, default=CREATED)
     # Contributors without an account (anyone paying through a pool's PayPal link) are known by name only.
     contributor_name = models.CharField(max_length=120, blank=True)

@@ -41,6 +41,9 @@ urlpatterns = [
     path("mandates/<uuid:pk>/contribution-link/", mandates.mandate_contribution_link),
     path("public/pools/<str:token>/", payments.public_pool),
     path("public/pools/<str:token>/contribute/", payments.public_contribute),
+    path("public/pools/<str:token>/capture/", payments.public_capture),
+    path("config/paypal/", payments.paypal_config),
+    path("webhooks/paypal/", payments.paypal_webhook),
 
     path("requests/", mandates.requests_),
     path("requests/<uuid:pk>/", mandates.request_detail),

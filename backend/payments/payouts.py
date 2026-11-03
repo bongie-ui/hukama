@@ -1,9 +1,11 @@
 """Moving money for an approved Request. Only mandates.services calls this, after a policy APPROVE
 (or a funder approval that passed the policy re-check)."""
 
+import json
+
 from django.db import transaction
 
-from mandates.models import LedgerEntry, Request
+from mandates.models import LedgerEntry, Payee, Request
 from mandates.services import record
 
 from . import last_mile, rails
@@ -20,6 +22,14 @@ _RAIL_STATUS = {
 def reference_for(request):
     """Idempotency key: PayPal rejects a second batch with the same sender_batch_id."""
     return f"hukama-{request.id}"
+
+
+def _note(request):
+    """For the mobile money provider: exactly which registered phone to credit, with what (machine-readable)."""
+    if request.payee.rail != Payee.LOCAL_MOBILE_MONEY:
+        return ""
+    return json.dumps({"beneficiary_phone": request.beneficiary.phone if request.beneficiary else "",
+                       "product": request.product, "hukama_request_id": str(request.id)})
 
 
 def _identifier(request):
@@ -43,8 +53,8 @@ def pay_request(request):
     reference = reference_for(request)
     try:
         rail = rails.for_payee(request.payee)
-        result = rail.pay(rails.Payee(request.payee.name, _identifier(request)), request.amount, reference,
-                          currency=request.mandate.currency)
+        payee = rails.Payee(request.payee.name, _identifier(request), _note(request))
+        result = rail.pay(payee, request.amount, reference, currency=request.mandate.currency)
     except rails.RailError as exc:
         tx = RailTransaction.objects.create(request=request, rail=request.payee.rail, amount=request.amount,
                                             reference=reference, status=RailTransaction.FAILED,

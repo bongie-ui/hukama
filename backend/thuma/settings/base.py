@@ -122,9 +122,12 @@ FRONTEND_DIST = BASE_DIR.parent / "frontend" / "dist"
 if FRONTEND_DIST.exists():
     WHITENOISE_ROOT = FRONTEND_DIST
 
+TESTING = sys.argv[1:2] == ["test"]
+
 # PayPal — always the sandbox unless explicitly overridden.
-PAYPAL_CLIENT_ID = os.environ.get("PAYPAL_CLIENT_ID", "")
-PAYPAL_CLIENT_SECRET = os.environ.get("PAYPAL_CLIENT_SECRET", "")
+# Tests never reach PayPal: they fake the SDK and rails (like OpenAI below).
+PAYPAL_CLIENT_ID = "" if TESTING else os.environ.get("PAYPAL_CLIENT_ID", "")
+PAYPAL_CLIENT_SECRET = "" if TESTING else os.environ.get("PAYPAL_CLIENT_SECRET", "")
 PAYPAL_BASE_URL = os.environ.get("PAYPAL_BASE_URL") or "https://api-m.sandbox.paypal.com"
 PAYPAL_WEBHOOK_ID = os.environ.get("PAYPAL_WEBHOOK_ID", "")
 
@@ -137,7 +140,6 @@ DEFAULT_PHONE_COUNTRY_CODE = os.environ.get("DEFAULT_PHONE_COUNTRY_CODE") or "26
 DEMO_MODE = env_bool("DEMO_MODE", False)
 DEMO_REPLAY = env_bool("DEMO_REPLAY", False)
 
-TESTING = sys.argv[1:2] == ["test"]
 
 # OpenAI (agent/llm.py is the only consumer). Tests never call the real API.
 OPENAI_API_KEY = "" if TESTING else os.environ.get("OPENAI_API_KEY", "")

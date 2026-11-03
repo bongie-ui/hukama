@@ -1,6 +1,6 @@
 from unittest import mock
 
-from django.test import SimpleTestCase, override_settings
+from django.test import SimpleTestCase, TestCase, override_settings
 
 from . import paypal_client
 from .paypal_client import PayPalClient, PayPalError
@@ -37,7 +37,7 @@ class PayPalClientTests(SimpleTestCase):
 
 
 @override_settings(PAYPAL_BASE_URL="https://api-m.sandbox.paypal.com")
-class PayPalHealthViewTests(SimpleTestCase):
+class PayPalHealthViewTests(TestCase):  # reads the webhook log
     def setUp(self):
         paypal_client._client = None
 

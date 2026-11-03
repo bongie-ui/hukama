@@ -613,3 +613,9 @@ a.list-item:hover { background: var(--plum-tint); text-decoration: none; }
 .give-hero p { color: rgb(255 255 255 / .82); }
 .give-hero .eyebrow, .give-hero .small { color: rgb(255 255 255 / .7); }
 .give-hero .amount { color: #fff; }
+
+/* ---------- PayPal button ---------- */
+.paypal-slot { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.paypal-box { min-height: 45px; display: flex; }
+.paypal-box paypal-button { width: 100%; }
+.mandate-hero .fund .notice { background: rgb(255 255 255 / .12); color: #fff; }

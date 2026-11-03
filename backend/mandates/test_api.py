@@ -113,9 +113,11 @@ class MandateApiTests(ApiBase):
         r = self.bundles(mandate)
         self.assertEqual(r.status_code, 404)
 
-    def test_funding_answers_until_paypal_checkout_is_built(self):
+    def test_funding_says_so_when_paypal_is_not_configured(self):
         mandate = self.f.build_mandate()
-        self.assertEqual(self.post(f"/api/mandates/{mandate.id}/fund/create-order/").status_code, 503)
+        r = self.post(f"/api/mandates/{mandate.id}/fund/create-order/", {"amount": "10"})
+        self.assertEqual(r.status_code, 502)
+        self.assertIn("not configured", r.data["detail"])
 
 
 class RequestApiTests(ApiBase):
