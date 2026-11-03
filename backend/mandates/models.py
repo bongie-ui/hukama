@@ -325,9 +325,10 @@ class LedgerEntry(BaseModel):
     FRAUD_HELD = "FRAUD_HELD"
     FRAUD_CONFIRMED = "FRAUD_CONFIRMED"
     RULES_CHANGED = "RULES_CHANGED"
+    PREMIUM_CHANGED = "PREMIUM_CHANGED"
     EVENTS = [(e, e.replace("_", " ").title()) for e in
               (FUNDED, REQUESTED, ASSESSED, DECIDED, APPROVED_BY_FUNDER, PAID, DELIVERED, FAILED,
-               FRAUD_HELD, FRAUD_CONFIRMED, RULES_CHANGED)]
+               FRAUD_HELD, FRAUD_CONFIRMED, RULES_CHANGED, PREMIUM_CHANGED)]
 
     family = models.ForeignKey(Family, on_delete=models.PROTECT, related_name="ledger")
     mandate = models.ForeignKey(Mandate, on_delete=models.PROTECT, related_name="ledger")

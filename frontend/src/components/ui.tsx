@@ -118,7 +118,7 @@ export function initials(name: string) {
   const parts = name.replace(/\(.*\)/, "").trim().split(/\s+/).filter(Boolean);
   if (parts.length === 0) return "?";
   if (/^\+?\d/.test(parts[0])) return "#";
-  // First two names, so "Mama Siqile Fuyana" (MS) and "Mmeli Fuyana" (MF) stay distinct.
+  // First two names, so "Aunt Ann Smith" (AA) and "Alan Smith" (AS) stay distinct.
   return (parts[0][0] + (parts[1]?.[0] ?? "")).toUpperCase();
 }
 

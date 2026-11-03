@@ -16,6 +16,12 @@ const EVENTS: Record<string, [string, string]> = {
   FRAUD_HELD: ["Held as possible fraud", "bad"],
   FRAUD_CONFIRMED: ["Reported as fraud", "bad"],
   RULES_CHANGED: ["Rules signed", "brand"],
+  PREMIUM_CHANGED: ["Monthly premium", "brand"],
+};
+
+const PREMIUM: Record<string, string> = {
+  APPROVAL_PENDING: "Started, waiting for approval on PayPal", ACTIVE: "Active, PayPal collects it monthly",
+  SUSPENDED: "Paused by PayPal", CANCELLED: "Stopped", EXPIRED: "Ended",
 };
 
 function detail(e: LedgerEntry): string {
@@ -23,6 +29,7 @@ function detail(e: LedgerEntry): string {
   if (e.event === "DECIDED") return String(d.reason ?? d.outcome ?? "");
   if (e.event === "ASSESSED") return `Risk ${String(d.level ?? "").toLowerCase()}, score ${d.score ?? 0}`;
   if (e.event === "RULES_CHANGED") return `Version ${d.version}`;
+  if (e.event === "PREMIUM_CHANGED") return PREMIUM[String(d.status)] ?? "";
   if (e.event === "FUNDED") return "Through PayPal";
   if (e.event === "DELIVERED") return d.collected ? (d.product === "groceries" ? "Groceries collected in store" : "Cash collected at an agent")
     : d.fulfilment === "DELIVERY" ? "Groceries delivered to the registered address" : `${d.product ?? ""} arrived`;

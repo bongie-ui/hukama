@@ -9,7 +9,7 @@ from rest_framework.test import APIClient
 
 from core.testing import Fixtures
 from mandates import services
-from mandates.models import Funding, Mandate, Payee, Request
+from mandates.models import Funding, LedgerEntry, Mandate, Payee, Request
 from payments import premiums
 from payments.models import PayPalPlan, PremiumSubscription
 
@@ -131,6 +131,10 @@ class PremiumTests(TestCase):
         premium = premiums.cancel(premium, self.f.owner, self.subs)
         self.assertEqual(premium.status, PremiumSubscription.CANCELLED)
         self.assertEqual([r["id"] for k, r in self.subs.calls if k == "cancel"], ["I-SUB1"])
+        trail = list(LedgerEntry.objects.filter(mandate=self.cover, event=LedgerEntry.PREMIUM_CHANGED)
+                     .order_by("created_at").values_list("data__status", "actor"))
+        self.assertEqual(trail, [("APPROVAL_PENDING", str(self.f.owner.pk)), ("ACTIVE", "PAYPAL"),
+                                 ("CANCELLED", str(self.f.owner.pk))])
 
     def test_webhooks_record_payments_and_status(self):
         premium, _ = self.start()

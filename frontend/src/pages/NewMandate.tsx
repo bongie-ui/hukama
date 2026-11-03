@@ -7,9 +7,9 @@ import { navigate } from "../router";
 import type { Draft, Family, Mandate, Rule } from "../types";
 
 const EXAMPLES = [
-  { label: "Build a house", icon: "build", text: "Up to $600 for cement and bricks for the house in Gwanda. Pay the hardware store directly, only after a photo shows the foundation is done. Cement no more than $11 a bag." },
-  { label: "School fees", icon: "school", text: "Pay Sunrise Academy's term fees directly to the school, only on the school's invoice, up to $400 a term." },
-  { label: "Support a parent", icon: "heart", text: "We share Mama's airtime, data bundles and cash. Bundles up to $30 a month and not twice in one day, airtime $20 a month, cash $100 a month. Anything over $50 needs one of us to approve." },
+  { label: "Build a house", icon: "build", text: "Up to $600 for cement and bricks for the house back home. Pay the hardware store directly, only after a photo shows the foundation is done. Cement no more than $11 a bag." },
+  { label: "School fees", icon: "school", text: "Pay the term fees directly to the school, only on the school's invoice, up to $400 a term." },
+  { label: "Support a parent", icon: "heart", text: "We share our mother's airtime, data bundles and cash. Bundles up to $30 a month and not twice in one day, airtime $20 a month, cash $100 a month. Anything over $50 needs one of us to approve." },
 ];
 const NUMBER_PARAMS: Record<string, string> = { amount: "Amount ($)", max_unit_price: "Max price each ($)", hours: "Hours" };
 

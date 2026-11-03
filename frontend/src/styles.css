@@ -212,7 +212,8 @@ a.card:hover { text-decoration: none; border-color: var(--line-strong); box-shad
 .between { justify-content: space-between; }
 .grid-cards { display: grid; gap: 16px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
 .split { display: grid; gap: 16px; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); align-items: start; }
-@media (max-width: 820px) { .split { grid-template-columns: 1fr; } }
+@media (max-width: 820px) { .split { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 520px) { .btn.lg { white-space: normal; text-align: center; } }
 .divider { height: 1px; background: var(--line); border: 0; margin: 4px 0; }
 
 /* ---------- Buttons ---------- */

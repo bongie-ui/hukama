@@ -17,7 +17,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from mandates import services
-from mandates.models import Funding, Request
+from mandates.models import Funding, LedgerEntry, Request
 from mandates.templates import PAYPAL_SUBSCRIPTIONS, TEMPLATES
 
 from .checkout import CheckoutError, call, is_configured, sdk
@@ -110,13 +110,19 @@ def start(mandate, funder, return_base, subscriptions=None, client=None):
     })
     premium.paypal_subscription_id = created.id
     premium.save(update_fields=["paypal_subscription_id", "updated_at"])
+    _record(premium, str(funder.pk))
     approve = next((link.href for link in created.links or [] if link.rel == "approve"), None)
     if not approve:
         raise CheckoutError("PayPal did not return an approval link")
     return premium, approve
 
 
-def set_status(premium, status):
+def _record(premium, actor):
+    services.record(premium.mandate, LedgerEntry.PREMIUM_CHANGED, actor, amount=premium.amount,
+                    status=premium.status, subscription=premium.paypal_subscription_id)
+
+
+def set_status(premium, status, actor="PAYPAL"):
     status = (status or "").upper()
     if status not in dict(PremiumSubscription.STATUSES) or status == premium.status:
         return premium
@@ -126,6 +132,7 @@ def set_status(premium, status):
     if status in (PremiumSubscription.CANCELLED, PremiumSubscription.EXPIRED):
         premium.cancelled_at = premium.cancelled_at or timezone.now()
     premium.save(update_fields=["status", "activated_at", "cancelled_at", "updated_at"])
+    _record(premium, actor)
     return premium
 
 
@@ -179,7 +186,7 @@ def cancel(premium, user, subscriptions=None):
         call((subscriptions or sdk().subscriptions).cancel_subscription, {
             "id": premium.paypal_subscription_id,
             "body": CancelSubscriptionRequest(reason="Stopped by a family funder in Hukama")})
-    return set_status(premium, PremiumSubscription.CANCELLED)
+    return set_status(premium, PremiumSubscription.CANCELLED, actor=str(user.pk))
 
 
 def public_base(request):
