@@ -44,6 +44,11 @@ class SeedDemoTests(TestCase):
         call_command("seed_demo", stdout=StringIO())
         with self.assertRaises(CommandError):
             call_command("seed_demo", stdout=StringIO())
+        from payments.models import PayPalPlan, PremiumSubscription
+        from mandates.models import Mandate as M
+        cover = M.objects.get(type=M.VIKELA)  # a premium started in the demo must not block a reset
+        plan = PayPalPlan.objects.create(name="p", product_id="PROD", plan_id="P-x", amount=18)
+        PremiumSubscription.objects.create(mandate=cover, funder=cover.created_by, plan=plan, amount=18)
         call_command("seed_demo", "--reset", stdout=StringIO())
         out = StringIO()
         call_command("seed_demo", "--sync", stdout=out)
@@ -53,10 +58,11 @@ class SeedDemoTests(TestCase):
         self.assertEqual(Family.objects.get().seed_version, seed_demo.SEED_VERSION)
 
         mandates = list(Mandate.objects.all())
-        self.assertEqual(len(mandates), 4)
+        self.assertEqual(len(mandates), 5)
         for m in mandates:
             self.assertTrue(signing.verify(m))
-            self.assertGreater(services.mandate_balance(m), 0)
+            self.assertGreater(services.captured_total(m), 0)
+            self.assertGreaterEqual(services.mandate_balance(m), 0)  # cover premiums are paid straight out
         history = Request.objects.filter(status=Request.PAID)
         self.assertGreaterEqual(history.count(), 3)  # AMOUNT_SPIKE needs a baseline
         self.assertFalse(history.filter(created_at__gte=services.timezone.now().replace(day=1)).exists())

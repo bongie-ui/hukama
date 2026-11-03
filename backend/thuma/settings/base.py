@@ -137,6 +137,10 @@ MANDATE_SIGNING_KEY = os.environ.get("MANDATE_SIGNING_KEY", "")
 # Country code used to normalise local phone numbers (e.g. 0771234567) to E.164.
 DEFAULT_PHONE_COUNTRY_CODE = os.environ.get("DEFAULT_PHONE_COUNTRY_CODE") or "263"
 
+# This site's public address, where PayPal sends people back after approving a subscription.
+PUBLIC_BASE_URL = os.environ.get("PUBLIC_BASE_URL") or (
+    f"https://{os.environ['RENDER_EXTERNAL_HOSTNAME']}/" if os.environ.get("RENDER_EXTERNAL_HOSTNAME") else "")
+
 DEMO_MODE = env_bool("DEMO_MODE", False)
 DEMO_REPLAY = env_bool("DEMO_REPLAY", False)
 

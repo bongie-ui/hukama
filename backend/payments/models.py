@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 
 from core.models import BaseModel, money_field
@@ -41,3 +42,33 @@ class WebhookEvent(BaseModel):
     event_type = models.CharField(max_length=80)
     payload = models.JSONField(default=dict)
     processed_at = models.DateTimeField(null=True, blank=True)
+
+
+class PayPalPlan(BaseModel):
+    """A PayPal billing plan we created (via the Server SDK), reused for every subscription at this price."""
+
+    name = models.CharField(max_length=120)
+    product_id = models.CharField(max_length=64)  # PayPal catalog product
+    plan_id = models.CharField(max_length=64, unique=True)
+    amount = money_field()
+    currency = models.CharField(max_length=3, default="USD")
+
+
+class PremiumSubscription(BaseModel):
+    """A funder's monthly PayPal subscription paying a mandate's premium (e.g. funeral cover)."""
+
+    APPROVAL_PENDING = "APPROVAL_PENDING"
+    ACTIVE = "ACTIVE"
+    SUSPENDED = "SUSPENDED"
+    CANCELLED = "CANCELLED"
+    EXPIRED = "EXPIRED"
+    STATUSES = [(s, s.replace("_", " ").title()) for s in (APPROVAL_PENDING, ACTIVE, SUSPENDED, CANCELLED, EXPIRED)]
+
+    mandate = models.ForeignKey("mandates.Mandate", on_delete=models.PROTECT, related_name="premium_subscriptions")
+    funder = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="premium_subscriptions")
+    plan = models.ForeignKey(PayPalPlan, on_delete=models.PROTECT, related_name="subscriptions")
+    amount = money_field()
+    paypal_subscription_id = models.CharField(max_length=64, blank=True, db_index=True)
+    status = models.CharField(max_length=20, choices=STATUSES, default=APPROVAL_PENDING)
+    activated_at = models.DateTimeField(null=True, blank=True)
+    cancelled_at = models.DateTimeField(null=True, blank=True)

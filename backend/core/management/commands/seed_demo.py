@@ -16,12 +16,12 @@ from django.utils import timezone
 from accounts.models import Family, Membership
 from mandates import services
 from mandates.models import Decision, LedgerEntry, Mandate, Payee, Request
-from payments.models import RailTransaction
+from payments.models import PremiumSubscription, RailTransaction
 from payments.payouts import reference_for
 
 FAMILY = "Fuyana family"
 # Bump when the demo data changes, so `seed_demo --sync` (run on every deploy) rebuilds it once.
-SEED_VERSION = 5
+SEED_VERSION = 6
 MAMA_PHONE = "+263770000001"  # fake number
 MAMA_ADDRESS = "Stand 1182, Jahunda, Gwanda"  # fictional
 PRODUCTS = {"momo": ["airtime", "bundles", "cash"], "grocer": ["groceries"]}
@@ -111,6 +111,7 @@ class Command(BaseCommand):
         LedgerEntry.objects.filter(family=family).delete()
         RailTransaction.objects.filter(request__mandate__family=family).delete()
         Request.objects.filter(mandate__family=family).delete()
+        PremiumSubscription.objects.filter(mandate__family=family).delete()
         for mandate in family.mandates.all():
             mandate.fundings.all().delete()
         family.mandates.all().delete()
@@ -212,6 +213,37 @@ class Command(BaseCommand):
         services.mark_funding_captured(local, external_id="SEED-LOCAL")
 
         self._history(support, mama, payees["momo"], [mmeli, bonginkosi, andile])
+
+        cover = services.create_mandate(
+            family=family, type=Mandate.VIKELA, title="Funeral cover: Peaceful Rest", created_by=bonginkosi,
+            co_funders=[mmeli, andile],
+            purpose_text="Funeral cover for Mama, Mmeli, Bonginkosi and Andile, including bringing any of us home "
+                         "from abroad. $18 a month, paid by PayPal subscription straight to the cover provider.",
+            rules=[{"kind": "allowed_payees", "params": {"payee_ids": [str(payees["funeral"].id)]}},
+                   {"kind": "max_per_request", "params": {"amount": 18}}])
+        self._premium_history(cover, payees["funeral"], bonginkosi)
+
+    def _premium_history(self, mandate, payee, funder, months=2):
+        """Past monthly premiums (history): funded by subscription, then paid to the provider."""
+        now = timezone.now()
+        for m in range(months, 0, -1):
+            when = now - timedelta(days=30 * m)
+            funding = services.create_funding(mandate, funder, Decimal("18"), external_id=f"SEED-PREMIUM-{m}")
+            services.mark_funding_captured(funding)
+            LedgerEntry.objects.filter(mandate=mandate, event=LedgerEntry.FUNDED,
+                                       data__funding_id=str(funding.id)).update(created_at=when)
+            req = Request.objects.create(
+                mandate=mandate, channel=Request.SCHEDULE, requester_user=funder, requester_display="Monthly premium",
+                payee=payee, product="premium", amount=Decimal("18"), idempotency_key=f"seed-premium-{mandate.id}-{m}",
+                status=Request.PAID, message_text=f"Monthly premium for {mandate.title}")
+            Decision.objects.create(request=req, outcome=Decision.APPROVE, reason="Approved: all rules passed")
+            RailTransaction.objects.create(request=req, rail=payee.rail, amount=req.amount, reference=reference_for(req),
+                                           external_id="SEED-HISTORY", simulated=True, status=RailTransaction.SUCCESS)
+            entries = [services.record(mandate, event, actor, request=req, amount=req.amount, seeded=True)
+                       for event, actor in ((LedgerEntry.REQUESTED, str(funder.pk)),
+                                            (LedgerEntry.DECIDED, Decision.POLICY), (LedgerEntry.PAID, "SYSTEM"))]
+            Request.objects.filter(pk=req.pk).update(created_at=when)
+            LedgerEntry.objects.filter(pk__in=[e.pk for e in entries]).update(created_at=when)
 
     def _history(self, mandate, beneficiary, payee, funders):
         now = timezone.now()

@@ -14,14 +14,17 @@ from django.utils import timezone
 from mandates import services
 from mandates.models import Funding
 
-from .models import RailTransaction, WebhookEvent
+from . import premiums
+from .models import PremiumSubscription, RailTransaction, WebhookEvent
 from .paypal_client import PayPalError, get_client
 from .payouts import apply_rail_status
 
 WEBHOOK_PATH = "/api/webhooks/paypal/"
 EVENT_TYPES = ("PAYMENT.CAPTURE.COMPLETED", "PAYMENT.CAPTURE.DENIED", "PAYMENT.PAYOUTSBATCH.SUCCESS",
                "PAYMENT.PAYOUTSBATCH.DENIED", "PAYMENT.PAYOUTS-ITEM.SUCCEEDED", "PAYMENT.PAYOUTS-ITEM.FAILED",
-               "PAYMENT.PAYOUTS-ITEM.RETURNED", "PAYMENT.PAYOUTS-ITEM.BLOCKED", "PAYMENT.PAYOUTS-ITEM.DENIED")
+               "PAYMENT.PAYOUTS-ITEM.RETURNED", "PAYMENT.PAYOUTS-ITEM.BLOCKED", "PAYMENT.PAYOUTS-ITEM.DENIED",
+               "BILLING.SUBSCRIPTION.ACTIVATED", "BILLING.SUBSCRIPTION.CANCELLED", "BILLING.SUBSCRIPTION.SUSPENDED",
+               "BILLING.SUBSCRIPTION.EXPIRED", "PAYMENT.SALE.COMPLETED")
 HEADERS = {"auth_algo": "PAYPAL-AUTH-ALGO", "cert_url": "PAYPAL-CERT-URL", "transmission_id": "PAYPAL-TRANSMISSION-ID",
            "transmission_sig": "PAYPAL-TRANSMISSION-SIG", "transmission_time": "PAYPAL-TRANSMISSION-TIME"}
 
@@ -88,7 +91,21 @@ def apply(event):
                        resource.get("batch_header", {}).get("batch_status"), event)
     if kind.startswith("PAYMENT.PAYOUTS-ITEM."):
         return _payout(resource.get("payout_batch_id"), resource.get("transaction_status"), event)
+    if kind.startswith("BILLING.SUBSCRIPTION."):
+        premium = _premium(resource.get("id"))
+        return bool(premium and premiums.set_status(premium, resource.get("status") or kind.rsplit(".", 1)[1]))
+    if kind == "PAYMENT.SALE.COMPLETED":
+        premium = _premium(resource.get("billing_agreement_id"))
+        if premium is None:
+            return False
+        premiums.record_payment(premium, resource.get("id"), (resource.get("amount") or {}).get("total", "0"))
+        return True
     return False
+
+
+def _premium(subscription_id):
+    return PremiumSubscription.objects.filter(paypal_subscription_id=subscription_id).first() \
+        if subscription_id else None
 
 
 def _funding_for(resource):
@@ -138,6 +155,9 @@ def register(url, client=None):
     client = client or get_client()
     for hook in client.request("GET", "/v1/notifications/webhooks").get("webhooks", []):
         if hook.get("url") == url:
+            if {e["name"] for e in hook.get("event_types", [])} != set(EVENT_TYPES):
+                client.request("PATCH", f"/v1/notifications/webhooks/{hook['id']}", json=[
+                    {"op": "replace", "path": "/event_types", "value": [{"name": n} for n in EVENT_TYPES]}])
             return hook["id"]
     created = client.request("POST", "/v1/notifications/webhooks", json={
         "url": url, "event_types": [{"name": name} for name in EVENT_TYPES]})

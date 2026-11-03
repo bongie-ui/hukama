@@ -39,7 +39,7 @@ In the **Assistant** tab, *See it from their side* lets you write as Mama, as Gw
 3. Open **Approvals**. You'll see the red card: risk 100/100, every check that fired, what the AI noticed (with quotes), and *"Call Mama Siqile Fuyana on the registered number (+263 77 000 0001)…"*.
 4. **Report scam**. Both unknown numbers are now blocked for the whole family.
 
-**Also try:** **Support for Mama → Groceries**: pick *Family week*, choose *Deliver home*, and watch it go from packing to delivered; the **Family funeral pool**'s share link (open it signed out); a request on **Mama's house: foundation** with the photos in [`backend/demo_assets/`](backend/demo_assets) (a handwritten quote at $14 a bag is refused by the $11 ceiling; the revised $10.50 quote plus the foundation photo is paid by PayPal Payout), and **Dashboard → Build with AI**.
+**Also try:** **Support for Mama → Groceries**: pick *Family week*, choose *Deliver home*, and watch it go from packing to delivered; the **Family funeral pool**'s share link (open it signed out); **Funeral cover: Peaceful Rest → Start monthly premium with PayPal** (approve with a sandbox buyer account); a request on **Mama's house: foundation** with the photos in [`backend/demo_assets/`](backend/demo_assets) (a handwritten quote at $14 a bag is refused by the $11 ceiling; the revised $10.50 quote plus the foundation photo is paid by PayPal Payout), and **Dashboard → Build with AI**.
 
 A [Postman collection](docs/postman/) replays scenarios 3 and 4 with assertions. API docs: https://thuma.onrender.com/api/docs/
 
@@ -60,6 +60,7 @@ A [Postman collection](docs/postman/) replays scenarios 3 and 4 with assertions.
 | **Akha** (build) | Pay only Gwanda Hardware · at most $600 · cement no more than $11 a bag · only after a photo shows the foundation is done · never more than the quote's total |
 | **Imfundo** (school fees) | Pay only Sunrise Academy · only on the school's own invoice, for its exact total |
 | **Isikhwama** (shared support) | Only for Mama · airtime, bundles, cash, **groceries** · bundles up to $30 a month **shared by all funders** · not twice in 24 hours · groceries up to $120 a month, at most every 72 hours · a funder approves anything over $50 |
+| **Vikela** (cover) | Monthly premium by **PayPal subscription**, paid only to the named cover provider, never above the premium |
 | **Isililo** (funeral pool) | Pay only the funeral provider, on invoice · **anyone with the pool's link can give with PayPal**, no account needed |
 
 **Groceries:** pick a basket from the family's store (prices come from the store's own list, so nobody can type an amount), then *collect in store* (Mama gets a code) or *home delivery* to her **registered address only**. The store is paid by PayPal Payout; packing and delivery are simulated.
@@ -95,9 +96,10 @@ The person who sent a held message never sees why it was held. Funders see every
 | PayPal Payouts to suppliers, schools and the grocer | **Real (sandbox).** Verified end to end: $420 to Gwanda Hardware, $340 to Sunrise Academy, $48 to Gwanda Fresh Market |
 | Payout to the local mobile money provider's PayPal account | **Real (sandbox).** A PayPal Payout whose note says which registered phone to credit with what. Verified: $10 bundles, batch `9QACHG3ETUYBG` |
 | Funding a mandate, and giving through a pool link | **Real (sandbox).** PayPal checkout: Orders v2 via the APIMatic-generated **PayPal Server SDK** (built with the APIMatic Context Plugin), **JS SDK v6** buttons, idempotent create and capture, amount and funding id checked before money counts |
-| PayPal Webhooks | **Real (sandbox).** Captures and payouts; every event signature-verified with PayPal, stored once, applied idempotently. Polling stays as a fallback |
+| Monthly cover premiums (funeral cover incl. repatriation, medical aid) | **Real (sandbox).** **PayPal Subscriptions** via the Server SDK: billing plan, subscription, approval on PayPal, transactions, cancel. Each premium PayPal collects funds the mandate once (by transaction id), then the rules pay the cover provider |
+| PayPal Webhooks | **Real (sandbox).** Captures, payouts and subscriptions (`BILLING.SUBSCRIPTION.*`, `PAYMENT.SALE.COMPLETED`); every event signature-verified with PayPal, stored once, applied idempotently. Polling stays as a fallback |
 | Last mile at home: airtime, data, cash or groceries with a collection code, grocery packing and delivery | **Simulated** (no public sandbox exists). Labelled in the app |
-| Billers (funeral cover, medical aid) | **Simulated** |
+| Billers (funeral cover, medical aid) receiving the premium | **Simulated** |
 | AI: chat agent, vision, rule drafting, fraud intent, dashboard agents | **Real** (OpenAI), always called from the server |
 
 ## Built with
@@ -105,7 +107,7 @@ The person who sent a held message never sees why it was held. Funders see every
 | Tool | Used for |
 |---|---|
 | **PayPal Payouts** | Paying suppliers, schools, the grocer and the mobile money provider, only after the policy engine approves |
-| **PayPal Orders v2** via the **APIMatic**-generated **PayPal Server SDK** (`paypal-server-sdk`) | Funding mandates and giving through a pool link. Written with the **APIMatic Context Plugin** in Claude Code |
+| **PayPal Orders v2** and **Subscriptions** via the **APIMatic**-generated **PayPal Server SDK** (`paypal-server-sdk`) | Funding mandates, giving through a pool link, and monthly cover premiums. Written with the **APIMatic Context Plugin** in Claude Code |
 | **PayPal JS SDK v6** | The "Pay with PayPal" buttons |
 | **PayPal Webhooks** | Capture and payout events, verified with `verify-webhook-signature`, deduplicated |
 | **OpenAI** | Tool-calling chat agent (multilingual), vision for quotes, invoices and photos, structured outputs for drafting mandates, scam intent analysis. All calls go through one wrapper (`backend/agent/llm.py`) with retries, timeouts and a demo replay cache |

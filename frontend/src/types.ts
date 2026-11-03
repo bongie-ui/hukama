@@ -106,6 +106,7 @@ export interface Mandate {
   pending: number;
   contribute_token: string | null;
   public_contributions: boolean;
+  premium: string | null;
 }
 
 export interface Draft {

@@ -97,11 +97,11 @@ TEMPLATES = {
         ),
         MandateTemplate(
             type=Mandate.VIKELA,
-            label="Vikela (Health)",
-            purpose="Local medical aid premiums paid to the medical aid",
+            label="Vikela (Cover)",
+            purpose="Monthly premiums for funeral cover (including repatriation) or medical aid, paid to the provider",
             priority="COULD",
             required_rules=("allowed_payees", "max_per_request"),
-            payee_kinds=(Payee.MEDICAL_AID,),
+            payee_kinds=(Payee.FUNERAL_PROVIDER, Payee.MEDICAL_AID),
             funding=(PAYPAL_SUBSCRIPTIONS, PAYPAL_CHECKOUT),
         ),
     )

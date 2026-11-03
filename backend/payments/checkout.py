@@ -29,36 +29,43 @@ def is_sandbox():
     return "sandbox" in settings.PAYPAL_BASE_URL
 
 
-def _orders():
+def sdk():
+    """The APIMatic-generated PayPal Server SDK client (Orders, Subscriptions)."""
     from paypalserversdk.configuration import Environment
     from paypalserversdk.http.auth.o_auth_2 import ClientCredentialsAuthCredentials
     from paypalserversdk.paypal_serversdk_client import PaypalServersdkClient
 
-    client = PaypalServersdkClient(
+    return PaypalServersdkClient(
         client_credentials_auth_credentials=ClientCredentialsAuthCredentials(
             o_auth_client_id=settings.PAYPAL_CLIENT_ID, o_auth_client_secret=settings.PAYPAL_CLIENT_SECRET),
         environment=Environment.SANDBOX if is_sandbox() else Environment.PRODUCTION,
         timeout=20, max_retries=2)
-    return client.orders
 
 
-def _call(method, request):
-    """Run an Orders call; turn SDK errors into a CheckoutError carrying PayPal's issue codes."""
+def _orders():
+    return sdk().orders
+
+
+def call(method, request):
+    """Run an SDK call; turn SDK errors into a CheckoutError carrying PayPal's issue codes."""
     from paypalserversdk.exceptions.api_exception import ApiException
-    from paypalserversdk.exceptions.error_exception import ErrorException
 
     try:
         result = method(request)
-    except ErrorException as exc:
-        issues = [d.issue for d in (exc.details or []) if getattr(d, "issue", None)]
-        error = CheckoutError(exc.message or "PayPal refused the request")
+    except ApiException as exc:
+        message = getattr(exc, "message", None)
+        issues = [d.issue for d in (getattr(exc, "details", None) or []) if getattr(d, "issue", None)]
+        if message is None and not issues:
+            raise CheckoutError(f"PayPal is unreachable right now ({exc.response_code})") from exc
+        error = CheckoutError(message or "PayPal refused the request")
         error.issues = issues
         raise error from exc
-    except ApiException as exc:
-        raise CheckoutError(f"PayPal is unreachable right now ({exc.response_code})") from exc
     if not result.is_success():
         raise CheckoutError("PayPal refused the request")
     return result.body
+
+
+_call = call
 
 
 def validate_amount(amount):

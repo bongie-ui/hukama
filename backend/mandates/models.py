@@ -84,7 +84,7 @@ class Mandate(BaseModel):
     VIKELA = "VIKELA"
     TYPES = [(AKHA, "Akha (Build)"), (IMFUNDO, "Imfundo (School fees)"),
              (ISIKHWAMA, "Isikhwama (Shared support)"), (ISILILO, "Isililo (Funeral)"),
-             (VIKELA, "Vikela (Health)")]
+             (VIKELA, "Vikela (Cover)")]
 
     DRAFT = "DRAFT"
     ACTIVE = "ACTIVE"

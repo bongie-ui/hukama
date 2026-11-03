@@ -61,7 +61,7 @@ Family members abroad fund a **mandate**: money set aside for one purpose, with 
 
 - **Backend:** Django + Django REST Framework, PostgreSQL on Render. Every state change writes an append-only ledger entry, and mandate rules are signed with HMAC-SHA256: if anyone edits them in the database, nothing gets paid.
 - **AI:** OpenAI models for chat with tool calling, structured outputs for drafting mandates from plain language, vision for quotes, invoices and photos, and fraud intent analysis. Every model call goes through one wrapper with retries, timeouts and a demo replay cache.
-- **PayPal, end to end:** money comes in through **PayPal checkout** (Orders v2 via the APIMatic-generated **PayPal Server SDK**, **JS SDK v6** buttons), for funders and for anyone with a pool's link. Money goes out by **PayPal Payouts** to suppliers, schools, the grocer and the local mobile money provider, idempotently (`sender_batch_id` = `hukama-<request id>`). **PayPal webhooks** update captures and payouts the moment they happen; every event is signature-verified with PayPal and applied once.
+- **PayPal, end to end:** money comes in through **PayPal checkout** (Orders v2 via the APIMatic-generated **PayPal Server SDK**, **JS SDK v6** buttons), for funders and for anyone with a pool's link. Funeral cover (including repatriation for family abroad) is paid monthly by **PayPal Subscriptions**; each premium is recorded once and then passed to the cover provider by the rules. Money goes out by **PayPal Payouts** to suppliers, schools, the grocer and the local mobile money provider, idempotently (`sender_batch_id` = `hukama-<request id>`). **PayPal webhooks** update captures and payouts the moment they happen; every event is signature-verified with PayPal and applied once.
 - **APIMatic:** the PayPal integration was written in Claude Code with the **APIMatic Context Plugin for PayPal**, which supplied the SDK's exact models, endpoints and idempotency parameters.
 - **Frontend:** React + TypeScript + Vite, served by Django on one Render service. Mobile-first, light and dark modes, with its own design system and logo.
 - **Dashboard:** AG Studio (built on AG Grid and AG Charts) shows funds by mandate, each sibling's contributions, spend by category, fraud alerts and the full audit trail. Its Agent Framework lets you say "chart cash paid out per month" and the chart appears. The agents' model calls go through our own server, so the API key never reaches the browser.
@@ -89,7 +89,6 @@ Families don't want an app that sends money. They want one that keeps a promise,
 ## What's next for Hukama
 
 - Real mobile money last-mile partners in place of the simulated rail
-- Recurring support and premiums (funeral cover, medical aid) with PayPal Subscriptions
 - Schools and suppliers sending invoices directly
 - More languages, and voice notes for older relatives
 ```
@@ -142,7 +141,7 @@ Answer whichever of these the form asks; the wording below fits the usual hackat
 - AG Studio's Agent Framework builds dashboard charts from natural language, through our own server.
 
 **Did you use APIMatic?**
-Yes. The PayPal integration was built in Claude Code with the **APIMatic Context Plugin for PayPal** (ContextMatic), which supplied the PayPal Server SDK's models, endpoints and parameters (for example `paypal_request_id` for idempotent create and capture). The app uses the APIMatic-generated **PayPal Server SDK** (`paypal-server-sdk`) for Orders v2.
+Yes. The PayPal integration was built in Claude Code with the **APIMatic Context Plugin for PayPal** (ContextMatic), which supplied the PayPal Server SDK's models, endpoints and parameters (for example `paypal_request_id` for idempotent create and capture). The app uses the APIMatic-generated **PayPal Server SDK** (`paypal-server-sdk`) for Orders v2 and Subscriptions.
 
 **Testing instructions for judges**
 1. Open https://thuma.onrender.com. The free tier was upgraded, so it shouldn't need to wake up.
@@ -164,5 +163,4 @@ Zimbabwe
 ## Not built yet (don't claim until done)
 
 - AG Studio licence key (the dashboard shows a watermark until it's set)
-- Funeral cover and medical aid premiums
 - The video

@@ -2,6 +2,7 @@ import { money } from "../api";
 import { ActivityList } from "../components/Activity";
 import FundButton from "../components/FundButton";
 import PoolContributions from "../components/PoolContributions";
+import PremiumCard from "../components/PremiumCard";
 import Icon, { TYPE_ICON } from "../components/Icon";
 import Ledger from "../components/Ledger";
 import QuickActions from "../components/QuickActions";
@@ -63,15 +64,18 @@ export default function MandateDetail({ id }: { id: string }) {
               </div>
             ))}
           </div>
-          <FundButton mandate={m} onFunded={refresh} />
+          {m.premium
+            ? <span className="small muted">Funded by the monthly premium below.</span>
+            : <FundButton mandate={m} onFunded={refresh} />}
         </div>
       </section>
 
       <div className="split">
         <div className="stack" style={{ gap: 28 }}>
           {covered.map((b) => <QuickActions key={b.id} mandate={m} beneficiary={b} onChange={refresh} />)}
+          {m.premium && <PremiumCard mandate={m} onChange={refresh} />}
           {m.public_contributions && <PoolContributions mandate={m} onChange={refresh} />}
-          {covered.length === 0 && <RequestForm mandate={m} />}
+          {covered.length === 0 && !m.premium && <RequestForm mandate={m} />}
 
           <section className="section" aria-labelledby="req-h">
             <div className="section-head"><h2 id="req-h">Requests</h2></div>

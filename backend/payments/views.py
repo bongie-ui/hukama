@@ -1,6 +1,10 @@
 import re
 
+from datetime import timedelta
+
 from django.conf import settings
+from django.shortcuts import redirect
+from django.utils import timezone
 from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.permissions import AllowAny
@@ -9,8 +13,8 @@ from rest_framework.response import Response
 from core.api import IsFamilyMember, current_family, get_or_404
 from mandates.models import Funding
 
-from . import checkout, last_mile, webhooks
-from .models import RailTransaction, WebhookEvent
+from . import checkout, last_mile, premiums, webhooks
+from .models import PremiumSubscription, RailTransaction, WebhookEvent
 from .paypal_client import PayPalError, get_client
 
 
@@ -181,3 +185,80 @@ def paypal_webhook(request):
     except webhooks.WebhookError as exc:
         return Response({"detail": str(exc)}, status=400)
     return Response({"result": outcome})
+
+
+# --- Monthly premiums (PayPal Subscriptions) -------------------------------------------------------------
+
+def _premium_data(p):
+    return {"id": str(p.id), "amount": f"{p.amount:.2f}", "status": p.status, "status_label": p.get_status_display(),
+            "funder": p.funder.get_full_name() or p.funder.username, "funder_id": p.funder_id,
+            "paypal_subscription_id": p.paypal_subscription_id, "activated_at": p.activated_at,
+            "cancelled_at": p.cancelled_at, "created_at": p.created_at}
+
+
+@api_view(["GET"])
+@permission_classes([IsFamilyMember])
+def mandate_premium(request, pk):
+    mandate = get_or_404(current_family(request).mandates.prefetch_related("rules"), pk=pk)
+    amount = premiums.premium_for(mandate)
+    subs = mandate.premium_subscriptions.select_related("funder").exclude(
+        status=PremiumSubscription.APPROVAL_PENDING, created_at__lt=timezone.now() - timedelta(days=1)).order_by("-created_at")
+    return Response({"amount": f"{amount:.2f}" if amount is not None else None,
+                     "subscriptions": [_premium_data(p) for p in subs]})
+
+
+@api_view(["POST"])
+@permission_classes([IsFamilyMember])
+def premium_start(request, pk):
+    """Start a monthly premium; the funder approves it on PayPal and comes back to the mandate."""
+    mandate = get_or_404(current_family(request).mandates.prefetch_related("rules"), pk=pk)
+    try:
+        premium, approve_url = premiums.start(mandate, request.user, premiums.public_base(request))
+    except premiums.CheckoutError as exc:
+        return _checkout_error(exc)
+    return Response({**_premium_data(premium), "approve_url": approve_url}, status=201)
+
+
+def _family_premium(request, pk):
+    return get_or_404(PremiumSubscription.objects.filter(mandate__family=current_family(request))
+                      .select_related("mandate", "funder"), pk=pk)
+
+
+@api_view(["POST"])
+@permission_classes([IsFamilyMember])
+def premium_sync(request, pk):
+    """Check status and payments with PayPal (after approval, or when webhooks are not reachable)."""
+    try:
+        premium = premiums.sync(_family_premium(request, pk))
+    except premiums.CheckoutError as exc:
+        return _checkout_error(exc)
+    return Response(_premium_data(premium))
+
+
+@api_view(["POST"])
+@permission_classes([IsFamilyMember])
+def premium_cancel(request, pk):
+    try:
+        premium = premiums.cancel(_family_premium(request, pk), request.user)
+    except premiums.CheckoutError as exc:
+        return _checkout_error(exc)
+    return Response(_premium_data(premium))
+
+
+def premium_return(request):
+    """PayPal sends the funder here after approving (or cancelling); continue in the app."""
+    premium = PremiumSubscription.objects.filter(pk=request.GET.get("premium") or None).first() \
+        if _is_uuid(request.GET.get("premium")) else None
+    if premium is None:
+        return redirect("/")
+    flag = "&cancelled=1" if request.GET.get("cancelled") else ""
+    return redirect(f"/#/mandates/{premium.mandate_id}?premium={premium.id}{flag}")
+
+
+def _is_uuid(value):
+    import uuid
+    try:
+        uuid.UUID(str(value))
+        return True
+    except ValueError:
+        return False

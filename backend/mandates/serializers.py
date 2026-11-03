@@ -96,9 +96,17 @@ class MandateSerializer(serializers.ModelSerializer):
         model = Mandate
         fields = ["id", "type", "type_label", "title", "purpose_text", "status", "currency", "version",
                   "signature_valid", "expires_at", "created_at", "balance", "funded", "funders", "rules",
-                  "beneficiary_ids", "pending", "contribute_token", "public_contributions"]
+                  "beneficiary_ids", "pending", "contribute_token", "public_contributions", "premium"]
 
     public_contributions = serializers.SerializerMethodField()
+    premium = serializers.SerializerMethodField()
+
+    def get_premium(self, m) -> str | None:
+        """Monthly premium for cover mandates (paid by PayPal subscription), else None."""
+        from payments.premiums import premium_for
+
+        amount = premium_for(m)
+        return f"{amount:.2f}" if amount is not None else None
 
     def get_public_contributions(self, m) -> bool:
         return TEMPLATES[m.type].public_contributions
