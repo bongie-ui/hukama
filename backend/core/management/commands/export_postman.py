@@ -146,11 +146,15 @@ def collection():
             req("Get their private shop link", "POST", "beneficiaries/{{shopperId}}/shop-link/", tests=[
                 OK, save("shopToken", "pm.response.json().shop_link")],
                 description="Returns the active link (or creates one). Send them {{baseUrl}}/#/shop/<shop_link>."),
-            req("What they see: the store's price list (public)", "GET", "public/shop/{{shopToken}}/", tests=[
-                OK, "pm.test('has items to choose', () => pm.expect(pm.response.json().mandates[0].stores[0].items.length).to.be.above(0));"],
-                description="They then POST public/shop/<token>/order/ with items [{item_id, quantity}], fulfilment and ask "
-                            "(\"all\" or a funder id). The support fund pays if the rules allow; if the fund is short "
-                            "the list is invoiced to the family, and the first funder to pay with PayPal covers it."),
+            req("Without the PIN, the link shows nothing (public)", "GET", "public/shop/{{shopToken}}/", tests=[
+                OK, "pm.test('locked until the PIN is entered', () => { const d = pm.response.json(); "
+                    "pm.expect(d.unlocked).to.eql(false); pm.expect(d).to.not.have.property('mandates'); });"],
+                description="The family tells the person a PIN by phone (shown once when the link or a new PIN is made). "
+                            "They POST public/shop/<token>/unlock/ {pin}; five wrong tries turn the link off and tell the "
+                            "family. Then GET shows the store's price list and POST public/shop/<token>/order/ sends items "
+                            "[{item_id, quantity}], fulfilment and ask (\"all\" or a funder id). The fund pays if the rules "
+                            "allow; if it is short the list is invoiced to the family, and the first funder to pay with "
+                            "PayPal covers it."),
             req("My notifications", "GET", "notifications/", tests=[OK]),
         ]},
         {"name": "Mandates", "item": [
