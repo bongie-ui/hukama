@@ -509,3 +509,112 @@ def apply_approval(request, user, action, note=""):
                blocked=suspects, note=note)
     request.refresh_from_db()
     return request
+
+
+# --- Payee upload links -----------------------------------------------------------------------------------
+
+LINK_UPLOADS_PER_DAY = 20
+LINK_EVIDENCE_KINDS = ("QUOTE", "INVOICE", "MILESTONE_PHOTO")
+
+
+def payee_mandates(family, payee):
+    """Active mandates of `family` that may pay `payee` (it is in their allowed payees)."""
+    ids = str(payee.id)
+    return [m for m in Mandate.objects.filter(family=family, status=Mandate.ACTIVE).prefetch_related("rules")
+            .order_by("created_at")
+            if any(r.kind == "allowed_payees" and ids in map(str, r.params.get("payee_ids", [])) for r in m.rules.all())]
+
+
+@transaction.atomic
+def set_payee_link(family, payee, user, enabled, new=False):
+    """A funder gets a payee's upload link (the active one, or a fresh secret when `new` or none exists) or
+    turns it off. Returns the active PayeeLink or None."""
+    from .models import PayeeLink
+
+    require_funder(user, family)
+    if payee.family_id not in (None, family.id):
+        raise ServiceError("That payee belongs to another family")
+    current = PayeeLink.objects.select_for_update().filter(family=family, payee=payee, active=True).first()
+    if enabled and current is not None and not new:
+        return current
+    PayeeLink.objects.filter(family=family, payee=payee, active=True).update(active=False)
+    if not enabled:
+        return None
+    if not payee_mandates(family, payee):
+        raise ServiceError(f"No mandate can pay {payee.name} yet. Add them to a mandate's payees first")
+    return PayeeLink.objects.create(family=family, payee=payee, token=secrets.token_urlsafe(16), created_by=user)
+
+
+def active_payee_link(token):
+    from .models import PayeeLink
+
+    link = PayeeLink.objects.filter(token=token, active=True).select_related("family", "payee").first() \
+        if token else None
+    if link is None:
+        raise ServiceError("This upload link is not active")
+    return link
+
+
+def _link_upload(link, data, content_type, name):
+    from datetime import timedelta
+
+    since = timezone.now() - timedelta(hours=24)
+    if Upload.objects.filter(payee_link=link, created_at__gte=since).count() >= LINK_UPLOADS_PER_DAY:
+        raise ServiceError("Too many files today through this link. Try again tomorrow or contact the family")
+    upload = create_upload(family=link.family, data=data, content_type=content_type, name=name,
+                           phone=link.payee.phone)
+    upload.payee_link = link
+    upload.save(update_fields=["payee_link", "updated_at"])
+    return upload
+
+
+def submit_via_payee_link(link, *, mandate_id, kind, data, content_type, name="", amount=None, note="",
+                          request_id=None, idempotency_key="", intent_analyzer=None, extractor=None):
+    """A payee sends a quote, invoice or photo through their link.
+
+    With `request_id` the file is added to one of this payee's own open requests and re-checked; otherwise it
+    becomes a new request to pay this payee. The payee is always the link's payee, so nothing sent here can
+    pay anyone else, and fraud checks and the rules decide exactly as for any other request.
+    """
+    if kind not in LINK_EVIDENCE_KINDS:
+        raise ServiceError("Send a quote, an invoice or a progress photo")
+    payee = link.payee
+    if request_id:
+        request = Request.objects.filter(pk=request_id, mandate__family=link.family, payee=payee).first() \
+            if _is_uuid(request_id) else None
+        if request is None:
+            raise ServiceError("No such request for you")
+        if request.status not in (Request.NEW, Request.ASSESSED, Request.REFUSED) or \
+                request.approvals.filter(action__in=(Approval.REJECT, Approval.REPORT_FRAUD)).exists():
+            raise ServiceError("This request is already decided; send a new one instead")
+        upload = _link_upload(link, data, content_type, name)
+        attach_evidence(request, upload, kind, extractor=extractor)
+        return reassess(request, intent_analyzer=intent_analyzer)
+
+    key = f"link-{link.id}-{idempotency_key or secrets.token_hex(8)}"[:100]
+    if existing := Request.objects.filter(idempotency_key=key).first():
+        return existing  # the same form sent twice
+    mandate = next((m for m in payee_mandates(link.family, payee) if str(m.id) == str(mandate_id)), None)
+    if mandate is None:
+        raise ServiceError("Choose what this is for")
+    if amount in (None, ""):
+        raise ServiceError("Enter the amount to be paid")
+    amount = clean_amount(amount)
+    from .templates import get_template
+    product = (payee.products or [None])[0] or get_template(mandate.type).default_product or "other"
+    upload = _link_upload(link, data, content_type, name)
+    return submit_request(
+        mandate=mandate, amount=amount, product=product, payee=payee, channel=Request.LINK,
+        requester_phone=payee.phone, requester_display=payee.name, message_text=(note or "").strip()[:1000],
+        summary_en=f"{payee.name} sent a {kind.replace('_', ' ').lower()} for {amount:.2f}",
+        uploads=[(upload, kind)], idempotency_key=key,
+        intent_analyzer=intent_analyzer, extractor=extractor)
+
+
+def _is_uuid(value):
+    import uuid
+    try:
+        uuid.UUID(str(value))
+        return True
+    except ValueError:
+        return False

@@ -124,6 +124,21 @@ def collection():
                  "allowed_products": ["airtime"]}),
             req("Payees", "GET", "payees/"),
         ]},
+        {"name": "Payee upload link (no account needed)", "item": [
+            req("Find a school or supplier", "GET", "payees/", tests=[
+                OK, "const p = pm.response.json().find(x => x.verified && ['SCHOOL', 'SUPPLIER'].includes(x.kind));",
+                save("payeeId", "p.id")]),
+            req("Get its private upload link", "POST", "payees/{{payeeId}}/upload-link/", tests=[
+                OK, save("payeeToken", "pm.response.json().upload_link")],
+                description="Returns the payee's active link (or creates one). Send the payee "
+                            "{{baseUrl}}/#/supplier/<upload_link>; {\"new\": true} replaces the secret, DELETE turns "
+                            "it off."),
+            req("What the payee sees (public, no sign-in)", "GET", "public/payee/{{payeeToken}}/", tests=[
+                OK, "pm.test('lists what to send', () => pm.expect(pm.response.json().mandates[0].needs).to.be.an('array'));"],
+                description="The payee then sends a photo of the quote or invoice with POST "
+                            "public/payee/<token>/send/ (multipart: file, kind, mandate, amount). It becomes a request "
+                            "to pay that payee only, and goes through the fraud checks and the rules."),
+        ]},
         {"name": "Mandates", "item": [
             req("Mandate types", "GET", "mandate-types/"),
             req("List mandates", "GET", "mandates/", tests=[save("mandateId", "pm.response.json()[0].id")]),
@@ -175,6 +190,7 @@ def collection():
         "event": [{"listen": "prerequest", "script": {"type": "text/javascript", "exec": PRE_REQUEST}}],
         "variable": [{"key": k, "value": ""} for k in ("supportMandateId", "beneficiaryId", "strangerConversationId",
                                                        "heldRequestId", "mandateId", "requestId", "myConversationId", "coverMandateId",
+                                                       "payeeId", "payeeToken",
                                                        "csrfToken")],
         "item": folders,
     }

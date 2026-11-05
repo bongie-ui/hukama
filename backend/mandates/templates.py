@@ -46,6 +46,7 @@ class MandateTemplate:
     payee_kinds: tuple = ()
     funding: tuple = (PAYPAL_CHECKOUT,)
     products: tuple = field(default_factory=tuple)
+    default_product: str = ""  # what a payee's invoice is for, when they send one through their link
     public_contributions: bool = False  # anyone with the pool's link may give (pools, not personal mandates)
 
 
@@ -54,6 +55,7 @@ TEMPLATES = {
     for t in (
         MandateTemplate(
             type=Mandate.AKHA,
+            default_product="materials",
             label="Akha (Build)",
             purpose="Check quotes against a price ceiling and milestone photos, then pay the supplier directly",
             priority="MUST",
@@ -65,6 +67,7 @@ TEMPLATES = {
         ),
         MandateTemplate(
             type=Mandate.IMFUNDO,
+            default_product="school_fees",
             label="Imfundo (School fees)",
             purpose="Fees locked to a named school, paid on the school's invoice",
             priority="MUST",
@@ -86,6 +89,7 @@ TEMPLATES = {
         ),
         MandateTemplate(
             type=Mandate.ISILILO,
+            default_product="funeral",
             label="Isililo (Funeral)",
             purpose="A funeral pool that pays funeral providers on invoice; optional funeral cover premiums",
             priority="SHOULD",
@@ -97,6 +101,7 @@ TEMPLATES = {
         ),
         MandateTemplate(
             type=Mandate.VIKELA,
+            default_product="premium",
             label="Vikela (Cover)",
             purpose="Monthly premiums for funeral cover (including repatriation) or medical aid, paid to the provider",
             priority="COULD",

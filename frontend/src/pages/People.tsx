@@ -15,6 +15,7 @@ export default function People() {
   const beneficiaries = useApi<Beneficiary[]>("/beneficiaries/");
   const payees = useApi<Payee[]>("/payees/");
   const family = useApi<Family>("/family/");
+  const [linkFor, setLinkFor] = useState<string | null>(null);
 
   return (
     <div className="page">
@@ -42,7 +43,7 @@ export default function People() {
           <div className="list">
             {payees.loading && !payees.data && <div style={{ padding: 18 }}><Skeleton h={44} /></div>}
             {payees.data?.map((p) => (
-              <div className="list-item" key={p.id}>
+              <div className="list-item" key={p.id} style={{ flexWrap: "wrap" }}>
                 <span className="type-icon" style={{ width: 38, height: 38 }}><Icon name={p.kind === "SCHOOL" ? "school" : p.kind === "SUPPLIER" ? "build" : p.kind === "MOBILE_MONEY_PROVIDER" ? "airtime" : p.kind === "GROCER" ? "groceries" : p.kind === "FUNERAL_PROVIDER" ? "flower" : "health"} size={18} /></span>
                 <div className="main">
                   <span className="title">{p.name}</span>
@@ -51,7 +52,13 @@ export default function People() {
                 <div className="end">
                   {p.verified ? <span className="pill ok">Verified</span> : <span className="pill warn">Not verified</span>}
                   {p.rail === "BILLER_SIM" ? <SimTag /> : p.rail === "LOCAL_MOBILE_MONEY" ? <SimTag label="Simulated last mile" /> : <span className="xs muted">PayPal Payout</span>}
+                  {LINK_KINDS.includes(p.kind) && (
+                    <button className="linkbtn small" onClick={() => setLinkFor(linkFor === p.id ? null : p.id)}>
+                      {p.upload_link ? "Upload link" : "Create upload link"}
+                    </button>
+                  )}
                 </div>
+                {linkFor === p.id && <PayeeLink payee={p} onChange={payees.reload} />}
               </div>
             ))}
           </div>
@@ -223,6 +230,54 @@ function InviteMember({ onSaved }: { onSaved: () => void }) {
         <button className="btn primary" disabled={busy || !form.first_name || !form.email} onClick={save}>Invite</button>
         <button className="btn outline" onClick={() => setOpen(false)}>Cancel</button>
       </div>
+      <ErrorNote error={error} />
+    </div>
+  );
+}
+
+const LINK_KINDS = ["SUPPLIER", "SCHOOL", "FUNERAL_PROVIDER", "GROCER", "MEDICAL_AID", "OTHER"];
+
+/** A payee's private upload link: they send invoices, quotes and photos without an account. */
+function PayeeLink({ payee, onChange }: { payee: Payee; onChange: () => void }) {
+  const { busy, error, run } = useAction();
+  const [copied, setCopied] = useState(false);
+  const link = payee.upload_link ? `${window.location.origin}/#/supplier/${payee.upload_link}` : "";
+  const change = (method: "post" | "delete", body?: unknown) => run(async () => {
+    await (method === "post" ? api.post(`/payees/${payee.id}/upload-link/`, body) : api.delete(`/payees/${payee.id}/upload-link/`));
+    onChange();
+  });
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(link);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 2000);
+    } catch {
+      (document.getElementById(`plink-${payee.id}`) as HTMLInputElement | null)?.select();
+    }
+  };
+  return (
+    <div className="stack" style={{ gap: 10, flexBasis: "100%", paddingTop: 8 }}>
+      {link ? (
+        <>
+          <span className="small ink-2">{payee.name} can send invoices, quotes and progress photos here without an account. Send it on WhatsApp or by SMS. Anything sent can only pay {payee.name}, and only when the rules are met.</span>
+          <div className="row" style={{ flexWrap: "nowrap" }}>
+            <input id={`plink-${payee.id}`} className="input" readOnly value={link} onFocus={(e) => e.target.select()} style={{ minWidth: 0 }} />
+            <button className="btn primary" onClick={copy}>{copied ? "Copied" : "Copy link"}</button>
+          </div>
+          <div className="row between">
+            <a className="small" href={`#/supplier/${payee.upload_link}`} target="_blank" rel="noreferrer">Preview the page</a>
+            <div className="row" style={{ gap: 14 }}>
+              <button className="linkbtn small" disabled={busy} onClick={() => change("post", { new: true })}>New link</button>
+              <button className="linkbtn small" disabled={busy} onClick={() => change("delete")}>Turn off</button>
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="row between">
+          <span className="small ink-2">Give {payee.name} a private link to send invoices and photos without an account.</span>
+          <button className="btn primary sm" disabled={busy} onClick={() => change("post")}>Create link</button>
+        </div>
+      )}
       <ErrorNote error={error} />
     </div>
   );

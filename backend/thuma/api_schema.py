@@ -181,6 +181,23 @@ ANNOTATIONS = [
     (agent.dashboard_turn, None, dict(tags=["Dashboard"], summary="One AG Studio agent turn, answered server-side",
                                       request=OBJ, responses=OBJ)),
 
+    (mandates.payee_upload_link, ["POST"], dict(
+        tags=["Payee upload link"], summary="Get a payee's private upload link (new: true replaces the secret)",
+        request=body("PayeeLinkInput", new=s.BooleanField(required=False)), responses=OBJ)),
+    (mandates.payee_upload_link, ["DELETE"], dict(tags=["Payee upload link"], summary="Turn a payee's upload link off",
+                                                  request=None, responses=OBJ)),
+    (mandates.public_payee, None, dict(
+        tags=["Payee upload link"], summary="Public: what the payee sees (what to send, how their requests are going)",
+        auth=[], responses=OBJ)),
+    (mandates.public_payee_send, None, dict(
+        tags=["Payee upload link"], summary="Public: send a quote, invoice or photo (a new request, or a file for an "
+                                            "open one); it can only ever pay this payee",
+        auth=[], request={"multipart/form-data": body(
+            "PayeeSendInput", file=s.FileField(), kind=s.ChoiceField(["QUOTE", "INVOICE", "MILESTONE_PHOTO"]),
+            mandate=uuid(required=False), amount=money(required=False), note=text(required=False),
+            request=uuid(required=False), idempotency_key=text(required=False))},
+        responses=OBJ)),
+
     (payments.demo_collect, None, dict(tags=["Demo"], summary="Mark cash collected (simulated last mile)",
                                        request=body("CollectInput", code=text(required=False)), responses=OBJ)),
 ]

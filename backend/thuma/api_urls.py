@@ -28,6 +28,9 @@ urlpatterns = [
     path("beneficiaries/", mandates.beneficiaries),
     path("beneficiaries/<uuid:pk>/", mandates.beneficiary_detail),
     path("payees/", mandates.payees),
+    path("payees/<uuid:pk>/upload-link/", mandates.payee_upload_link),
+    path("public/payee/<str:token>/", mandates.public_payee),
+    path("public/payee/<str:token>/send/", mandates.public_payee_send),
 
     path("mandate-types/", mandates.mandate_types),
     path("mandates/", mandates.mandates),

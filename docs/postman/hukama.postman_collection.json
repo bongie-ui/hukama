@@ -55,6 +55,14 @@
       "value": ""
     },
     {
+      "key": "payeeId",
+      "value": ""
+    },
+    {
+      "key": "payeeToken",
+      "value": ""
+    },
+    {
       "key": "csrfToken",
       "value": ""
     }
@@ -835,6 +843,124 @@
             },
             "description": ""
           }
+        }
+      ]
+    },
+    {
+      "name": "Payee upload link (no account needed)",
+      "item": [
+        {
+          "name": "Find a school or supplier",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/payees/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "payees",
+                ""
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "const p = pm.response.json().find(x => x.verified && ['SCHOOL', 'SUPPLIER'].includes(x.kind));",
+                  "pm.collectionVariables.set('payeeId', p.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get its private upload link",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/payees/{{payeeId}}/upload-link/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "payees",
+                "{{payeeId}}",
+                "upload-link",
+                ""
+              ]
+            },
+            "description": "Returns the payee's active link (or creates one). Send the payee {{baseUrl}}/#/supplier/<upload_link>; {\"new\": true} replaces the secret, DELETE turns it off."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "pm.collectionVariables.set('payeeToken', pm.response.json().upload_link);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "What the payee sees (public, no sign-in)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/public/payee/{{payeeToken}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "public",
+                "payee",
+                "{{payeeToken}}",
+                ""
+              ]
+            },
+            "description": "The payee then sends a photo of the quote or invoice with POST public/payee/<token>/send/ (multipart: file, kind, mandate, amount). It becomes a request to pay that payee only, and goes through the fraud checks and the rules."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "pm.test('lists what to send', () => pm.expect(pm.response.json().mandates[0].needs).to.be.an('array'));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },

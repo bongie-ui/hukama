@@ -59,6 +59,7 @@ export interface Payee {
   simulated: boolean;
   products: string[];
   catalogue: { delivery_fee?: string; baskets?: Basket[] };
+  upload_link?: string | null;
 }
 
 export interface Basket {

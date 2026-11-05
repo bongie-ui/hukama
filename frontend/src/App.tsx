@@ -5,6 +5,7 @@ import { Avatar, ErrorNote, PageLoading } from "./components/ui";
 import { SessionContext, useApi, usePoll, useSession } from "./hooks";
 import Chat from "./pages/Chat";
 import Give from "./pages/Give";
+import Supplier from "./pages/Supplier";
 import DashboardPage from "./pages/DashboardPage";
 import Home from "./pages/Home";
 import Inbox from "./pages/Inbox";
@@ -21,6 +22,9 @@ export default function App() {
   const path = usePath();
   const give = match("/give/:token", path);
   if (give) return <Give token={give.token} />;
+  // A payee's private upload link (schools, builders): no account needed either.
+  const supplier = match("/supplier/:token", path);
+  if (supplier) return <Supplier token={supplier.token} />;
   return <SignedIn />;
 }
 

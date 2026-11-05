@@ -10,9 +10,10 @@ from accounts.models import Membership
 from django.db.models import Q
 from django.http import HttpResponse
 from rest_framework import status
-from rest_framework.decorators import api_view, parser_classes, permission_classes
-from rest_framework.exceptions import ValidationError
+from rest_framework.decorators import api_view, authentication_classes, parser_classes, permission_classes
+from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.parsers import MultiPartParser
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 from agent import drafting
@@ -87,7 +88,9 @@ def payees(request):
     family = current_family(request)
     if request.method == "GET":
         qs = Payee.objects.filter(Q(family=family) | Q(family__isnull=True)).order_by("name")
-        return Response(PayeeSerializer(qs, many=True).data)
+        links = dict(family.payee_links.filter(active=True).values_list("payee_id", "token"))
+        return Response([{**row, "upload_link": links.get(p.id)}
+                         for p, row in zip(qs, PayeeSerializer(qs, many=True).data)])
     services.require_funder(request.user, family)
     data = request.data.copy()
     if data.get("phone"):
@@ -97,6 +100,95 @@ def payees(request):
     # New payees start unverified; verification is an admin step.
     payee = serializer.save(family=family, verified=False)
     return Response(PayeeSerializer(payee).data, status=status.HTTP_201_CREATED)
+
+
+@api_view(["POST", "DELETE"])
+@permission_classes(PERMS)
+def payee_upload_link(request, pk):
+    """A funder gets a payee's private upload link (POST; {"new": true} replaces it with a new secret) or turns
+    it off (DELETE)."""
+    family = current_family(request)
+    payee = get_or_404(Payee.objects.filter(Q(family=family) | Q(family__isnull=True)), pk=pk)
+    link = services.set_payee_link(family, payee, request.user, enabled=request.method == "POST",
+                                   new=bool(request.data.get("new")))
+    return Response({"payee": str(payee.id), "upload_link": link.token if link else None})
+
+
+# --- Public payee upload link (no sign-in) ----------------------------------------------------------------
+
+_PUBLIC_STATUS = {Request.APPROVED: "Approved, payment on its way", Request.PAID: "Paid",
+                  Request.REFUSED: "Not approved", Request.FAILED: "Payment failed; the family will follow up",
+                  Request.ESCALATED: "Waiting for the family", Request.HELD_FRAUD: "Waiting for the family",
+                  Request.CONFIRMED_FRAUD: "Not approved"}
+
+
+def _needs(mandate):
+    """What this payee must send for the mandate, in plain words (from its rules)."""
+    needs = []
+    for r in mandate.rules.all():
+        if r.kind == "requires_invoice":
+            needs.append("Your invoice, for exactly the amount you ask for")
+        elif r.kind == "price_ceiling":
+            needs.append("A quote with each item and its price")
+        elif r.kind == "requires_evidence":
+            label = r.params.get("label") or r.params.get("kind", "").replace("_", " ").lower()
+            needs.append(f"A photo showing: {label}" if r.params.get("kind") == Evidence.MILESTONE_PHOTO
+                         else f"Evidence: {label}")
+    return needs
+
+
+def _public_request(r):
+    decision = r.latest_decision
+    show_reasons = r.status == Request.REFUSED and decision and decision.decided_by == "POLICY"
+    return {"id": str(r.id), "mandate": r.mandate.title, "amount": f"{r.amount:.2f}", "currency": r.mandate.currency,
+            "status": _PUBLIC_STATUS.get(r.status, "Being checked"), "state": r.status,
+            "can_add_files": r.status in (Request.NEW, Request.ASSESSED, Request.REFUSED) and not
+            r.approvals.filter(action__in=(Approval.REJECT, Approval.REPORT_FRAUD)).exists(),
+            # Only rule results the payee can act on (never fraud signals or funder notes).
+            "to_fix": [x["detail"] for x in decision.rule_results if not x["passed"] and x.get("kind") != "mandate"]
+            if show_reasons else [],
+            "created_at": r.created_at}
+
+
+@api_view(["GET"])
+@authentication_classes([])
+@permission_classes([AllowAny])
+def public_payee(request, token):
+    """What the payee sees on their link: who it is for, what to send, and how their requests are going."""
+    try:
+        link = services.active_payee_link(token)
+    except services.ServiceError:
+        raise NotFound("This upload link is not active")
+    mandates = services.payee_mandates(link.family, link.payee)
+    recent = Request.objects.filter(mandate__family=link.family, payee=link.payee).select_related("mandate") \
+        .prefetch_related("decisions", "approvals").order_by("-created_at")[:10]
+    return Response({
+        "payee": link.payee.name, "family": link.family.name,
+        "mandates": [{"id": str(m.id), "title": m.title, "type": TEMPLATES[m.type].label, "currency": m.currency,
+                      "needs": _needs(m)} for m in mandates],
+        "requests": [_public_request(r) for r in recent],
+    })
+
+
+@api_view(["POST"])
+@authentication_classes([])
+@permission_classes([AllowAny])
+@parser_classes([MultiPartParser])
+def public_payee_send(request, token):
+    """The payee sends a quote, invoice or photo: a new request to pay them, or a file for an open request."""
+    try:
+        link = services.active_payee_link(token)
+    except services.ServiceError:
+        raise NotFound("This upload link is not active")
+    f = request.FILES.get("file")
+    if f is None:
+        raise ValidationError({"file": "Attach a photo or scan"})
+    d = request.data
+    req = services.submit_via_payee_link(
+        link, mandate_id=d.get("mandate"), kind=d.get("kind", ""), data=f.read(), content_type=f.content_type,
+        name=f.name, amount=d.get("amount"), note=d.get("note", ""), request_id=d.get("request") or None,
+        idempotency_key=d.get("idempotency_key", ""))
+    return Response(_public_request(req), status=status.HTTP_201_CREATED)
 
 
 # --- Mandates ---------------------------------------------------------------------------------------------

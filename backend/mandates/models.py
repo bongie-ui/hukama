@@ -171,7 +171,8 @@ class Request(BaseModel):
     CHAT = "CHAT"
     APP = "APP"
     SCHEDULE = "SCHEDULE"
-    CHANNELS = [(c, c.title()) for c in (CHAT, APP, SCHEDULE)]
+    LINK = "LINK"  # a payee's private upload link (no account)
+    CHANNELS = [(CHAT, "Chat"), (APP, "App"), (SCHEDULE, "Schedule"), (LINK, "Payee link")]
 
     NEW = "NEW"
     ASSESSED = "ASSESSED"
@@ -230,6 +231,8 @@ class Upload(BaseModel):
     size = models.PositiveIntegerField(default=0)
     sha256 = models.CharField(max_length=64)
     data = models.BinaryField()
+    payee_link = models.ForeignKey("PayeeLink", null=True, blank=True, on_delete=models.SET_NULL,
+                                   related_name="uploads")  # sent through a payee's upload link
 
     @property
     def is_image(self):
@@ -237,6 +240,21 @@ class Upload(BaseModel):
 
     def __str__(self):
         return self.name or str(self.id)
+
+
+class PayeeLink(BaseModel):
+    """A payee's private upload link for one family: a school or builder without an account sends quotes,
+    invoices and progress photos here. Whatever arrives can only ever pay this payee, through the rules."""
+
+    family = models.ForeignKey(Family, on_delete=models.CASCADE, related_name="payee_links")
+    payee = models.ForeignKey(Payee, on_delete=models.CASCADE, related_name="links")
+    token = models.CharField(max_length=32, unique=True)
+    active = models.BooleanField(default=True)
+    created_by = models.ForeignKey(User, null=True, on_delete=models.SET_NULL, related_name="+")
+
+    class Meta(BaseModel.Meta):
+        constraints = [models.UniqueConstraint(fields=["family", "payee"], condition=models.Q(active=True),
+                                               name="one_active_link_per_payee")]
 
 
 class Evidence(BaseModel):
