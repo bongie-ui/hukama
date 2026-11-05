@@ -1,6 +1,6 @@
 # CLAUDE.md — Hukama
 
-Context file for Claude Code. Read this first, then follow **`docs/BUILD_SPEC.md`** (the detailed build plan, data model, phases and acceptance tests). When the two disagree, BUILD_SPEC.md wins on implementation detail; this file wins on product rules.
+Context file for Claude Code (terminal or claude.ai/code on the web). Read this first. **`BUILD_SPEC.md`** (repo root) has the detailed build plan, data model, phases and acceptance tests; when the two disagree, BUILD_SPEC wins on implementation detail and this file wins on product rules. The full log of what was built, verified and fixed is in **`docs/HISTORY.md`**.
 
 ## What we're building
 
@@ -14,153 +14,140 @@ Built for the **PayPal AI Hackathon** (Devpost). Builder: Bonginkosi, Gwanda, Zi
 
 ## Mandate types
 
-| Type | Purpose | Priority |
+| Type | Purpose | Status |
 |---|---|---|
-| **Akha** (Build) | Agent checks quotes (price ceiling) + milestone photos, pays the supplier | MUST |
-| **Imfundo** (School fees) | Fees locked to a school; paid on the school's invoice | MUST |
-| **Isikhwama** (Shared support for a parent) | Several funders share one mandate for airtime, bundles, cash and groceries (collect or home delivery) for a registered beneficiary; shared caps; no double top-ups | MUST |
-| **Isililo** (Funeral) | Funeral pool funded by the family and by anyone with the pool's PayPal link; funeral cover incl. repatriation for members abroad | SHOULD (pool), COULD (cover premiums) |
-| **Vikela** (Health) | Local medical aid premiums | COULD |
+| **Akha** (Build) | Agent checks quotes (price ceiling) + milestone photos, pays the supplier | Built |
+| **Imfundo** (School fees) | Fees locked to a school; paid on the school's invoice | Built |
+| **Isikhwama** (Shared support for a parent) | Several funders share caps for airtime, bundles, cash and groceries (collect or home delivery); no double top-ups | Built |
+| **Isililo** (Funeral) | Funeral pool funded by the family and anyone with the pool's PayPal link | Built |
+| **Vikela** (Cover) | Funeral cover / medical aid premiums by PayPal Subscriptions | Built |
 
-Mandate types are **rule templates + data**, not separate code paths.
+Mandate types are **rule templates + data** (`mandates/templates.py`), not separate code paths.
 
-## Fraud flagging (MUST)
+## Fraud flagging
 
-Every request is risk-assessed **before** the policy engine:
-1. **Deterministic signals** (always run): unregistered sender, a different phone number in the message, beneficiary number recently changed, amount spike, velocity, odd hours, PIN/OTP mentioned.
-2. **LLM intent analysis**: stated intent, flags (urgency pressure, impersonation, third-party payment, emergency story, credential request, reversal scam, prize scam, style mismatch, purpose mismatch) with reasons and quotes, plus a suggested verification step.
+Every request is risk-assessed **before** the policy engine (`agent/fraud.py`):
+1. **Deterministic signals** (always run): unregistered sender, a different phone number in the message, beneficiary number or delivery address recently changed, amount spike, velocity, odd hours, PIN/OTP mentioned, previously reported number.
+2. **LLM intent analysis**: urgency pressure, impersonation, third-party payment, emergency story, credential request, reversal scam, prize scam, style mismatch, purpose mismatch — with reasons, quotes and a verification step.
 
-HIGH risk → **HOLD_FRAUD**: funders must call the beneficiary on the **registered** number and confirm, or report fraud. MEDIUM → escalate to a funder. **AI can only add risk, never remove it.** Details in BUILD_SPEC §7.
+HIGH risk → **HOLD_FRAUD**: a funder must call the beneficiary on the **registered** number and confirm, or report fraud. MEDIUM → a funder must approve. **AI can only add risk, never remove it** (a re-check keeps the higher score).
 
 ## Core rules — never break these
 
 1. **The AI proposes, code decides, PayPal moves the money.** No LLM tool can pay, approve, change rules or change beneficiaries.
 2. **AI can only make things stricter.**
-3. **Nothing about the demo family is hard-coded.** The Fuyana family exists only in `seed_demo`. Code, prompts and UI are generic; tests use generic data.
+3. **Nothing about the demo family is hard-coded.** The Fuyana family exists only in `seed_demo`. Code, prompts and UI are generic; tests use generic data (`core/testing.py`).
 4. **PayPal is central in every flow.** All funding via PayPal; all real payouts are PayPal Payouts. Simulated rails are labelled "Simulated rail" in the UI.
-5. **Consult the APIMatic Context Plugin** before writing or changing PayPal code.
+5. **Consult the APIMatic Context Plugin** (MCP `context-matic`, `/plugin install context-matic@apimatic`) before writing or changing PayPal code. If it isn't available in the session (e.g. on the web), say so before touching PayPal calls in `payments/`; the guidelines it installed are in `.claude/`.
 6. **No third-party brand names/logos** in UI or video. Use neutral labels.
+7. **Only verified payees can be paid**, and every payout goes through fraud → policy → `Rail` (never directly).
 
-## Money rails
+## Working on the web (claude.ai/code) or a fresh clone
 
-| Rail | Status |
+The cloud session clones `github.com/bongie-ui/hukama` with no `.env`, no local database and no installed packages.
+
+**Setup** (Python 3.13+, CI uses 3.13; Node 22):
+```bash
+cd backend && pip install -r requirements.txt && python manage.py migrate && python manage.py seed_demo
+cd ../frontend && npm ci && npm run build      # Django serves frontend/dist
+```
+Run the app: `cd backend && python manage.py runserver` → http://localhost:8000 (the demo persona login needs `DEMO_MODE=true`).
+
+**Before every commit** (the same checks CI runs):
+```bash
+cd backend && python manage.py test && python manage.py makemigrations --check --dry-run
+cd ../frontend && npx tsc --noEmit -p . && npm run build
+```
+Tests never call PayPal or OpenAI (`settings.TESTING` blanks the keys), so they pass with no secrets. CI also runs them on PostgreSQL 16, which rejects some row locks SQLite ignores.
+
+**Secrets** are read from a repo-root `.env` locally (template: `.env.example`) or from environment variables. On the web, set them in the environment's settings, never in a committed file:
+- None are needed for code, tests, or the demo with rules-only fraud checks.
+- `OPENAI_API_KEY`, `OPENAI_MODEL=gpt-5.5-2026-04-23`, `OPENAI_MODEL_FAST=gpt-5.4-mini-2026-03-17`: AI drafting, reading documents, fraud intent, chat.
+- `PAYPAL_CLIENT_ID`, `PAYPAL_CLIENT_SECRET`, `PAYPAL_BASE_URL=https://api-m.sandbox.paypal.com` (not the website URL): real sandbox checkout and payouts; also needed for `register_webhook`.
+- `MANDATE_SIGNING_KEY`: any long random string locally. Changing it invalidates every mandate signature (`seed_demo --reset` rebuilds).
+- `DEMO_MODE=true` for the persona switcher and "talk as…" chat.
+
+If calls to `api-m.sandbox.paypal.com`, `api.openai.com` or `thuma.onrender.com` fail from a web session, its network access must allow those domains.
+
+**Deploying:** Render auto-deploys **`main`** (`render.yaml`; `build.sh` runs pip, the frontend build, collectstatic, migrate, and `seed_demo --sync` when `DEMO_MODE=true`). Web sessions usually push a `claude/…` branch, and nothing is live until it is merged into `main`. After deploying, check `https://thuma.onrender.com/api/health/paypal/` (should say `connected`) and run the Postman tour (below).
+
+**Useful commands** (in `backend/`): `seed_demo [--reset|--if-missing|--sync]`, `export_postman` (regenerates `docs/postman/`), `register_webhook https://thuma.onrender.com` (after adding webhook event types), `poll_payouts`, `agent_chat` (talk to the agent in the terminal), `spectacular --validate --fail-on-warn` (OpenAPI).
+
+## Repo map
+
+| Path | What |
 |---|---|
-| PayPal Orders (funding) via APIMatic-generated PayPal Server SDK | REAL (sandbox) |
-| PayPal Payouts to suppliers, schools, the Local Mobile Money provider account | REAL (sandbox) |
-| Local mobile money last mile (airtime/bundles to the beneficiary's number, cash with a collection code) | SIMULATED |
-| Biller (funeral cover, medical aid premiums) | SIMULATED |
+| `backend/thuma/` | Django project (settings `base/local/production`, `api_urls.py`, `api_schema.py` OpenAPI annotations) |
+| `backend/accounts/` | Family, Membership (ADMIN / FUNDER / VIEWER), DashboardLayout, session + demo login |
+| `backend/mandates/` | Models, `services.py` (every state change), `templates.py`, `signing.py`, REST views, dashboard tables, payee upload links |
+| `backend/agent/` | `llm.py` (the only OpenAI import), `fraud.py`, `policy.py`, `chat.py` (6 tools, none can pay), `drafting.py`, `extraction.py`, prompts |
+| `backend/payments/` | `paypal_client.py`, `checkout.py` (Orders via the Server SDK), `payouts.py`, `rails/`, `webhooks.py`, `premiums.py` (Subscriptions), `last_mile.py` (simulated) |
+| `backend/core/` | BaseModel, phones, test fixtures, `seed_demo`, `export_postman`, SPA view |
+| `backend/demo_assets/` | Quotes ($14, $10.50), foundation photo, Sunrise invoice (use the PNG; PDFs are not read) |
+| `frontend/src/` | React 19 + Vite + TS, hash router. Pages include the public `Give.tsx` (`#/give/<token>`) and `Supplier.tsx` (`#/supplier/<token>`); `dashboard/` is AG Studio |
+| `docs/` | `HISTORY.md`, `postman/`, `devpost/SUBMISSION.md` + gallery, `architecture.svg/png` |
 
-## Stack & resources
+## How the money flows (key facts)
 
-- Backend: Django + DRF, SQLite locally, PostgreSQL on Render, drf-spectacular for OpenAPI.
-- Frontend: React + Vite + TypeScript, served by Django (WhiteNoise) on one Render service.
-- AI: **OpenAI** (paid key). All calls through `agent/llm.py` (retries, timeouts, demo replay cache). Models from env.
-- PayPal: Server SDK (Orders), Payouts REST, Webhooks, JS SDK v6 (fallback v5), Subscriptions/Agent Toolkit if time allows.
-- APIMatic: Context Plugin while coding + PayPal Server SDK in code. Keep screenshots for Devpost.
-- Render (hosting + webhooks), AG Studio (dashboard + Studio Agent Framework), Postman (public collection), GitHub Actions (tests).
-- Cut: Bryntum, voice, dispute auto-response, Astropods, Elastic, Zapier, KERNEL, Channel3.
+- **Funding:** PayPal Orders v2 (CAPTURE) into the platform's business account (`platform@thuma.com`). A Funding counts only after a COMPLETED capture for the exact amount. Mandate balance = captured − refunded − approved/paid requests: Hukama's per-mandate record of money held in that one PayPal account.
+- **Payouts:** PayPal Payouts with `sender_batch_id = hukama-<request id>` (idempotent). Status only moves forward; failed/returned are final. Mobile money = a real Payout to the provider + a simulated last mile (airtime/bundles delivered, cash code collected).
+- **Webhooks** (`/api/webhooks/paypal/`, Render hook `6A597005RK7522420`): every event is verified with PayPal, stored and applied in one transaction, and deduped by event id. Handles captures, refunds/chargebacks, payout batch/item status, subscriptions and premium sales.
+- **Concurrency:** decisions on one mandate are serialised (`services.lock_mandate`), so caps and the balance can't be double-spent.
+- **Payee upload link:** a payee with no account sends invoices/quotes/photos at `#/supplier/<token>`; the request can only pay that payee and goes through the normal checks. Funders manage links on the People page.
+- **Production caveat** (for the Devpost text): pooling family money in our own account is regulated; production would use PayPal's marketplace product with delayed disbursement.
 
 ## Demo cast (seed_demo only)
 
-Sandbox accounts are all US PayPal accounts; story locations differ.
+Sandbox accounts are all US PayPal accounts; story locations differ. Personas: `mmeli` (family admin), `bonginkosi`, `andile`.
 
 | Name | Kind | Story |
 |---|---|---|
 | Thuma Platform (`platform@thuma.com`) | PayPal business | Our app; `thuma-platform` app credentials; sends all payouts |
-| Mmeli Fuyana | PayPal personal | Son in Johannesburg |
+| Mmeli Fuyana | PayPal personal | Son in Johannesburg (family admin) |
 | Bonginkosi Fuyana | PayPal personal | Son in the United States |
 | Andile Fuyana | PayPal personal | Son in the United Kingdom |
 | Gwanda Hardware | PayPal business | Supplier, Gwanda |
 | Sunrise Academy | PayPal business | School, Gwanda |
+| Gwanda Fresh Market | PayPal business | Grocer (collect or delivery) |
 | Local Mobile Money | PayPal business + simulated last mile | Mobile money provider, Zimbabwe |
 | Mama Siqile Fuyana | Beneficiary (no PayPal) | Mother in Gwanda |
 | Peaceful Rest Funeral Cover, Imbali Health Medical Aid | Simulated billers | Zimbabwe |
 
+## Live resources
+
+- App: https://thuma.onrender.com (Render paid plan until 2027, Postgres, Frankfurt). Health: `/api/health/`, `/api/health/paypal/`. API docs: `/api/docs/`.
+- Repo: github.com/bongie-ui/hukama (CI: `.github/workflows/tests.yml`).
+- Postman: public docs https://documenter.getpostman.com/view/43618475/2sBYHXRJVS; workspace "hukama" `2b62f875-6bf6-42c1-8281-3139e4778df7`, collection "Hukama API" `43618475-40822b34-8700-4fda-a1d5-1a7bba447496`. The repo keeps the v2.1 JSON (`docs/postman/`). To update the cloud copy: run `export_postman`, `postman workspace pull <workspace id>` into a scratch folder, `postman collection migrate` the JSON over the collection folder, `postman workspace diff`, then `postman workspace push` (needs `postman login`).
+- Postman tour against Render: `npx newman@6.2.1 run docs/postman/hukama.postman_collection.json -e docs/postman/hukama.postman_environment.json --folder "1. Try it in 3 minutes"` (expect 11/11 requests, 19/19 assertions).
+
 ## Coding conventions
 
-- PayPal code only in `payments/` (`paypal_client.py` + `rails/`); never from views.
-- Every payout goes through the policy engine and the `Rail` interface; idempotent (`sender_batch_id = hukama-<request id>`). Internal names (Django package `thuma`, Render service `thuma`, repo, `platform@thuma.com`) stay; only user-visible text says Hukama.
+- PayPal code only in `payments/` (`paypal_client.py`, `checkout.py`, `premiums.py`, `rails/`); never from views.
+- Every payout goes through the policy engine and the `Rail` interface. Internal names (Django package `thuma`, Render service `thuma`, `platform@thuma.com`) stay; only user-visible text says Hukama.
 - Every state change writes an append-only `LedgerEntry`.
-- Small, testable functions. Tests first for policy and fraud. `python manage.py test` passes before every commit.
-- Never commit `.env`, sandbox passwords or real personal data.
+- Small, testable functions. Tests first for policy and fraud; add a test for every bug or loophole fixed.
+- Never commit `.env`, sandbox passwords or real personal data (`thuma_sandbox_*` and `*.numbers` are gitignored).
+- Ask before adding dependencies not listed in BUILD_SPEC.
+
+## Current status (5 Nov 2026)
+
+Phases 1–8 are done and verified live on Render with the real model and sandbox PayPal (234 tests, CI green). Details, batch ids and verifications are in `docs/HISTORY.md`.
+
+- [x] Phases 1 Foundations · 2 Policy + fraud · 3 Render · 4 PayPal funding, payouts, mobile money rail, webhooks (built with the APIMatic plugin) · 5 Agent · 6 Frontend + seed_demo · 7 AG Studio dashboard, Isililo pool, Postman · 8 Hardening, README, OpenAPI
+- [x] Extras: Hukama rebrand + redesign, funeral cover premiums (PayPal Subscriptions; live subscription `I-URGX2TF3YXPV` active), family invite, groceries, pool contribution link
+- [x] 5 Nov loophole audit: unverified payees can't be paid, per-mandate locking, a funder's rejection can't be undone by a re-check, risk never lowered, address-change signal, refunds/chargebacks, forward-only payout status, atomic webhooks, premium dedupe, whole-cent amounts
+- [x] 5 Nov payee upload link (schools/builders send invoices without an account); verified live (batch `N2QL9D63HU7W8`)
+- [ ] **Phase 9 — Video + Devpost text** (next). Drafts are in `docs/devpost/SUBMISSION.md`; update them for the payee link, refunds and the production caveat. Suggested video beats: mandate drafted in plain words → fund with PayPal → $14 quote refused, $10.50 approved and paid → a sibling's double top-up refused → scam held, reported as fraud → the school sends its invoice through its upload link → payment visible in the school's sandbox PayPal account → dashboard
+- [ ] Phase 10 — Submitted (by 11 Nov)
+
+**Open items that need the user's logins or decisions**
+- GitHub About still reads "Paypal Hackaton" with no website (set the description and `https://thuma.onrender.com`)
+- Phone check of `#/supplier/<token>` and the People link panel (headless screenshots can't go below 500px)
+- The AG Studio licence is a 45-day trial key (`VITE_AG_STUDIO_LICENSE_KEY`, build-time)
+- Known limits, not fixed: the mandate owner can change rules on a mandate others also fund (ledgered; money only goes to verified payees); public pool checkout has no rate limit; viewers can submit requests (the rules still decide); no real WhatsApp/SMS channel (chat by phone number is demo-only)
 
 ## Working method for Claude Code
 
-- One phase from BUILD_SPEC §18 per session. Read the phase, plan, build, test, then summarise what changed.
-- Ask before adding dependencies not listed in BUILD_SPEC.
-- After each phase: update "Current status" below.
-
-## Current status
-
-- [x] Skeleton, PayPal OAuth client, `/api/health/paypal/` connected
-- [x] Sandbox accounts created; `thuma-platform` linked to platform@thuma.com (~10,000 USD)
-- [x] LLM chosen: OpenAI
-- [~] Test payouts verified — hardware ✓ (2 Nov: scenario 1 live, $420 batch `X23RSDH633YY6` SUCCESS in 24s), school ✓ (scenario 2 live, $340 batch `RJTSMWR4PYFBG` SUCCESS); mobile money still on the simulated rail until the Phase 4 `LocalMobileMoneyRail`. The live run caught an overpayment bug (revised $420 quote approving the old $560 request, sandbox batch `QLKTYTLXPQXX8`), fixed in `policy._price_ceiling` (amount ≤ quote total). Local `.env` needs `PAYPAL_BASE_URL=https://api-m.sandbox.paypal.com` (the website URL fails auth)
-- [x] OpenAI smoke test — isiNdebele chat ✓ (28 Oct, gpt-5.5-2026-04-23); handwritten quote photo ✓ (2 Nov: `demo_assets/quote_cement_14.jpg` read as cement_bag 40 × $14 → price_ceiling refusal)
-- [ ] APIMatic Context Plugin installed
-- [x] Phase 1 — Foundations (models, signing, templates) — 27 Oct
-  - Settings split: `thuma/settings/{base,local,production}.py` (manage.py → local, wsgi/asgi → production; production refuses to start without `DJANGO_SECRET_KEY` + `MANDATE_SIGNING_KEY`)
-  - Apps: `core` (BaseModel UUID+timestamps, `phones.py` E.164 + number finder, `testing.py` generic fixtures), `accounts` (Family, Membership); all §4 models + `BlockedPhone`; admin for all; `LedgerEntry` append-only
-  - `mandates/templates.py` replaced `types.py` (rule param specs, required rules per type, `validate_rules`); `mandates/signing.py` HMAC-SHA256
-  - `mandates/services.py`: create/sign mandate, `update_rules` (owner only, version bump, re-sign), funding + idempotent capture, balance, contributions, beneficiaries
-- [x] Phase 2 — Policy engine + fraud signals + tests — 27 Oct (88 tests passing)
-  - `agent/fraud.py` Layer 1 signals (+ `BLOCKED_NUMBER`), injectable Layer 2 analyzer (default = unavailable → `AI_UNAVAILABLE` +10 until Phase 5), AI only adds risk, verification step always uses the registered number
-  - `agent/policy.py` all 11 rule kinds; HIGH risk → HOLD_FRAUD *before* hard rules (spec §6 updated); funder approval re-checks hard rules
-  - services: `submit_request`, `reassess`, `execute_decision`, `apply_approval`, `inbox`; `payments/payouts.py` idempotent `pay_request` (`thuma-<request id>`) + `apply_rail_status`; `rails.for_payee`
-  - `.github/workflows/tests.yml` runs tests + migration check on push
-  - Open: `LOCAL_MOBILE_MONEY` still routes to the simulated rail; Phase 4 swaps in the real Payout + last mile. Your `.env` still has `LLM_API_KEY`; rename to `OPENAI_API_KEY` and add `MANDATE_SIGNING_KEY` (see `.env.example`)
-- [x] Phase 3 — Render deploy — 28 Oct: live at https://thuma.onrender.com (Postgres), `/api/health/paypal/` returns connected (sandbox, api-m); repo github.com/bongie-ui/hukama, CI green
-  - `render.yaml` (web + Postgres, Frankfurt, free), `build.sh` (pip, frontend if present, collectstatic, migrate), `/api/health/` liveness (DB only) used as Render health check
-  - Production: `DEBUG = False` hard-coded, HSTS, secure cookies; `check --deploy` clean; gunicorn + WhiteNoise rehearsed locally
-  - Render free tier: web sleeps after 15 min (~1 min wake); no persistent disk (evidence uploads lost on redeploy — store in DB/object storage before Phase 5); upgraded to paid until 2027 (2 Nov)
-- [x] Phase 4 — PayPal funding, payouts, mobile money rail, webhooks — 3 Nov (197 tests). Built with the **APIMatic Context Plugin** (`/plugin install context-matic@apimatic`, MCP `context-matic`; guidelines in `.claude/`), so rule 5 is met. `paypal-server-sdk==2.0.0`
-  - `payments/checkout.py`: Orders v2 create (CAPTURE, `custom_id` = Funding id, `PayPal-Request-Id`) and capture (idempotent; counts only a COMPLETED capture for the exact amount, currency and funding id; reconciles ORDER_ALREADY_CAPTURED via get_order; failures recorded, then raised after commit). Funding gained `paypal_order_id`, `message`. Endpoints: `POST /mandates/{id}/fund/create-order|capture/`, public `POST /public/pools/<token>/contribute|capture/`, `GET /api/config/paypal/` (public client id + v6 SDK URL)
-  - Frontend `components/PayPalButton.tsx`: **JS SDK v6** (`createInstance` → eligibility → `createPayPalOneTimePaymentSession` → `start(…, createOrderPromise)`), used by "Add funds" and the pool page. Verified: real sandbox orders created from the button (`39W94337VA532845N`); approval needs a sandbox buyer login in a browser
-  - `LocalMobileMoneyRail`: real PayPal Payout to the provider with note `{beneficiary_phone, product, hukama_request_id}`; last mile still simulated. Verified live: batch `9QACHG3ETUYBG` SUCCESS → delivered
-  - `payments/webhooks.py`: `POST /api/webhooks/paypal/` verifies every event with `/v1/notifications/verify-webhook-signature`, dedupes by event id (`WebhookEvent`), applies captures (amount-checked) and payout batch/item statuses idempotently. Webhook registered for Render: `6A597005RK7522420` (`manage.py register_webhook <base url>`); id is discovered by URL when `PAYPAL_WEBHOOK_ID` is unset. `/api/health/paypal/` reports `webhooks_received` and `last_webhook`. Verified live on Render 3 Nov: $5 airtime payout `KSTELGBYLBPNU` → 2 verified webhooks (`PAYMENT.PAYOUTS-ITEM.SUCCEEDED`, `PAYMENT.PAYOUTSBATCH.SUCCESS`)
-  - Tests never reach PayPal (`settings.TESTING` blanks PayPal credentials)
-- [x] Phase 5 — Agent (drafting, extraction, fraud AI, chat) — 28 Oct (128 tests; done before Phase 4 while APIMatic access is pending)
-  - `agent/llm.py` only `openai` import (openai==3.40.0, Chat Completions, strict JSON schema, 60s timeout, 2 retries, token logging); `demo_replay.py` records when `DEMO_MODE`, replays when `DEMO_REPLAY` (`backend/demo_cache/`); tests never call OpenAI (`settings.TESTING` blanks the key)
-  - `drafting.py` (repair pass, drops ids not in the family), `extraction.py` (quote/invoice line items with price-ceiling item keys; milestone photo verdict; images only, PDFs rejected → evidence stays unread = rule fails), fraud Layer 2 `llm_intent_analyzer` used automatically when OpenAI is configured
-  - `chat.py`: 6 strict tools, none can pay/approve/change rules (tested); participants = funder / beneficiary / payee / unknown number with scoped visibility; fraud check always sees the person's own words; requester never sees fraud details
-  - `Upload` model stores files in the DB (no disk on Render); `Payee.phone`; payee numbers count as registered for fraud
-  - Scenarios 1–5 pass as backend tests (`agent/tests/test_scenarios.py`); live manual test via `manage.py agent_chat` passed (isiNdebele request approved, same-day bundles refused, hospital scam HELD_FRAUD score 100 with registered-number verification). Prompts tightened after live runs: never offer to pay a number from a message, always record money requests so funders are alerted, no echoing urgency
-  - Set `OPENAI_MODEL=gpt-5.5-2026-04-23` and `OPENAI_MODEL_FAST=gpt-5.4-mini-2026-03-17` in `.env` and on Render (missing in `.env` today)
-- [x] Phase 6 — Frontend + seed_demo — 29 Oct (151 tests); Render scenarios verified 3 Nov (see audit below)
-  - REST API (§10) as function views: `thuma/api_urls.py`; `core/api.py` (caller's family, `ServiceError` → 400); `mandates/serializers.py` + `describe.py` (rules in plain words, per-product coverage for quick actions); auth + demo persona login (`DEMO_MODE` only, never staff); chat API where a funder can play a beneficiary/payee/unknown number in demo mode (cards scoped by `chat.outcome`); drf-spectacular at `/api/schema/` + `/api/docs/` (function views not annotated yet → do with Postman in Phase 7)
-  - `services.sole_payee`, `payouts.refresh(tx)` (request detail reads settle pending payouts + last mile, since Render has no worker)
-  - `core/management/commands/seed_demo.py [--reset]`: 3 users (`mmeli`, `bonginkosi`, `andile`), Mama, 5 payees, Akha/Imfundo/Isikhwama signed + funded, 3 months of paid history (back-dated, no rails). Sandbox emails (funders + hardware/fees/mobilemoney@business.example.com) are defaults in `SANDBOX_EMAILS`; env vars of the same name override
-  - `frontend/`: React 19 + Vite 8 + TS 5.9 (no other deps; tiny hash router). Screens: login/persona switcher, mandates, new mandate (AI draft → edit → sign), mandate detail (contributions, Fund with PayPal, quick actions with "who covered it", request form with evidence, ledger), request detail (fraud card, rule results, what the AI read, payment + last mile, collect button), approvals inbox, chat (+ "talk as…"), people. Django serves `frontend/dist` (WhiteNoise root + `core.views.spa`). CI builds the frontend
-  - Verified locally with the real model: scenario 3 (second funder refused, names Andile), 4 (HELD_FRAUD 100, report → numbers blocked), 5 (cash code → collected)
-  - `backend/demo_assets/`: quotes at $14 and $10.50, foundation photo, Sunrise invoice ($340; use the PNG, extraction rejects PDFs). `build.sh` runs `seed_demo --if-missing` when `DEMO_MODE=true`
-  - Changing `MANDATE_SIGNING_KEY` invalidates every signature (by design): reseed with `seed_demo --reset` locally
-  - Render is on a paid plan until 2027 (no free-tier sleep or Postgres expiry)
-  - Open: Fund with PayPal answers 503 until Phase 4 (Orders + JS SDK need the APIMatic plugin)
-- [x] Rebrand + UI redesign — 2 Nov: name **Hukama**, logo "Homestead H" (two pillars + coral roof; `frontend/public/hukama-mark.svg`, `favicon.svg`, `apple-touch-icon.png`, `icon-512.png`, `site.webmanifest`), palette plum `#4a1f3d` + coral `#ff8a7a`, Bricolage Grotesque (display) + Manrope (body) from Google Fonts. Design system in `frontend/src/styles.css` (tokens, light/dark); sidebar on desktop, bottom tabs on phones; `components/Icon.tsx` (own stroke icons), avatars, request progress stepper, fraud card, messaging-style chat with "see it from their side" demo personas. Lists settle in-flight payouts (`mandates/views._settle`). Reviewed via headless Chrome screenshots (light, dark, 390px)
-- [x] Phase 7 — AG Studio dashboard + Isililo + Postman — 2 Nov (169 tests)
-  - Dashboard done (2 Nov): `ag-studio-react`/`ag-studio` 3.0.0 (AG Grid 36.2, AG Charts 14.2), lazy-loaded chunk (~1.5 MB gz) at `#/dashboard`. Data from `GET /api/dashboard/data/` (`mandates/dashboard.py`: mandates, fundings, requests, ledger tables linked by `mandate_id`) + `GET /api/dashboard/summary/`. Default page: Funded / Available / Paid out / Fraud alerts KPIs, spent vs available by mandate, contributions by family member, spend by category, what the rules decided, audit trail grid (`frontend/src/dashboard/report.ts`), branded theme
-  - Studio Agent Framework: Direct LLM Runner with `frontend/src/dashboard/adapter.ts` posting each turn to `POST /api/dashboard/ai/turn/` → `agent/dashboard_ai.py` → `llm.chat` (key stays server-side; provider-hosted tools never offered). Verified live: "Chart airtime, bundles and cash paid out per month" → Page + Widget agents added the chart
-  - Licence: set `VITE_AG_STUDIO_LICENSE_KEY` (build-time, on Render too) once the 45-day trial key arrives; without it Studio shows a watermark. Dashboard edits are saved per family (`accounts.DashboardLayout`, `GET/PUT/DELETE /api/dashboard/layout/`, autosave 1.2s after changes stop, "Reset layout" button; verified in Chrome). Custom widget **Money flow** (`frontend/src/dashboard/MoneyFlowWidget.tsx`): AG Charts Enterprise Sankey via `createWidgets`, data from the `flows` table (family member → mandate → spent category / still available), on the default page and in a "Hukama" Compose menu; AI metadata set and verified: the Widget agent placed and configured it from a plain-language prompt (AG Studio 3.0.0 exposes no public format-shape builder, so the widget has no AI-editable format)
-  - Isililo funeral pool: seeded "Family funeral pool" (pays the funeral provider on invoice, escalate above $500), funded by the three funders + a seeded gift through the pool link (Paynow was built here, then dropped on 2 Nov in favour of PayPal-only pool links). Funeral cover premiums (COULD) not built
-  - Postman: `python manage.py export_postman` writes `docs/postman/hukama.postman_collection.json` (37 requests; "1. Try it in 3 minutes" replays scenarios 3 + 4) and the hosted-demo environment; a test checks every request resolves to a route. Sign-in responses now include `csrf_token` for non-browser clients. Verified with `npx newman@6.2.1` against local: 11/11 requests, 19/19 assertions (live model). Still to do: publish it as a public Postman collection (needs your Postman account)
-- [x] Hosted fixes — 2 Nov: Render 500s on request lists/inbox/dashboard (PostgreSQL rejects `select_for_update` joined to nullable relations; now `of=("self",)`); CI runs tests on PostgreSQL 16. Vite reads the root `.env` (`envDir: ".."`); AG Studio trial licence live on Render. Postman tour verified on Render twice (11/11, 19/19; reruns pass)
-- [x] Funeral cover premiums (COULD) — 3 Nov (206 tests): `payments/premiums.py` with **PayPal Subscriptions** via the Server SDK (plan per price, subscription with `custom_id` = PremiumSubscription id, approve link → `/paypal/premium-return/` → app; sync reads status by REST (SDK model lacks status) + `list_subscription_transactions`; cancel). Catalog product by REST (not in SDK). Each COMPLETED payment → Funding (once per PayPal transaction id) → scheduled Request through the policy engine → simulated biller. Webhooks `BILLING.SUBSCRIPTION.*` + `PAYMENT.SALE.COMPLETED`; `register_webhook` patches event types (done on Render hook `6A597005RK7522420`). Vikela template now "Cover" (funeral or medical aid). Seed v6: "Funeral cover: Peaceful Rest" $18/month with 2 months history. Live sandbox: product, plan `P-12H21631DR351850BNLUZK7Q`, subscription created; approval needs a sandbox buyer login. `PUBLIC_BASE_URL` (defaults to Render host) is the PayPal return base
-- [x] Audit of Phases 1–8 — 3 Nov: 206 tests, CI green on every commit, `check --deploy` clean, no migrations pending, no secrets tracked. Scenarios on Render with the live model and sandbox PayPal: 1 ($14 quote refused for price + missing photo; revised $420 paid, batch `MZRGPFTT4BAZC`), 2 ($340 school, `XGYFBSFHKYW4N`), 5 ($40 cash `K3HAJE479TUES` → code → collected), 3 + 4 via the Postman tour; webhooks 10 → 18. Fixed: phone overflow on mandate detail (`.split` stacked column `minmax(0,1fr)`, large buttons wrap), demo-family names removed from New-mandate examples (rule 3), premium status changes now write `PREMIUM_CHANGED` ledger entries, `PUBLIC_BASE_URL` in `.env.example`. Closed after the audit: family invite (`POST /api/family/invite/`, admin only, funder or viewer; a new person gets an account with a one-time temporary password shown to the admin; People page form), admin registrations for plans, premiums, uploads and dashboard layouts. GitHub About description still reads "Paypal Hackaton" with no website
-- [x] Phase 8 — Feature freeze, hardening, README — started 2 Nov: README rewritten per §19 (pitch, 3-minute script, architecture, real vs simulated, fraud table, tools, Mac/Linux/Windows setup, sandbox accounts without passwords), `docs/architecture.svg/.png`. Hosted demo checked (health, PayPal connected, personas seeded). Fresh clone from the README alone ✓ (no PayPal/OpenAI keys: SPA served, persona login, request approved with rules-only fraud, 172 tests). OpenAPI: all 43 operations annotated in `thuma/api_schema.py` (applied from `api_urls.py`), schema validates with no warnings. Postman published 3 Nov to the workspace (owner link https://go.postman.co/workspace/hukama~2b62f875-6bf6-42c1-8281-3139e4778df7; public docs https://documenter.getpostman.com/view/43618475/2sBYHXRJVS, published with `postman collection publish`) (collection "Hukama API" `43618475-40822b34-…`, 40 requests incl. cover premiums; env "Hukama (hosted demo)"), via `postman collection migrate` + `workspace push` from a scratch copy (repo keeps the v2.1 JSON). Tour run from the cloud copy against Render: 11/11, 19/19. Workspace also holds an unrelated "env" environment and two empty collections from before
-- [x] Premium approved live — 5 Nov: subscription `I-URGX2TF3YXPV` ACTIVE on Render; its first $18 sale (webhook `PAYMENT.SALE.COMPLETED`) became a Funding and a PAID request to Peaceful Rest
-- [x] Loophole audit — 5 Nov (222 tests; `agent/tests/test_loopholes.py`, `payments/test_loopholes.py`, migration `mandates/0010`):
-  - Unverified payees can no longer be paid (policy `precheck`). Before, a funder could add a payee with their own PayPal email and have a shared mandate pay it (Isikhwama does not require `allowed_payees`)
-  - Decisions on one mandate are serialised (`services.lock_mandate` before evaluate / approval) so two simultaneous requests cannot both spend the last of a cap or the balance
-  - `reassess` refuses requests a funder rejected or reported, and keeps the earlier risk score if the new one is lower (`fraud.keep_higher_risk`)
-  - Changing a beneficiary's delivery address raises `BENEFICIARY_RECENTLY_CHANGED` on deliveries for 72h (`Beneficiary.address_changed_at`)
-  - Request amounts must be positive with whole cents (`services.clean_amount`); checkout minimum is $1
-  - Refunds and chargebacks: `PAYMENT.CAPTURE.REFUNDED/REVERSED` set `Funding.refunded` (idempotent), which reduces the balance, dashboard and contributions; `REFUNDED` ledger entry. **Run `manage.py register_webhook https://thuma.onrender.com` after deploying** to subscribe the Render hook to the two new events
-  - Payout status only moves forward (FAILED/RETURNED are terminal, so a late batch SUCCESS can't undo them); polling reads the item status, not just the batch
-  - Webhooks store and apply in one transaction, so if applying an event fails PayPal can retry it instead of it being dropped as a duplicate
-  - Premium payments lock the subscription, so a webhook and a sync can't record the same sale twice
-  - Verified on Render 5 Nov after deploy (`22fc88b`, CI green): webhook `6A597005RK7522420` now includes CAPTURE.REFUNDED/REVERSED; Postman tour 11/11, 19/19 (collection unchanged: no payee creation, whole-dollar amounts); live $5 airtime approved → batch `U6T5LDE7RSQB8` SUCCESS (verified webhook) → delivering
-  - Known limits, not fixed: the mandate owner can change rules on a mandate others also fund (recorded in the ledger, and money can only go to verified payees); public pool checkout has no rate limit; a viewer can submit requests (the rules and fraud checks still decide)
-- [x] Payee upload link — 5 Nov (234 tests; `mandates/test_payee_link.py`, migration `mandates/0011`): schools, builders and other payees without an account get a private link (`PayeeLink`, one active per family + payee) at `#/supplier/<token>`. They pick the mandate, send a photo of an invoice/quote/progress (images only) with the amount, or add a file to one of their own open requests. It becomes a `LINK`-channel request with the link's payee fixed (it can never pay anyone else), product from `MandateTemplate.default_product`, then the normal extraction → fraud → policy → payout. The public page shows what each mandate needs and their requests' status with only rule-based reasons (no fraud details, balances or funder notes). 20 uploads per link per 24h; rejected/reported requests can't be revived. Funders manage it on People (Create / Copy / New link / Turn off); `POST /api/payees/<id>/upload-link/` returns the active link (`new: true` rotates), `DELETE` turns it off; public `GET /api/public/payee/<token>/`, `POST …/send/` (multipart). OpenAPI annotated; Postman folder "Payee upload link" (43 requests)
-  - Verified on Render 5 Nov (`a1e7b5c`): Sunrise Academy link created; the real invoice PNG sent through it at $300 was refused ("invoice total $340 does not match") and at $340 approved → PayPal batch `N2QL9D63HU7W8` SUCCESS (channel LINK). Newman on Render: tour + payee-link folder 14/14 requests, 23/23 assertions. Cloud Postman collection updated with the new folder (`workspace push`, default strategy, nothing deleted)
-- [ ] Phase 9 — Video + Devpost text
-- [ ] Phase 10 — Submitted
+- One phase (or one clearly scoped task) per session: read, plan, build, test, then summarise what changed.
+- After meaningful work: add a dated entry to `docs/HISTORY.md` and update "Current status" here (keep this file short).
+- Verify on Render after deploying when the change touches money, webhooks or public pages.
