@@ -87,6 +87,7 @@ export default function People() {
 
 function BeneficiaryCard({ b, onSaved }: { b: Beneficiary; onSaved: () => void }) {
   const [editing, setEditing] = useState(false);
+  const [shop, setShop] = useState(false);
   const [phone, setPhone] = useState(b.phone);
   const { busy, error, run } = useAction();
   const save = () => run(async () => {
@@ -121,7 +122,17 @@ function BeneficiaryCard({ b, onSaved }: { b: Beneficiary; onSaved: () => void }
           <ErrorNote error={error} />
         </div>
       ) : (
-        <button className="linkbtn small" style={{ alignSelf: "flex-start" }} onClick={() => setEditing(true)}>Change registered number</button>
+        <div className="row" style={{ gap: 16 }}>
+          <button className="linkbtn small" onClick={() => setEditing(true)}>Change registered number</button>
+          {b.allowed_products.includes("groceries") && (
+            <button className="linkbtn small" onClick={() => setShop(!shop)}>{b.shop_link ? "Shop link" : "Create shop link"}</button>
+          )}
+        </div>
+      )}
+      {shop && (
+        <LinkPanel token={b.shop_link} route="shop" endpoint={`/beneficiaries/${b.id}/shop-link/`} onChange={onSaved}
+          intro={`${b.name.split(" ")[0]} chooses groceries herself here. The support fund pays when it can; if it is short, her list comes to the family to pay. Delivery only ever goes to her registered address.`}
+          empty={`Let ${b.name.split(" ")[0]} choose her own groceries from the family's store.`} />
       )}
     </div>
   );
@@ -237,13 +248,14 @@ function InviteMember({ onSaved }: { onSaved: () => void }) {
 
 const LINK_KINDS = ["SUPPLIER", "SCHOOL", "FUNERAL_PROVIDER", "GROCER", "MEDICAL_AID", "OTHER"];
 
-/** A payee's private upload link: they send invoices, quotes and photos without an account. */
-function PayeeLink({ payee, onChange }: { payee: Payee; onChange: () => void }) {
+/** A private link for someone without an account: a payee's upload link or a beneficiary's shop link. */
+function LinkPanel({ token, route, endpoint, intro, empty, onChange }:
+  { token?: string | null; route: string; endpoint: string; intro: string; empty: string; onChange: () => void }) {
   const { busy, error, run } = useAction();
   const [copied, setCopied] = useState(false);
-  const link = payee.upload_link ? `${window.location.origin}/#/supplier/${payee.upload_link}` : "";
+  const link = token ? `${window.location.origin}/#/${route}/${token}` : "";
   const change = (method: "post" | "delete", body?: unknown) => run(async () => {
-    await (method === "post" ? api.post(`/payees/${payee.id}/upload-link/`, body) : api.delete(`/payees/${payee.id}/upload-link/`));
+    await (method === "post" ? api.post(endpoint, body) : api.delete(endpoint));
     onChange();
   });
   const copy = async () => {
@@ -252,20 +264,20 @@ function PayeeLink({ payee, onChange }: { payee: Payee; onChange: () => void }) 
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
     } catch {
-      (document.getElementById(`plink-${payee.id}`) as HTMLInputElement | null)?.select();
+      (document.getElementById(`link-${endpoint}`) as HTMLInputElement | null)?.select();
     }
   };
   return (
     <div className="stack" style={{ gap: 10, flexBasis: "100%", paddingTop: 8 }}>
       {link ? (
         <>
-          <span className="small ink-2">{payee.name} can send invoices, quotes and progress photos here without an account. Send it on WhatsApp or by SMS. Anything sent can only pay {payee.name}, and only when the rules are met.</span>
+          <span className="small ink-2">{intro}</span>
           <div className="row" style={{ flexWrap: "nowrap" }}>
-            <input id={`plink-${payee.id}`} className="input" readOnly value={link} onFocus={(e) => e.target.select()} style={{ minWidth: 0 }} />
+            <input id={`link-${endpoint}`} className="input" readOnly value={link} onFocus={(e) => e.target.select()} style={{ minWidth: 0 }} />
             <button className="btn primary" onClick={copy}>{copied ? "Copied" : "Copy link"}</button>
           </div>
           <div className="row between">
-            <a className="small" href={`#/supplier/${payee.upload_link}`} target="_blank" rel="noreferrer">Preview the page</a>
+            <a className="small" href={`#/${route}/${token}`} target="_blank" rel="noreferrer">Preview the page</a>
             <div className="row" style={{ gap: 14 }}>
               <button className="linkbtn small" disabled={busy} onClick={() => change("post", { new: true })}>New link</button>
               <button className="linkbtn small" disabled={busy} onClick={() => change("delete")}>Turn off</button>
@@ -274,13 +286,19 @@ function PayeeLink({ payee, onChange }: { payee: Payee; onChange: () => void }) 
         </>
       ) : (
         <div className="row between">
-          <span className="small ink-2">Give {payee.name} a private link to send invoices and photos without an account.</span>
+          <span className="small ink-2">{empty}</span>
           <button className="btn primary sm" disabled={busy} onClick={() => change("post")}>Create link</button>
         </div>
       )}
       <ErrorNote error={error} />
     </div>
   );
+}
+
+function PayeeLink({ payee, onChange }: { payee: Payee; onChange: () => void }) {
+  return <LinkPanel token={payee.upload_link} route="supplier" endpoint={`/payees/${payee.id}/upload-link/`} onChange={onChange}
+    intro={`${payee.name} can send invoices, quotes and progress photos here without an account. Send it on WhatsApp or by SMS. Anything sent can only pay ${payee.name}, and only when the rules are met.`}
+    empty={`Give ${payee.name} a private link to send invoices and photos without an account.`} />;
 }
 
 function AddPayee({ onSaved }: { onSaved: () => void }) {

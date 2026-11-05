@@ -163,6 +163,9 @@ class Funding(BaseModel):
     failure_reason = models.CharField(max_length=200, blank=True)
     # Money PayPal later gave back to the payer (refund or chargeback); it no longer counts towards the mandate.
     refunded = money_field(default=0)
+    # Set when a funder pays an invoice (a shopping list the fund could not cover): capture settles that request.
+    for_request = models.ForeignKey("Request", null=True, blank=True, on_delete=models.SET_NULL,
+                                    related_name="invoice_fundings")
 
 
 class Request(BaseModel):
@@ -172,7 +175,8 @@ class Request(BaseModel):
     APP = "APP"
     SCHEDULE = "SCHEDULE"
     LINK = "LINK"  # a payee's private upload link (no account)
-    CHANNELS = [(CHAT, "Chat"), (APP, "App"), (SCHEDULE, "Schedule"), (LINK, "Payee link")]
+    SHOP = "SHOP"  # a beneficiary's private shop link
+    CHANNELS = [(CHAT, "Chat"), (APP, "App"), (SCHEDULE, "Schedule"), (LINK, "Payee link"), (SHOP, "Shop link")]
 
     NEW = "NEW"
     ASSESSED = "ASSESSED"
@@ -184,8 +188,10 @@ class Request(BaseModel):
     FAILED = "FAILED"
     CANCELLED = "CANCELLED"
     CONFIRMED_FRAUD = "CONFIRMED_FRAUD"
+    INVOICED = "INVOICED"  # the fund was short: sent to the funders (or one funder) to pay with PayPal
     STATUSES = [(s, s.replace("_", " ").title()) for s in
-                (NEW, ASSESSED, APPROVED, REFUSED, ESCALATED, HELD_FRAUD, PAID, FAILED, CANCELLED, CONFIRMED_FRAUD)]
+                (NEW, ASSESSED, APPROVED, REFUSED, ESCALATED, HELD_FRAUD, PAID, FAILED, CANCELLED, CONFIRMED_FRAUD,
+                 INVOICED)]
     # Statuses whose amount counts against balances, caps and intervals.
     COMMITTED = (APPROVED, PAID)
 
@@ -196,6 +202,8 @@ class Request(BaseModel):
     requester_display = models.CharField(max_length=120, blank=True)
     beneficiary = models.ForeignKey(Beneficiary, null=True, blank=True, on_delete=models.PROTECT,
                                     related_name="requests")
+    # INVOICED only: the one funder asked to pay; null means every funder of the mandate.
+    invoice_to = models.ForeignKey(User, null=True, blank=True, on_delete=models.SET_NULL, related_name="invoices")
     payee = models.ForeignKey(Payee, null=True, blank=True, on_delete=models.PROTECT, related_name="requests")
     product = models.CharField(max_length=32, blank=True)
     amount = money_field()
@@ -255,6 +263,31 @@ class PayeeLink(BaseModel):
     class Meta(BaseModel.Meta):
         constraints = [models.UniqueConstraint(fields=["family", "payee"], condition=models.Q(active=True),
                                                name="one_active_link_per_payee")]
+
+
+class ShopLink(BaseModel):
+    """A beneficiary's private shop link: they choose items from the family's store themselves. Orders are
+    always for them, delivered only to their registered address, and paid only through the rules."""
+
+    family = models.ForeignKey(Family, on_delete=models.CASCADE, related_name="shop_links")
+    beneficiary = models.ForeignKey(Beneficiary, on_delete=models.CASCADE, related_name="shop_links")
+    token = models.CharField(max_length=32, unique=True)
+    active = models.BooleanField(default=True)
+    created_by = models.ForeignKey(User, null=True, on_delete=models.SET_NULL, related_name="+")
+
+    class Meta(BaseModel.Meta):
+        constraints = [models.UniqueConstraint(fields=["beneficiary"], condition=models.Q(active=True),
+                                               name="one_active_shop_link")]
+
+
+class Notification(BaseModel):
+    """An in-app message for one family member (e.g. a shopping list to pay, or that a brother covered it)."""
+
+    family = models.ForeignKey(Family, on_delete=models.CASCADE, related_name="notifications")
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="notifications")
+    request = models.ForeignKey("Request", null=True, blank=True, on_delete=models.CASCADE, related_name="+")
+    text = models.CharField(max_length=300)
+    read_at = models.DateTimeField(null=True, blank=True)
 
 
 class Evidence(BaseModel):
@@ -348,9 +381,10 @@ class LedgerEntry(BaseModel):
     RULES_CHANGED = "RULES_CHANGED"
     PREMIUM_CHANGED = "PREMIUM_CHANGED"
     REFUNDED = "REFUNDED"  # PayPal gave funding back to the payer (refund or chargeback)
+    INVOICED = "INVOICED"  # a shopping list the fund could not cover was sent to the funders to pay
     EVENTS = [(e, e.replace("_", " ").title()) for e in
               (FUNDED, REQUESTED, ASSESSED, DECIDED, APPROVED_BY_FUNDER, PAID, DELIVERED, FAILED,
-               FRAUD_HELD, FRAUD_CONFIRMED, RULES_CHANGED, PREMIUM_CHANGED, REFUNDED)]
+               FRAUD_HELD, FRAUD_CONFIRMED, RULES_CHANGED, PREMIUM_CHANGED, REFUNDED, INVOICED)]
 
     family = models.ForeignKey(Family, on_delete=models.PROTECT, related_name="ledger")
     mandate = models.ForeignKey(Mandate, on_delete=models.PROTECT, related_name="ledger")

@@ -139,6 +139,20 @@ def collection():
                             "public/payee/<token>/send/ (multipart: file, kind, mandate, amount). It becomes a request "
                             "to pay that payee only, and goes through the fraud checks and the rules."),
         ]},
+        {"name": "Shop link (the beneficiary chooses groceries)", "item": [
+            req("Find someone who can shop", "GET", "beneficiaries/", tests=[
+                OK, "const b = pm.response.json().find(x => x.allowed_products.includes('groceries'));",
+                save("shopperId", "b.id")]),
+            req("Get their private shop link", "POST", "beneficiaries/{{shopperId}}/shop-link/", tests=[
+                OK, save("shopToken", "pm.response.json().shop_link")],
+                description="Returns the active link (or creates one). Send them {{baseUrl}}/#/shop/<shop_link>."),
+            req("What they see: the store's price list (public)", "GET", "public/shop/{{shopToken}}/", tests=[
+                OK, "pm.test('has items to choose', () => pm.expect(pm.response.json().mandates[0].stores[0].items.length).to.be.above(0));"],
+                description="They then POST public/shop/<token>/order/ with items [{item_id, quantity}], fulfilment and ask "
+                            "(\"all\" or a funder id). The support fund pays if the rules allow; if the fund is short "
+                            "the list is invoiced to the family, and the first funder to pay with PayPal covers it."),
+            req("My notifications", "GET", "notifications/", tests=[OK]),
+        ]},
         {"name": "Mandates", "item": [
             req("Mandate types", "GET", "mandate-types/"),
             req("List mandates", "GET", "mandates/", tests=[save("mandateId", "pm.response.json()[0].id")]),
@@ -190,7 +204,7 @@ def collection():
         "event": [{"listen": "prerequest", "script": {"type": "text/javascript", "exec": PRE_REQUEST}}],
         "variable": [{"key": k, "value": ""} for k in ("supportMandateId", "beneficiaryId", "strangerConversationId",
                                                        "heldRequestId", "mandateId", "requestId", "myConversationId", "coverMandateId",
-                                                       "payeeId", "payeeToken",
+                                                       "payeeId", "payeeToken", "shopperId", "shopToken",
                                                        "csrfToken")],
         "item": folders,
     }

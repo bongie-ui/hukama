@@ -93,6 +93,7 @@ If calls to `api-m.sandbox.paypal.com`, `api.openai.com` or `thuma.onrender.com`
 - **Payouts:** PayPal Payouts with `sender_batch_id = hukama-<request id>` (idempotent). Status only moves forward; failed/returned are final. Mobile money = a real Payout to the provider + a simulated last mile (airtime/bundles delivered, cash code collected).
 - **Webhooks** (`/api/webhooks/paypal/`, Render hook `6A597005RK7522420`): every event is verified with PayPal, stored and applied in one transaction, and deduped by event id. Handles captures, refunds/chargebacks, payout batch/item status, subscriptions and premium sales.
 - **Concurrency:** decisions on one mandate are serialised (`services.lock_mandate`), so caps and the balance can't be double-spent.
+- **Shop link and invoices:** a beneficiary picks items at `#/shop/<token>`; the fund pays first, and only an "insufficient funds" list that passes every other rule becomes an invoice (`INVOICED`) to the funders, settled by the first PayPal payment (`services.settle_invoice`).
 - **Payee upload link:** a payee with no account sends invoices/quotes/photos at `#/supplier/<token>`; the request can only pay that payee and goes through the normal checks. Funders manage links on the People page.
 - **Production caveat** (for the Devpost text): pooling family money in our own account is regulated; production would use PayPal's marketplace product with delayed disbursement.
 
@@ -131,12 +132,13 @@ Sandbox accounts are all US PayPal accounts; story locations differ. Personas: `
 
 ## Current status (5 Nov 2026)
 
-Phases 1–8 are done and verified live on Render with the real model and sandbox PayPal (234 tests, CI green). Details, batch ids and verifications are in `docs/HISTORY.md`.
+Phases 1–8 are done and verified live on Render with the real model and sandbox PayPal (248 tests, CI green). Details, batch ids and verifications are in `docs/HISTORY.md`.
 
 - [x] Phases 1 Foundations · 2 Policy + fraud · 3 Render · 4 PayPal funding, payouts, mobile money rail, webhooks (built with the APIMatic plugin) · 5 Agent · 6 Frontend + seed_demo · 7 AG Studio dashboard, Isililo pool, Postman · 8 Hardening, README, OpenAPI
 - [x] Extras: Hukama rebrand + redesign, funeral cover premiums (PayPal Subscriptions; live subscription `I-URGX2TF3YXPV` active), family invite, groceries, pool contribution link
 - [x] 5 Nov loophole audit: unverified payees can't be paid, per-mandate locking, a funder's rejection can't be undone by a re-check, risk never lowered, address-change signal, refunds/chargebacks, forward-only payout status, atomic webhooks, premium dedupe, whole-cent amounts
 - [x] 5 Nov payee upload link (schools/builders send invoices without an account); verified live (batch `N2QL9D63HU7W8`)
+- [x] 6 Nov groceries by item; Mama's shop link (`#/shop/<token>`): the fund pays when it can, otherwise the list is invoiced to every son or the one she picks; the first to pay with PayPal covers it and the others are notified in the app
 - [ ] **Phase 9 — Video + Devpost text** (next). Drafts are in `docs/devpost/SUBMISSION.md`; update them for the payee link, refunds and the production caveat. Suggested video beats: mandate drafted in plain words → fund with PayPal → $14 quote refused, $10.50 approved and paid → a sibling's double top-up refused → scam held, reported as fraud → the school sends its invoice through its upload link → payment visible in the school's sandbox PayPal account → dashboard
 - [ ] Phase 10 — Submitted (by 11 Nov)
 

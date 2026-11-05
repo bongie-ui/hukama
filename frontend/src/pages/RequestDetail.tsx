@@ -2,6 +2,7 @@ import { api, money, uploadUrl, when } from "../api";
 import { requestTitle } from "../components/Activity";
 import { ApprovalActions, FraudCard, RiskDetails } from "../components/Approval";
 import Icon from "../components/Icon";
+import InvoiceCard from "../components/InvoiceCard";
 import Ledger from "../components/Ledger";
 import { Avatar, ErrorNote, Notice, PageLoading, riskTone, SimTag, StatusPill, Who } from "../components/ui";
 import { useAction, useApi, usePoll, useSession } from "../hooks";
@@ -34,7 +35,7 @@ function steps(r: Detail): Step[] {
     : lm === "PREPARING" ? { label: "Received", sub: "Being packed", state: "current" }
     : lm === "OUT_FOR_DELIVERY" ? { label: "Received", sub: "Out for delivery", state: "current" }
     : lm === "DELIVERED" ? { label: "Received", sub: "Delivered", state: "done" }
-    : lm === "COLLECTED" ? { label: "Received", sub: r.details.basket ? "Collected in store" : "Cash collected", state: "done" }
+    : lm === "COLLECTED" ? { label: "Received", sub: r.details.store ? "Collected in store" : "Cash collected", state: "done" }
     : { label: "Received", sub: `By ${r.payee_name ?? "payee"}`, state: "done" };
   return [
     { label: "Requested", sub: `By ${r.requester}`, state: "done" },
@@ -62,7 +63,7 @@ export default function RequestDetail({ id }: { id: string }) {
 
       <header className="page-head">
         <div>
-          <div className="row"><StatusPill status={r.status} />{r.payment && (r.payment.simulated || r.payment.last_mile_status !== "N/A") && <SimTag label={r.payment.simulated ? "Simulated rail" : r.details.basket ? "Simulated delivery" : "Simulated last mile"} />}</div>
+          <div className="row"><StatusPill status={r.status} />{r.payment && (r.payment.simulated || r.payment.last_mile_status !== "N/A") && <SimTag label={r.payment.simulated ? "Simulated rail" : r.details.store ? "Simulated delivery" : "Simulated last mile"} />}</div>
           <h1>{requestTitle(r)}</h1>
           <div className="row small muted" style={{ gap: 8 }}>
             <Who name={r.requester} size="sm" />
@@ -95,21 +96,29 @@ export default function RequestDetail({ id }: { id: string }) {
         <Notice tone="error" icon="shield">Reported as a scam. Nothing was paid, and the numbers involved are blocked for this family.</Notice>
       )}
 
-      {r.details.basket && (
+      {r.status === "INVOICED" && <InvoiceCard r={r} onDone={() => void reload()} />}
+
+      {r.details.store && (
         <section className="card stack">
           <div className="row between">
-            <h3>{r.details.basket}</h3>
+            <h3>{r.details.basket ?? "Shopping list"}</h3>
             <span className="pill brand plain">{r.fulfilment === "DELIVERY" ? "Home delivery" : "Collect in store"}</span>
           </div>
           <ul className="rules">
-            {(r.details.items ?? []).map((item) => <li key={item}><span className="rule-dot"><Icon name="check" size={14} stroke={2.4} /></span>{item}</li>)}
+            {(r.details.items ?? []).map((item) => {
+              const label = typeof item === "string" ? item : `${item.quantity} × ${item.name}${item.size ? ` (${item.size})` : ""}`;
+              return <li key={label}><span className="rule-dot"><Icon name="check" size={14} stroke={2.4} /></span>{label}
+                {typeof item !== "string" && <span className="num muted" style={{ marginLeft: "auto" }}>{money(item.line_total, r.currency)}</span>}</li>;
+            })}
           </ul>
           <dl className="kv">
             <dt>Store</dt><dd>{r.details.store ?? r.payee_name}</dd>
-            <dt>Basket</dt><dd className="num">{money(r.details.basket_price ?? 0)}</dd>
+            {r.details.basket_price && <><dt>Basket</dt><dd className="num">{money(r.details.basket_price)}</dd></>}
+            {r.details.subtotal && <><dt>Items</dt><dd className="num">{money(r.details.subtotal)}</dd></>}
             {r.fulfilment === "DELIVERY" && <><dt>Delivery</dt><dd className="num">{money(r.details.delivery_fee ?? 0)}</dd>
               <dt>Deliver to</dt><dd>{r.details.address} <span className="muted">(registered address)</span></dd></>}
             <dt>Total</dt><dd className="num">{money(r.amount, r.currency)}</dd>
+            {r.details.paid_by && <><dt>Paid by</dt><dd>{r.details.paid_by} (PayPal)</dd></>}
           </dl>
         </section>
       )}
@@ -123,7 +132,7 @@ export default function RequestDetail({ id }: { id: string }) {
           {tx.last_mile_status === "AWAITING_COLLECTION" && (
             <div className="row between" style={{ padding: 14, borderRadius: 12, background: "var(--plum-tint)" }}>
               <div className="stack-sm" style={{ gap: 2 }}>
-                <span className="small muted">Collection code sent to {r.beneficiary_name ?? "the beneficiary"}{r.details.basket ? `, to collect at ${r.payee_name}` : ""}</span>
+                <span className="small muted">Collection code sent to {r.beneficiary_name ?? "the beneficiary"}{r.details.store ? `, to collect at ${r.payee_name}` : ""}</span>
                 <span className="amount lg" style={{ letterSpacing: ".12em" }}>{tx.collection_code}</span>
               </div>
               {session.demo_mode && (

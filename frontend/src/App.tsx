@@ -6,6 +6,7 @@ import { SessionContext, useApi, usePoll, useSession } from "./hooks";
 import Chat from "./pages/Chat";
 import Give from "./pages/Give";
 import Supplier from "./pages/Supplier";
+import Shop from "./pages/Shop";
 import DashboardPage from "./pages/DashboardPage";
 import Home from "./pages/Home";
 import Inbox from "./pages/Inbox";
@@ -25,6 +26,9 @@ export default function App() {
   // A payee's private upload link (schools, builders): no account needed either.
   const supplier = match("/supplier/:token", path);
   if (supplier) return <Supplier token={supplier.token} />;
+  // A beneficiary's own shop link (choose groceries; the fund or the family pays).
+  const shop = match("/shop/:token", path);
+  if (shop) return <Shop token={shop.token} />;
   return <SignedIn />;
 }
 

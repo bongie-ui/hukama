@@ -198,6 +198,31 @@ ANNOTATIONS = [
             request=uuid(required=False), idempotency_key=text(required=False))},
         responses=OBJ)),
 
+    (mandates.beneficiary_shop_link, ["POST"], dict(
+        tags=["Shop link"], summary="Get a beneficiary's private shop link (new: true replaces the secret)",
+        request=body("ShopLinkInput", new=s.BooleanField(required=False)), responses=OBJ)),
+    (mandates.beneficiary_shop_link, ["DELETE"], dict(tags=["Shop link"], summary="Turn a shop link off",
+                                                      request=None, responses=OBJ)),
+    (mandates.public_shop, None, dict(
+        tags=["Shop link"], summary="Public: the store's price list, who can be asked to pay, recent shopping",
+        auth=[], responses=OBJ)),
+    (mandates.public_shop_order, None, dict(
+        tags=["Shop link"], summary="Public: send a shopping list (paid from the fund, or invoiced to the family "
+                                    "when the fund is short)", auth=[],
+        request=body("ShopOrderInput", mandate=uuid(), store=uuid(required=False),
+                     items=s.ListField(child=s.DictField()), fulfilment=s.ChoiceField(["COLLECT", "DELIVERY"]),
+                     ask=text(required=False), note=text(required=False), idempotency_key=text(required=False)),
+        responses=OBJ)),
+    (payments.invoice_create_order, None, dict(
+        tags=["Shop link"], summary="A funder starts paying a shopping list with PayPal", request=None,
+        responses=OBJ)),
+    (payments.invoice_capture, None, dict(
+        tags=["Shop link"], summary="Capture a funder's payment for a shopping list (the first one pays it)",
+        request=body("InvoiceCaptureInput", order_id=text()), responses=RequestDetailSerializer)),
+    (mandates.notifications, None, dict(tags=["Family"], summary="My notifications", responses=OBJ)),
+    (mandates.notifications_read, None, dict(tags=["Family"], summary="Mark my notifications read", request=None,
+                                             responses=OBJ)),
+
     (payments.demo_collect, None, dict(tags=["Demo"], summary="Mark cash collected (simulated last mile)",
                                        request=body("CollectInput", code=text(required=False)), responses=OBJ)),
 ]

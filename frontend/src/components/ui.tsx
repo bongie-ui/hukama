@@ -16,6 +16,7 @@ const STATUS: Record<RequestStatus, [string, string]> = {
   CONFIRMED_FRAUD: ["Fraud reported", "bad"],
   FAILED: ["Payment failed", "bad"],
   CANCELLED: ["Cancelled", ""],
+  INVOICED: ["Waiting to be paid", "warn"],
 };
 
 export function statusTone(status: RequestStatus) {

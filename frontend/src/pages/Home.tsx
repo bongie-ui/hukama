@@ -1,4 +1,4 @@
-import { money } from "../api";
+import { api, money, when } from "../api";
 import { ActivityList } from "../components/Activity";
 import Icon, { TYPE_ICON } from "../components/Icon";
 import { Avatar, Empty, ErrorNote, firstName, LoadingCards, Money, splitType } from "../components/ui";
@@ -34,6 +34,7 @@ export default function Home() {
       </div>
 
       <Attention items={inbox.data} />
+      <Notifications />
 
       <div className="stats">
         <div className="card stat hero">
@@ -83,10 +84,39 @@ function unique<T>(xs: T[]) {
   return [...new Set(xs)];
 }
 
+interface NotificationList { unread: number; items: { id: string; text: string; request: string | null; read: boolean; created_at: string }[] }
+
+/** In-app messages: shopping lists to pay, and when someone else covered one. */
+function Notifications() {
+  const n = useApi<NotificationList>("/notifications/");
+  const unread = n.data?.items.filter((i) => !i.read) ?? [];
+  if (!unread.length) return null;
+  const markRead = async () => {
+    await api.post("/notifications/read/");
+    void n.reload();
+  };
+  return (
+    <section className="card stack" aria-label="Notifications" style={{ gap: 10 }}>
+      <div className="row between">
+        <strong className="row" style={{ gap: 8 }}><Icon name="chat" size={18} />For you</strong>
+        <button className="linkbtn small" onClick={markRead}>Mark as read</button>
+      </div>
+      <div className="list">
+        {unread.slice(0, 5).map((i) => (
+          <a key={i.id} className="list-item" style={{ paddingInline: 0 }} href={i.request ? `#/requests/${i.request}` : "#/inbox"}>
+            <div className="main"><span className="title" style={{ fontWeight: 600 }}>{i.text}</span><span className="sub">{when(i.created_at)}</span></div>
+          </a>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function Attention({ items }: { items: PayRequest[] | null }) {
   if (!items) return null;
   const fraud = items.filter((r) => r.status === "HELD_FRAUD").length;
-  const approvals = items.length - fraud;
+  const lists = items.filter((r) => r.status === "INVOICED").length;
+  const approvals = items.length - fraud - lists;
   if (items.length === 0) {
     return (
       <div className="attention calm">
@@ -99,10 +129,14 @@ function Attention({ items }: { items: PayRequest[] | null }) {
     <a className={`attention ${fraud ? "" : "warn"}`} href="#/inbox" style={{ textDecoration: "none" }}>
       <span className="icon-circle"><Icon name={fraud ? "alert" : "clock"} /></span>
       <div>
-        <strong>{fraud ? `${fraud} possible scam${fraud > 1 ? "s" : ""} held` : `${approvals} request${approvals > 1 ? "s" : ""} need${approvals > 1 ? "" : "s"} you`}</strong>
+        <strong>{fraud ? `${fraud} possible scam${fraud > 1 ? "s" : ""} held`
+          : approvals ? `${approvals} request${approvals > 1 ? "s" : ""} need${approvals > 1 ? "" : "s"} you`
+          : `${lists} shopping list${lists > 1 ? "s" : ""} to pay`}</strong>
         <span className="small">
-          {fraud ? "Nothing is paid until a funder calls home on the registered number." : "Over an approval limit or flagged as unusual."}
+          {fraud ? "Nothing is paid until a funder calls home on the registered number."
+            : approvals ? "Over an approval limit or flagged as unusual." : "The support fund couldn't cover it. The first to pay covers it."}
           {fraud && approvals ? ` Plus ${approvals} waiting for approval.` : ""}
+          {(fraud || approvals) && lists ? ` Plus ${lists} shopping list${lists > 1 ? "s" : ""} to pay.` : ""}
         </span>
       </div>
       <span className="btn sm" style={{ background: "var(--surface)" }}>Review<Icon name="chevron" size={16} /></span>

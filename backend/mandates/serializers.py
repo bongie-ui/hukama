@@ -157,13 +157,17 @@ class RequestSerializer(serializers.ModelSerializer):
     decision = serializers.SerializerMethodField()
     risk = serializers.SerializerMethodField()
     payment = serializers.SerializerMethodField()
+    invoice_to_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Request
         fields = ["id", "mandate", "mandate_title", "mandate_type", "currency", "channel", "requester",
                   "requester_phone", "beneficiary", "beneficiary_name", "payee", "payee_name", "payee_simulated",
                   "product", "amount", "message_text", "summary_en", "status", "created_at", "decision", "risk",
-                  "payment", "fulfilment", "details"]
+                  "payment", "fulfilment", "details", "invoice_to", "invoice_to_name"]
+
+    def get_invoice_to_name(self, r) -> str | None:
+        return (r.invoice_to.first_name or r.invoice_to.username) if r.invoice_to_id else None
 
     def get_requester(self, r) -> str:
         return person(r)

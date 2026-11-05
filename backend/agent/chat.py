@@ -49,6 +49,10 @@ TOOLS = [
                            "kind": {"type": "string", "enum": [k for k, _ in Evidence.KINDS]}}}},
         "basket_id": {"type": ["string", "null"],
                       "description": "For groceries: a basket id from get_mandates. The store's price is used."},
+        "items": {"type": ["array", "null"], "description": "For groceries: items from grocery_items in get_mandates "
+                  "with quantities. The store's prices are used.", "items": {
+                      "type": "object", "additionalProperties": False, "required": ["item_id", "quantity"],
+                      "properties": {"item_id": {"type": "string"}, "quantity": {"type": "integer"}}}},
         "fulfilment": {"type": ["string", "null"], "enum": ["COLLECT", "DELIVERY", None],
                        "description": "For groceries: COLLECT in store, or DELIVERY to the registered address"},
     }),
@@ -176,15 +180,27 @@ def _baskets(mandate):
     return result
 
 
+def _grocery_items(mandate):
+    """The grocer's price list (item ids, names, sizes, prices) for building a shopping list."""
+    ids = _rule_ids(mandate, "allowed_payees", "payee_ids")
+    result = []
+    for payee in Payee.objects.filter(pk__in=ids).exclude(catalogue={}):
+        result += [{"item_id": i["id"], "name": i["name"], "size": i.get("size", ""), "price": i["price"],
+                    "store": payee.name} for i in payee.catalogue.get("items", [])]
+    return result
+
+
 def tool_get_mandates(p, conversation, current):
     result = []
     for m in visible_mandates(p):
         item = {"mandate_id": str(m.id), "type": TEMPLATES[m.type].label}
         if p.is_funder or p.beneficiary or p.payee:
             item.update(title=m.title, rules=[_rule_text(r) for r in m.rules.all()])
-        baskets = _baskets(m)
+        baskets, items = _baskets(m), _grocery_items(m)
         if baskets and (p.is_funder or p.beneficiary):
             item["grocery_baskets"] = baskets
+        if items and (p.is_funder or p.beneficiary):
+            item["grocery_items"] = items
         if p.is_funder:
             item["balance"] = str(services.mandate_balance(m))
             item["currency"] = m.currency
@@ -205,7 +221,7 @@ def tool_get_beneficiaries(p, conversation, current):
 
 
 def tool_create_request(p, conversation, current, mandate_id, product, amount, payee_id, beneficiary_id,
-                        summary_en, attachments, basket_id=None, fulfilment=None):
+                        summary_en, attachments, basket_id=None, fulfilment=None, items=None):
     mandate = next((m for m in visible_mandates(p) if str(m.id) == mandate_id), None)
     if mandate is None:
         raise ToolError("No such mandate")
@@ -224,7 +240,11 @@ def tool_create_request(p, conversation, current, mandate_id, product, amount, p
     if payee is None:
         payee = services.sole_payee(mandate, product)
     details = {}
-    if basket_id:
+    if items:
+        if payee is None:
+            raise ToolError("No store found for these items")
+        amount, details = services.grocery_items_order(payee, items, fulfilment, beneficiary)  # store prices win
+    elif basket_id:
         if payee is None:
             raise ToolError("No store found for this basket")
         amount, details = services.grocery_order(payee, basket_id, fulfilment, beneficiary)  # store price wins

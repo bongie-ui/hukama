@@ -27,15 +27,23 @@ MAMA_ADDRESS = "Stand 1182, Jahunda, Gwanda"  # fictional
 PRODUCTS = {"momo": ["airtime", "bundles", "cash"], "grocer": ["groceries"]}
 GROCER_CATALOGUE = {
     "delivery_fee": "3.00",
-    "baskets": [
-        {"id": "essentials", "name": "Essentials hamper", "price": "28.00",
-         "items": ["Mealie meal 10 kg", "Cooking oil 2 L", "Sugar 2 kg", "Salt 1 kg", "Tea leaves 250 g"]},
-        {"id": "family-week", "name": "Family week", "price": "45.00",
-         "items": ["Mealie meal 10 kg", "Rice 5 kg", "Cooking oil 2 L", "Sugar 2 kg", "Beans 2 kg",
-                   "Soya chunks 1 kg", "Bath soap x4", "Washing powder 2 kg"]},
-        {"id": "big-shop", "name": "Big monthly shop", "price": "72.00",
-         "items": ["Mealie meal 20 kg", "Rice 10 kg", "Cooking oil 5 L", "Sugar 5 kg", "Beans 5 kg",
-                   "Kapenta 1 kg", "Tinned fish x6", "Toiletries pack", "Washing powder 5 kg"]},
+    "items": [
+        {"id": "mealie-10", "name": "Mealie meal", "size": "10 kg", "price": "8.50", "category": "Staples"},
+        {"id": "rice-5", "name": "Rice", "size": "5 kg", "price": "6.00", "category": "Staples"},
+        {"id": "flour-2", "name": "Bread flour", "size": "2 kg", "price": "2.50", "category": "Staples"},
+        {"id": "sugar-2", "name": "Sugar", "size": "2 kg", "price": "2.80", "category": "Staples"},
+        {"id": "oil-2", "name": "Cooking oil", "size": "2 L", "price": "4.20", "category": "Staples"},
+        {"id": "salt-1", "name": "Salt", "size": "1 kg", "price": "0.80", "category": "Staples"},
+        {"id": "beans-2", "name": "Sugar beans", "size": "2 kg", "price": "4.00", "category": "Protein"},
+        {"id": "kapenta-1", "name": "Kapenta", "size": "1 kg", "price": "7.50", "category": "Protein"},
+        {"id": "fish-tin", "name": "Tinned fish", "size": "400 g", "price": "1.30", "category": "Protein"},
+        {"id": "soya-1", "name": "Soya chunks", "size": "1 kg", "price": "2.20", "category": "Protein"},
+        {"id": "eggs-30", "name": "Eggs", "size": "tray of 30", "price": "5.50", "category": "Protein"},
+        {"id": "tea-250", "name": "Tea leaves", "size": "250 g", "price": "1.90", "category": "Drinks"},
+        {"id": "milk-2", "name": "Long-life milk", "size": "2 L", "price": "2.40", "category": "Drinks"},
+        {"id": "soap-4", "name": "Bath soap", "size": "4 bars", "price": "2.00", "category": "Household"},
+        {"id": "powder-2", "name": "Washing powder", "size": "2 kg", "price": "3.60", "category": "Household"},
+        {"id": "candles-6", "name": "Candles", "size": "6 pack", "price": "1.50", "category": "Household"},
     ],
 }
 # The PayPal sandbox accounts created for the demo (not secrets). An env var with the same name overrides each one.
@@ -87,6 +95,7 @@ class Command(BaseCommand):
         existing = Family.objects.filter(name=FAMILY).first()
         if sync and existing is not None:
             if existing.seed_version == SEED_VERSION:
+                self._refresh_catalogues(existing)
                 self.stdout.write(f"{FAMILY} is up to date (seed version {SEED_VERSION})")
                 return
             reset = True
@@ -100,6 +109,15 @@ class Command(BaseCommand):
         with transaction.atomic():
             self._create()
         self.stdout.write(self.style.SUCCESS(f"Seeded {FAMILY}: log in as mmeli, bonginkosi or andile"))
+
+    def _refresh_catalogues(self, family):
+        """Keep the demo store's price list current on deploys without rebuilding the family's history."""
+        from django.db.models import Q
+
+        updated = Payee.objects.filter(Q(family=family) | Q(family__isnull=True), kind=Payee.GROCER) \
+            .exclude(catalogue=GROCER_CATALOGUE).update(catalogue=GROCER_CATALOGUE)
+        if updated:
+            self.stdout.write(f"Updated the store price list ({updated})")
 
     # --- reset ----------------------------------------------------------------------------------------
 

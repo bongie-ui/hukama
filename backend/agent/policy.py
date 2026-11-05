@@ -236,8 +236,15 @@ RULE_CHECKS = {
 }
 
 
-def precheck(request, now=None):
-    """Mandate-level checks (signature, status, expiry, balance). Returns a refusal reason or None."""
+def funds_short(request):
+    """True when the mandate's balance cannot cover this request (everything else aside)."""
+    mandate = Mandate.objects.get(pk=request.mandate_id)
+    return request.amount > mandate_balance(mandate, exclude_request=request)
+
+
+def precheck(request, now=None, ignore_balance=False):
+    """Mandate-level checks (signature, status, expiry, balance). Returns a refusal reason or None.
+    `ignore_balance` asks "would this pass if the money were there?" (to decide whether to invoice funders)."""
     now = now or timezone.now()
     mandate = Mandate.objects.get(pk=request.mandate_id)  # stored state, never a stale in-memory copy
     if not signing.verify(mandate):
@@ -252,12 +259,12 @@ def precheck(request, now=None):
         return (f"{request.payee.name} has not been verified by Hukama yet, so it cannot be paid. "
                 "New payees are checked before they can receive money")
     balance = mandate_balance(mandate, exclude_request=request)
-    if request.amount > balance:
+    if not ignore_balance and request.amount > balance:
         return f"Insufficient mandate funds: {money(balance, mandate.currency)} available"
     return None
 
 
-def check(request, now=None, funder_verified=False):
+def check(request, now=None, funder_verified=False, ignore_balance=False):
     """Compute the decision for `request`. Requires a RiskAssessment (fraud.assess runs first).
 
     HIGH risk holds the request even when a rule also fails, so funders always see the fraud card.
@@ -265,7 +272,7 @@ def check(request, now=None, funder_verified=False):
     satisfied by that funder, but every hard rule, the signature and the balance still apply.
     """
     now = now or timezone.now()
-    if refusal := precheck(request, now):
+    if refusal := precheck(request, now, ignore_balance=ignore_balance):
         return PolicyResult(Decision.REFUSE, refusal, [{"rule_id": None, "kind": "mandate", "passed": False,
                                                         "detail": refusal}])
     ctx = {"now": now, "currency": request.mandate.currency}

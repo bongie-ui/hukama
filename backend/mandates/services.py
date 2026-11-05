@@ -182,6 +182,8 @@ def mark_funding_captured(funding, external_id=None):
         else f"Local: {funding.contributor_name}"
     record(funding.mandate, LedgerEntry.FUNDED, actor, amount=funding.amount,
            funding_id=str(funding.id), rail=funding.rail, external_id=funding.external_id)
+    if funding.for_request_id:
+        settle_invoice(funding)  # a funder paid a shopping list: decide and pay it now
     return funding
 
 
@@ -412,6 +414,51 @@ def basket(payee, basket_id):
     return found
 
 
+MAX_ORDER_LINES = 40
+MAX_LINE_QUANTITY = 50
+
+
+def grocery_items_order(payee, lines, fulfilment, beneficiary):
+    """Price a list of {item_id, quantity} from the payee's own price list (the client never sets prices).
+    Delivery only ever goes to the beneficiary's registered address. Returns (amount, details)."""
+    if fulfilment not in (Request.COLLECT, Request.DELIVERY):
+        raise ServiceError("Choose collect in store or home delivery")
+    catalogue = {i["id"]: i for i in (payee.catalogue or {}).get("items", [])}
+    wanted = {}
+    for line in lines or []:
+        try:
+            item_id, quantity = str(line.get("item_id") or line.get("id")), int(line.get("quantity") or 0)
+        except (AttributeError, TypeError, ValueError):
+            raise ServiceError("Each item needs an id and a whole quantity")
+        if item_id not in catalogue:
+            raise ServiceError(f"{payee.name} does not sell {item_id!r}")
+        if quantity < 0 or quantity > MAX_LINE_QUANTITY:
+            raise ServiceError(f"Choose between 1 and {MAX_LINE_QUANTITY} of each item")
+        if quantity:
+            wanted[item_id] = wanted.get(item_id, 0) + quantity
+    if not wanted:
+        raise ServiceError("Choose at least one item")
+    if len(wanted) > MAX_ORDER_LINES:
+        raise ServiceError(f"Order at most {MAX_ORDER_LINES} different items at a time")
+    items, subtotal = [], Decimal("0")
+    for item_id, quantity in wanted.items():
+        item = catalogue[item_id]
+        price = Decimal(str(item["price"]))
+        line_total = price * quantity
+        subtotal += line_total
+        items.append({"id": item_id, "name": item["name"], "size": item.get("size", ""), "quantity": quantity,
+                      "price": f"{price:.2f}", "line_total": f"{line_total:.2f}"})
+    details = {"items": items, "subtotal": f"{subtotal:.2f}", "store": payee.name}
+    amount = subtotal
+    if fulfilment == Request.DELIVERY:
+        if beneficiary is None or not beneficiary.address:
+            raise ServiceError("Home delivery needs the beneficiary's registered address")
+        fee = Decimal(str((payee.catalogue or {}).get("delivery_fee", "0")))
+        amount += fee
+        details.update(delivery_fee=f"{fee:.2f}", address=beneficiary.address)
+    return amount.quantize(Decimal("0.01")), details
+
+
 def grocery_order(payee, basket_id, fulfilment, beneficiary):
     """Price an order from the payee's own catalogue (the client never sets the amount).
     Delivery only ever goes to the beneficiary's registered address. Returns (amount, details)."""
@@ -444,15 +491,19 @@ def execute_decision(request):
 
 
 def inbox(user):
-    """Requests waiting for this funder: escalations and fraud holds on mandates they fund."""
-    return Request.objects.filter(mandate__mandate_funders__user=user,
-                                  status__in=(Request.ESCALATED, Request.HELD_FRAUD)) \
-        .select_related("mandate", "beneficiary", "payee").order_by("-created_at")
+    """Requests waiting for this funder: escalations, fraud holds, and shopping lists sent to them to pay."""
+    from django.db.models import Q
+
+    waiting = Q(status__in=(Request.ESCALATED, Request.HELD_FRAUD)) | \
+        (Q(status=Request.INVOICED) & (Q(invoice_to__isnull=True) | Q(invoice_to=user)))
+    return Request.objects.filter(waiting, mandate__mandate_funders__user=user) \
+        .select_related("mandate", "beneficiary", "payee").distinct().order_by("-created_at")
 
 
 ALLOWED_ACTIONS = {
     Request.ESCALATED: {Approval.APPROVE, Approval.REJECT, Approval.REPORT_FRAUD},
     Request.HELD_FRAUD: {Approval.VERIFIED_SAFE, Approval.REJECT, Approval.REPORT_FRAUD},
+    Request.INVOICED: {Approval.REJECT},  # paying is the approval; any funder asked may decline it for the family
 }
 
 
@@ -472,6 +523,8 @@ def apply_approval(request, user, action, note=""):
                                             else ""))
     if action not in allowed:
         raise ServiceError(f"{action} is not possible for a request that is {request.get_status_display().lower()}")
+    if request.status == Request.INVOICED and request.invoice_to_id not in (None, user.pk):
+        raise ServiceError("This shopping list was sent to someone else")
     if action == Approval.VERIFIED_SAFE and not note.strip():
         raise ServiceError("Say how you verified it, e.g. that you called the beneficiary on the registered number")
 
@@ -496,6 +549,9 @@ def apply_approval(request, user, action, note=""):
         request.save(update_fields=["status", "updated_at"])
         record(request.mandate, LedgerEntry.DECIDED, actor, request=request, amount=request.amount,
                outcome=Decision.REFUSE, note=note)
+        if request.channel == Request.SHOP:
+            notify(_others(request, user), f"{_name(user)} declined {_whose(request)} shopping list "
+                                           f"(${request.amount:.2f}).", request)
     else:  # REPORT_FRAUD
         registered = fraud.registered_phones(request.mandate.family)
         suspects = [p for p in [request.requester_phone, *find_phones(request.message_text)]
@@ -618,3 +674,208 @@ def _is_uuid(value):
         return True
     except ValueError:
         return False
+
+
+
+# --- Notifications ----------------------------------------------------------------------------------------
+
+def notify(users, text, request=None):
+    from .models import Notification
+
+    users = [u for u in users if u is not None]
+    if not users:
+        return
+    family_id = request.mandate.family_id if request is not None else None
+    Notification.objects.bulk_create(Notification(family_id=family_id or Membership.objects.get(user=u).family_id,
+                                                  user=u, request=request, text=text[:300]) for u in users)
+
+
+def _name(user):
+    return user.first_name or user.get_full_name() or user.username
+
+
+def _whose(request):
+    return f"{request.beneficiary.name.split()[0]}'s" if request.beneficiary else "the"
+
+
+def _addressed(request):
+    """The funders a shopping list was sent to: one funder, or every funder of the mandate."""
+    if request.invoice_to_id:
+        return [request.invoice_to]
+    return [f.user for f in request.mandate.mandate_funders.select_related("user")]
+
+
+def _others(request, user):
+    return [u for u in _addressed(request) if u.pk != user.pk]
+
+
+# --- Shop links and shopping lists (beneficiaries choose for themselves) ---------------------------------
+
+SHOP_ORDERS_PER_DAY = 10
+
+
+def shop_mandates(family, beneficiary):
+    """Active mandates that cover this beneficiary's groceries, each with its store(s) that have a price list."""
+    result = []
+    for m in Mandate.objects.filter(family=family, status=Mandate.ACTIVE).prefetch_related("rules") \
+            .order_by("created_at"):
+        rules = list(m.rules.all())
+        covered = any(r.kind == "allowed_beneficiaries" and str(beneficiary.id) in map(str, r.params.get(
+            "beneficiary_ids", [])) for r in rules)
+        groceries = any(r.kind == "allowed_products" and "groceries" in r.params.get("products", []) for r in rules)
+        if not (covered and groceries and "groceries" in (beneficiary.allowed_products or [])):
+            continue
+        ids = {str(i) for r in rules if r.kind == "allowed_payees" for i in r.params.get("payee_ids", [])}
+        stores = [p for p in Payee.objects.filter(pk__in=ids, verified=True)
+                  if (p.catalogue or {}).get("items") and (not p.products or "groceries" in p.products)]
+        if stores:
+            result.append((m, stores))
+    return result
+
+
+@transaction.atomic
+def set_shop_link(family, beneficiary, user, enabled, new=False):
+    """A funder gets the beneficiary's shop link (the active one, or a new secret) or turns it off."""
+    from .models import ShopLink
+
+    require_funder(user, family)
+    if beneficiary.family_id != family.id:
+        raise ServiceError("That person belongs to another family")
+    current = ShopLink.objects.select_for_update().filter(beneficiary=beneficiary, active=True).first()
+    if enabled and current is not None and not new:
+        return current
+    ShopLink.objects.filter(beneficiary=beneficiary, active=True).update(active=False)
+    if not enabled:
+        return None
+    if not shop_mandates(family, beneficiary):
+        raise ServiceError(f"No mandate covers groceries for {beneficiary.name} from a store with a price list")
+    return ShopLink.objects.create(family=family, beneficiary=beneficiary, token=secrets.token_urlsafe(16),
+                                   created_by=user)
+
+
+def active_shop_link(token):
+    from .models import ShopLink
+
+    link = ShopLink.objects.filter(token=token, active=True).select_related("family", "beneficiary").first() \
+        if token else None
+    if link is None:
+        raise ServiceError("This shop link is not active")
+    return link
+
+
+def place_shop_order(link, *, mandate_id, store_id, lines, fulfilment, ask="all", note="", idempotency_key="",
+                     intent_analyzer=None, now=None):
+    """The beneficiary sends a shopping list. Paid from the fund when the rules allow; when the fund is short
+    (and only then), it becomes an invoice to every funder or the one they chose."""
+    from datetime import timedelta
+
+    from agent import policy
+
+    beneficiary = link.beneficiary
+    key = f"shop-{link.id}-{idempotency_key or secrets.token_hex(8)}"[:100]
+    if existing := Request.objects.filter(idempotency_key=key).first():
+        return existing
+    found = next(((m, s) for m, s in shop_mandates(link.family, beneficiary) if str(m.id) == str(mandate_id)), None)
+    if found is None:
+        raise ServiceError("Choose which support this shopping is from")
+    mandate, stores = found
+    store = next((s for s in stores if str(s.id) == str(store_id)), stores[0] if len(stores) == 1 else None)
+    if store is None:
+        raise ServiceError("Choose a store")
+    funders = {str(f.user_id): f.user for f in mandate.mandate_funders.select_related("user")}
+    if ask not in ("all", None, "") and str(ask) not in funders:
+        raise ServiceError("Choose who to ask")
+    since = (now or timezone.now()) - timedelta(hours=24)
+    if Request.objects.filter(channel=Request.SHOP, beneficiary=beneficiary, created_at__gte=since).count() \
+            >= SHOP_ORDERS_PER_DAY:
+        raise ServiceError("Too many shopping lists today. Try again tomorrow or call the family")
+    amount, details = grocery_items_order(store, lines, fulfilment, beneficiary)
+    request = submit_request(
+        mandate=mandate, amount=amount, product="groceries", payee=store, beneficiary=beneficiary,
+        channel=Request.SHOP, requester_phone=beneficiary.phone, requester_display=beneficiary.name,
+        message_text=(note or "").strip()[:500], fulfilment=fulfilment, details=details,
+        summary_en=f"{beneficiary.name} sent a shopping list from {store.name}", idempotency_key=key,
+        intent_analyzer=intent_analyzer, now=now)
+    if request.status == Request.REFUSED and policy.funds_short(request):
+        _fund_short(request, funders.get(str(ask)) if ask not in ("all", None, "") else None, now)
+    request.refresh_from_db()
+    return request
+
+
+@transaction.atomic
+def _fund_short(request, ask_user, now=None):
+    """The fund can't cover a shopping list. If it would pass with the money there, send it to the funders to pay;
+    a fraud hold still holds, and any other broken rule stays a refusal."""
+    from agent import policy
+
+    lock_mandate(request.mandate)
+    request = Request.objects.select_for_update().get(pk=request.pk)
+    result = policy.check(request, now, ignore_balance=True)
+    if result.outcome == Decision.HOLD_FRAUD:
+        status, reason = Request.HELD_FRAUD, result.reason
+    elif result.outcome == Decision.REFUSE:
+        status, reason = Request.REFUSED, result.reason
+    else:
+        status = Request.INVOICED
+        who = _name(ask_user) if ask_user else "everyone"
+        reason = f"The support fund can't cover this right now, so it was sent to {who} to pay with PayPal"
+    Decision.objects.create(request=request, outcome=Decision.ESCALATE if status == Request.INVOICED else
+                            result.outcome, reason=reason, rule_results=result.rule_results, decided_by=Decision.POLICY)
+    request.status = status
+    request.invoice_to = ask_user if status == Request.INVOICED else None
+    request.save(update_fields=["status", "invoice_to", "updated_at"])
+    record(request.mandate, LedgerEntry.INVOICED if status == Request.INVOICED else LedgerEntry.DECIDED, "POLICY",
+           request=request, amount=request.amount, reason=reason,
+           **({"invoice_to": ask_user.pk} if ask_user else {}))
+    if status == Request.INVOICED:
+        notify(_addressed(request), f"{_whose(request).capitalize()} shopping list from {request.payee.name} "
+                                    f"(${request.amount:.2f}) needs paying: the support fund is short.", request)
+    else:
+        execute_decision(request)
+
+
+def check_invoice_payable(request, user):
+    """Before a funder pays a shopping list: is it still open, sent to them, and within every hard rule?"""
+    from agent import policy
+
+    if request.status != Request.INVOICED:
+        raise ServiceError("This shopping list is no longer waiting to be paid")
+    if not request.mandate.mandate_funders.filter(user=user).exists() or \
+            request.invoice_to_id not in (None, user.pk):
+        raise ServiceError("This shopping list was sent to someone else")
+    result = policy.check(request, funder_verified=True, ignore_balance=True)
+    if result.outcome != Decision.APPROVE:
+        raise ServiceError(result.reason)
+
+
+def settle_invoice(funding):
+    """Called once when a funder's PayPal payment for a shopping list is captured (inside that transaction).
+    The first payment decides and pays the list; a second, late payment simply stays in the fund."""
+    from agent import policy
+
+    lock_mandate(funding.mandate)
+    request = Request.objects.select_for_update().get(pk=funding.for_request_id)
+    payer = funding.funder
+    if request.status != Request.INVOICED:
+        notify([payer], f"{_whose(request).capitalize()} shopping list was already covered, so your "
+                        f"${funding.amount:.2f} was added to {request.mandate.title}.", request)
+        return request
+    actor = actor_of(payer)
+    result = policy.check(request, funder_verified=True)
+    Decision.objects.create(request=request, outcome=result.outcome, reason=(
+        f"Paid by {_name(payer)} with PayPal; all rules passed" if result.outcome == Decision.APPROVE else result.reason),
+        rule_results=result.rule_results, decided_by=actor)
+    request.status = Request.APPROVED if result.outcome == Decision.APPROVE else Request.REFUSED
+    request.details = {**request.details, "paid_by": _name(payer)}
+    request.save(update_fields=["status", "details", "updated_at"])
+    record(request.mandate, LedgerEntry.DECIDED, actor, request=request, amount=request.amount,
+           outcome=result.outcome, reason=result.reason, paid_by=payer.pk)
+    if request.status == Request.APPROVED:
+        notify(_others(request, payer), f"{_name(payer)} paid {_whose(request)} shopping list "
+                                        f"(${request.amount:.2f}). Nothing for you to do.", request)
+        notify([payer], f"Thank you. {_whose(request).capitalize()} shopping list is paid.", request)
+        execute_decision(request)
+    else:
+        notify([payer], f"{_whose(request).capitalize()} shopping list could not be paid ({result.reason}); "
+                        f"your ${funding.amount:.2f} is in {request.mandate.title}.", request)
+    return request

@@ -63,6 +63,14 @@
       "value": ""
     },
     {
+      "key": "shopperId",
+      "value": ""
+    },
+    {
+      "key": "shopToken",
+      "value": ""
+    },
+    {
       "key": "csrfToken",
       "value": ""
     }
@@ -957,6 +965,159 @@
                 "exec": [
                   "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
                   "pm.test('lists what to send', () => pm.expect(pm.response.json().mandates[0].needs).to.be.an('array'));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Shop link (the beneficiary chooses groceries)",
+      "item": [
+        {
+          "name": "Find someone who can shop",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/beneficiaries/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "beneficiaries",
+                ""
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "const b = pm.response.json().find(x => x.allowed_products.includes('groceries'));",
+                  "pm.collectionVariables.set('shopperId', b.id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get their private shop link",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/beneficiaries/{{shopperId}}/shop-link/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "beneficiaries",
+                "{{shopperId}}",
+                "shop-link",
+                ""
+              ]
+            },
+            "description": "Returns the active link (or creates one). Send them {{baseUrl}}/#/shop/<shop_link>."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "pm.collectionVariables.set('shopToken', pm.response.json().shop_link);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "What they see: the store's price list (public)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/public/shop/{{shopToken}}/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "public",
+                "shop",
+                "{{shopToken}}",
+                ""
+              ]
+            },
+            "description": "They then POST public/shop/<token>/order/ with items [{item_id, quantity}], fulfilment and ask (\"all\" or a funder id). The support fund pays if the rules allow; if the fund is short the list is invoiced to the family, and the first funder to pay with PayPal covers it."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "pm.test('has items to choose', () => pm.expect(pm.response.json().mandates[0].stores[0].items.length).to.be.above(0));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "My notifications",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/notifications/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "notifications",
+                ""
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
                 ]
               }
             }

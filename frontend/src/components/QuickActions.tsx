@@ -18,7 +18,7 @@ export default function QuickActions({ mandate, beneficiary, onChange }:
   const coverage = useApi<Coverage[]>(`/mandates/${mandate.id}/coverage/?beneficiary=${beneficiary.id}`);
   const payees = useApi<Payee[]>("/payees/");
   const allowed = mandate.rules.filter((r) => r.kind === "allowed_payees").flatMap((r) => (r.params.payee_ids as string[]) ?? []);
-  const grocer = payees.data?.find((p) => allowed.includes(p.id) && p.products.includes("groceries") && p.catalogue.baskets?.length);
+  const grocer = payees.data?.find((p) => allowed.includes(p.id) && p.products.includes("groceries") && p.catalogue.items?.length);
   const refresh = () => {
     void coverage.reload();
     onChange();

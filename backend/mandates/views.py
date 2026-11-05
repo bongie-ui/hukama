@@ -5,6 +5,7 @@ Views only translate HTTP to services; every state change goes through mandates.
 
 import json
 import uuid
+from decimal import Decimal
 
 from accounts.models import Membership
 from django.db.models import Q
@@ -53,7 +54,10 @@ def _family_user(family, user_id):
 def beneficiaries(request):
     family = current_family(request)
     if request.method == "GET":
-        return Response(BeneficiarySerializer(family.beneficiaries.order_by("name"), many=True).data)
+        qs = family.beneficiaries.order_by("name")
+        links = dict(family.shop_links.filter(active=True).values_list("beneficiary_id", "token"))
+        return Response([{**row, "shop_link": links.get(b.id)}
+                         for b, row in zip(qs, BeneficiarySerializer(qs, many=True).data)])
     _require(request.data, "name", "phone")
     b = services.register_beneficiary(family=family, name=request.data["name"], phone=request.data["phone"],
                                       registered_by=request.user,
@@ -112,6 +116,118 @@ def payee_upload_link(request, pk):
     link = services.set_payee_link(family, payee, request.user, enabled=request.method == "POST",
                                    new=bool(request.data.get("new")))
     return Response({"payee": str(payee.id), "upload_link": link.token if link else None})
+
+
+@api_view(["POST", "DELETE"])
+@permission_classes(PERMS)
+def beneficiary_shop_link(request, pk):
+    """A funder gets the beneficiary's private shop link (POST; {"new": true} replaces it) or turns it off."""
+    family = current_family(request)
+    b = get_or_404(family.beneficiaries, pk=pk)
+    link = services.set_shop_link(family, b, request.user, enabled=request.method == "POST",
+                                  new=bool(request.data.get("new")))
+    return Response({"beneficiary": str(b.id), "shop_link": link.token if link else None})
+
+
+@api_view(["GET"])
+@permission_classes(PERMS)
+def notifications(request):
+    from .models import Notification
+
+    qs = Notification.objects.filter(user=request.user).order_by("-created_at")
+    return Response({"unread": qs.filter(read_at__isnull=True).count(),
+                     "items": [{"id": str(n.id), "text": n.text, "request": str(n.request_id) if n.request_id else None,
+                                "read": n.read_at is not None, "created_at": n.created_at} for n in qs[:20]]})
+
+
+@api_view(["POST"])
+@permission_classes(PERMS)
+def notifications_read(request):
+    from django.utils import timezone
+
+    from .models import Notification
+
+    Notification.objects.filter(user=request.user, read_at__isnull=True).update(read_at=timezone.now())
+    return Response({"unread": 0})
+
+
+# --- Public shop link (no sign-in) -------------------------------------------------------------------------
+
+_SHOP_STATUS = {Request.APPROVED: "Paid, being prepared", Request.PAID: "Paid", Request.REFUSED: "Not approved",
+                Request.FAILED: "Payment failed; the family will follow up", Request.ESCALATED: "Waiting for the family",
+                Request.HELD_FRAUD: "Waiting for the family", Request.CONFIRMED_FRAUD: "Not approved",
+                Request.INVOICED: "Sent to the family to pay"}
+
+
+def _shop_order(r):
+    tx = r.rail_transactions.order_by("-created_at").first()
+    decision = r.latest_decision
+    show_reasons = r.status == Request.REFUSED and decision and decision.decided_by == "POLICY"
+    status_text = _SHOP_STATUS.get(r.status, "Being checked")
+    if r.status in (Request.APPROVED, Request.PAID) and r.details.get("paid_by"):
+        status_text = f"Paid by {r.details['paid_by']}"
+    elif r.status == Request.INVOICED:
+        status_text = f"Sent to {services._name(r.invoice_to)} to pay" if r.invoice_to else "Sent to everyone to pay"
+    return {"id": str(r.id), "amount": f"{r.amount:.2f}", "currency": r.mandate.currency, "state": r.status,
+            "status": status_text, "store": r.payee.name if r.payee else "", "fulfilment": r.fulfilment,
+            "items": r.details.get("items", []), "delivery_fee": r.details.get("delivery_fee"),
+            "to_fix": [x["detail"] for x in decision.rule_results if not x["passed"] and x.get("kind") != "mandate"]
+            if show_reasons else [],
+            "delivery": tx.get_last_mile_status_display() if tx and tx.last_mile_status != "N/A" else None,
+            "collection_code": tx.collection_code if tx and tx.last_mile_status == "AWAITING_COLLECTION" else None,
+            "created_at": r.created_at}
+
+
+def _shop_cap(mandate, beneficiary):
+    """Groceries left this period under the mandate's grocery cap (None when there is no cap)."""
+    from .describe import coverage
+
+    row = next((c for c in coverage(mandate, beneficiary) if c.get("product") == "groceries"), None)
+    if not row or row.get("cap") is None:
+        return None
+    return {"left": f"{max(Decimal(str(row['cap'])) - Decimal(str(row['used'])), Decimal('0')):.2f}",
+            "period": row.get("period")}
+
+
+@api_view(["GET"])
+@authentication_classes([])
+@permission_classes([AllowAny])
+def public_shop(request, token):
+    """What the beneficiary sees: the store's price list, who they can ask, and their recent shopping."""
+    try:
+        link = services.active_shop_link(token)
+    except services.ServiceError:
+        raise NotFound("This shop link is not active")
+    b = link.beneficiary
+    payload = []
+    for m, stores in services.shop_mandates(link.family, b):
+        payload.append({
+            "id": str(m.id), "title": m.title, "currency": m.currency, "allowance": _shop_cap(m, b),
+            "funders": [{"id": str(f.user_id), "name": services._name(f.user)}
+                        for f in m.mandate_funders.select_related("user").order_by("created_at")],
+            "stores": [{"id": str(s.id), "name": s.name, "items": s.catalogue.get("items", []),
+                        "delivery_fee": s.catalogue.get("delivery_fee", "0")} for s in stores],
+        })
+    recent = Request.objects.filter(beneficiary=b, product="groceries", mandate__family=link.family) \
+        .select_related("mandate", "payee", "invoice_to").prefetch_related("decisions").order_by("-created_at")[:8]
+    return Response({"name": b.name.split()[0], "family": link.family.name, "address": b.address,
+                     "mandates": payload, "orders": [_shop_order(r) for r in recent]})
+
+
+@api_view(["POST"])
+@authentication_classes([])
+@permission_classes([AllowAny])
+def public_shop_order(request, token):
+    """The beneficiary sends a shopping list: paid from the fund if it can, otherwise sent to the family to pay."""
+    try:
+        link = services.active_shop_link(token)
+    except services.ServiceError:
+        raise NotFound("This shop link is not active")
+    d = request.data
+    req = services.place_shop_order(link, mandate_id=d.get("mandate"), store_id=d.get("store"),
+                                    lines=d.get("items") or [], fulfilment=d.get("fulfilment"), ask=d.get("ask") or "all",
+                                    note=d.get("note", ""), idempotency_key=d.get("idempotency_key", ""))
+    return Response(_shop_order(req), status=status.HTTP_201_CREATED)
 
 
 # --- Public payee upload link (no sign-in) ----------------------------------------------------------------
@@ -334,7 +450,12 @@ def requests_(request):
     payee = (get_or_404(Payee.objects.filter(Q(family=family) | Q(family__isnull=True)), pk=data["payee"])
              if data.get("payee") else services.sole_payee(mandate, data["product"]))
     fulfilment, details, amount = "", {}, data.get("amount")
-    if data.get("basket_id"):  # an order from the payee's own price list: the server sets the amount
+    if data.get("items"):  # items from the store's own price list: the server sets the amount
+        if payee is None:
+            raise ValidationError({"payee": "Choose the store"})
+        amount, details = services.grocery_items_order(payee, data["items"], data.get("fulfilment"), beneficiary)
+        fulfilment = data["fulfilment"]
+    elif data.get("basket_id"):  # a ready-made basket from the payee's price list
         if payee is None:
             raise ValidationError({"payee": "Choose who supplies this basket"})
         amount, details = services.grocery_order(payee, data["basket_id"], data.get("fulfilment"), beneficiary)

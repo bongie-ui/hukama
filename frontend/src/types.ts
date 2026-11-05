@@ -42,6 +42,7 @@ export interface Beneficiary {
   verified_at: string | null;
   phone_changed_at: string | null;
   phone_recently_changed: boolean;
+  shop_link?: string | null;
 }
 
 export interface Payee {
@@ -58,8 +59,18 @@ export interface Payee {
   shared: boolean;
   simulated: boolean;
   products: string[];
-  catalogue: { delivery_fee?: string; baskets?: Basket[] };
+  catalogue: { delivery_fee?: string; baskets?: Basket[]; items?: GroceryItem[] };
   upload_link?: string | null;
+}
+
+export interface OrderLine { id: string; name: string; size?: string; quantity: number; price: string; line_total: string }
+
+export interface GroceryItem {
+  id: string;
+  name: string;
+  size?: string;
+  price: string;
+  category?: string;
 }
 
 export interface Basket {
@@ -160,7 +171,7 @@ export interface Payment {
 
 export type RequestStatus =
   | "NEW" | "ASSESSED" | "APPROVED" | "REFUSED" | "ESCALATED" | "HELD_FRAUD" | "PAID" | "FAILED" | "CANCELLED"
-  | "CONFIRMED_FRAUD";
+  | "CONFIRMED_FRAUD" | "INVOICED";
 
 export interface PayRequest {
   id: string;
@@ -182,12 +193,14 @@ export interface PayRequest {
   summary_en: string;
   status: RequestStatus;
   created_at: string;
+  invoice_to?: number | null;
+  invoice_to_name?: string | null;
   decision: { outcome: string; reason: string; decided_by: string } | null;
   risk: Risk | null;
   payment: Payment | null;
   fulfilment: "" | "COLLECT" | "DELIVERY";
-  details: { basket?: string; items?: string[]; basket_price?: string; delivery_fee?: string; address?: string;
-    store?: string };
+  details: { basket?: string; items?: (string | OrderLine)[]; basket_price?: string; subtotal?: string;
+    delivery_fee?: string; address?: string; store?: string; paid_by?: string };
 }
 
 export interface RuleResult {

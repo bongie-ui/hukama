@@ -2,6 +2,7 @@ import { money, when } from "../api";
 import { requestTitle } from "../components/Activity";
 import { ApprovalActions, FraudCard } from "../components/Approval";
 import Icon from "../components/Icon";
+import InvoiceCard from "../components/InvoiceCard";
 import { Avatar, Empty, ErrorNote, riskTone, Skeleton } from "../components/ui";
 import { useApi } from "../hooks";
 import type { PayRequest } from "../types";
@@ -16,7 +17,7 @@ export default function Inbox() {
       <header className="page-head">
         <div>
           <h1>Approvals</h1>
-          <p>Requests the rules held back for the family: possible scams, and anything over an approval limit.</p>
+          <p>Requests the rules held back for the family: possible scams, anything over an approval limit, and shopping lists the fund couldn't cover.</p>
         </div>
       </header>
       <ErrorNote error={error} />
@@ -26,6 +27,7 @@ export default function Inbox() {
       )}
       <div className="stack" style={{ gap: 20 }}>
         {sorted.map((r) =>
+          r.status === "INVOICED" ? <InvoiceCard key={r.id} r={r} onDone={() => reload()} /> :
           r.status === "HELD_FRAUD" && r.risk ? (
             <FraudCard key={r.id} r={r}>
               <ApprovalActions r={r} onDone={() => reload()} />

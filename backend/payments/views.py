@@ -79,6 +79,38 @@ def fund_capture(request, pk):
 
 @api_view(["POST"])
 @permission_classes([IsFamilyMember])
+def invoice_create_order(request, pk):
+    """A funder starts paying a shopping list the fund could not cover (PayPal checkout for its amount)."""
+    from mandates.models import Request
+    from mandates.services import check_invoice_payable
+
+    req = get_or_404(Request.objects.filter(mandate__family=current_family(request)).select_related("mandate"), pk=pk)
+    check_invoice_payable(req, request.user)
+    try:
+        funding = checkout.start(req.mandate, req.amount, funder=request.user, for_request=req)
+    except checkout.CheckoutError as exc:
+        return _checkout_error(exc)
+    return Response({"order_id": funding.paypal_order_id, "funding_id": str(funding.id)}, status=201)
+
+
+@api_view(["POST"])
+@permission_classes([IsFamilyMember])
+def invoice_capture(request, pk):
+    """After the funder approves in PayPal: capture; the first payment pays the list, others stay in the fund."""
+    from mandates.models import Request
+    from mandates.serializers import RequestDetailSerializer
+
+    funding = get_or_404(Funding.objects.filter(mandate__family=current_family(request), for_request_id=pk,
+                                                funder=request.user), paypal_order_id=request.data.get("order_id") or "-")
+    try:
+        checkout.finish(funding)
+    except checkout.CheckoutError as exc:
+        return _checkout_error(exc)
+    return Response(RequestDetailSerializer(Request.objects.get(pk=pk)).data)
+
+
+@api_view(["POST"])
+@permission_classes([IsFamilyMember])
 def demo_collect(request, pk):
     """Demo button: the beneficiary collects cash at an agent (simulated last mile)."""
     if not settings.DEMO_MODE:

@@ -78,7 +78,7 @@ def validate_amount(amount):
     return amount
 
 
-def start(mandate, amount, *, funder=None, contributor_name="", message="", orders=None):
+def start(mandate, amount, *, funder=None, contributor_name="", message="", orders=None, for_request=None):
     """Create a Funding and its PayPal order. Returns the Funding (its paypal_order_id goes to the button)."""
     from paypalserversdk.models.amount_with_breakdown import AmountWithBreakdown
     from paypalserversdk.models.checkout_payment_intent import CheckoutPaymentIntent
@@ -90,6 +90,7 @@ def start(mandate, amount, *, funder=None, contributor_name="", message="", orde
     amount = validate_amount(amount)
     funding = services.create_funding(mandate, funder, amount)
     funding.contributor_name, funding.message = contributor_name.strip()[:120], message.strip()[:200]
+    funding.for_request = for_request  # paying a shopping list: the capture settles that request
     order = _call((orders or _orders()).create_order, {
         "body": OrderRequest(intent=CheckoutPaymentIntent.CAPTURE, purchase_units=[PurchaseUnitRequest(
             reference_id=f"hukama-{mandate.id}", custom_id=str(funding.id),
@@ -99,7 +100,7 @@ def start(mandate, amount, *, funder=None, contributor_name="", message="", orde
         "prefer": "return=minimal",
     })
     funding.paypal_order_id = order.id
-    funding.save(update_fields=["contributor_name", "message", "paypal_order_id", "updated_at"])
+    funding.save(update_fields=["contributor_name", "message", "for_request", "paypal_order_id", "updated_at"])
     return funding
 
 

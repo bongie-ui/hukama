@@ -3,20 +3,22 @@ import { api, money, newKey, when } from "../api";
 import { useAction } from "../hooks";
 import type { Beneficiary, Coverage, Mandate, Payee, RequestDetail } from "../types";
 import Icon from "./Icon";
+import ItemPicker, { type Cart, cartLines, cartTotal } from "./ItemPicker";
 import { Avatar, ErrorNote, firstName, Notice, StatusPill } from "./ui";
 
-/** Order a basket from the family's store, to collect in store or have delivered to the registered address.
+/** Choose items from the family's store, to collect in store or have delivered to the registered address.
  * Prices come from the store; the server works out the amount. */
 export default function GroceryTile({ c, mandate, beneficiary, grocer, onDone }:
   { c: Coverage; mandate: Mandate; beneficiary: Beneficiary; grocer: Payee; onDone: () => void }) {
-  const baskets = grocer.catalogue.baskets ?? [];
+  const items = grocer.catalogue.items ?? [];
   const fee = Number(grocer.catalogue.delivery_fee ?? 0);
-  const [basketId, setBasketId] = useState(baskets[0]?.id ?? "");
+  const [cart, setCart] = useState<Cart>({});
   const [fulfilment, setFulfilment] = useState<"DELIVERY" | "COLLECT">(beneficiary.address ? "DELIVERY" : "COLLECT");
   const [result, setResult] = useState<RequestDetail | null>(null);
   const { busy, error, run } = useAction();
-  const chosen = baskets.find((b) => b.id === basketId);
-  const total = (chosen ? Number(chosen.price) : 0) + (fulfilment === "DELIVERY" ? fee : 0);
+  const lines = cartLines(cart);
+  const subtotal = cartTotal(items, cart);
+  const total = subtotal + (lines.length && fulfilment === "DELIVERY" ? fee : 0);
   const cap = c.cap !== null ? Number(c.cap) : null;
   const used = Number(c.used);
   const latest = c.covered_by[0];
@@ -25,10 +27,11 @@ export default function GroceryTile({ c, mandate, beneficiary, grocer, onDone }:
 
   const send = () => run(async () => {
     const r = await api.post<RequestDetail>("/requests/", {
-      mandate: mandate.id, beneficiary: beneficiary.id, product: "groceries", basket_id: basketId, fulfilment,
+      mandate: mandate.id, beneficiary: beneficiary.id, product: "groceries", payee: grocer.id, items: lines, fulfilment,
       idempotency_key: newKey(),
     });
     setResult(r);
+    setCart({});
     onDone();
   });
 
@@ -51,18 +54,10 @@ export default function GroceryTile({ c, mandate, beneficiary, grocer, onDone }:
         {recently && <span className="xs" style={{ display: "block", marginTop: 4, color: "var(--warn)", fontWeight: 700 }}>Already sent in the last {c.min_interval_hours} hours</span>}
       </div>
 
-      <fieldset className="baskets">
-        <legend className="label">Choose a basket</legend>
-        {baskets.map((b) => (
-          <label key={b.id} className={`basket ${b.id === basketId ? "on" : ""}`}>
-            <input type="radio" name={`basket-${mandate.id}`} value={b.id} checked={b.id === basketId} onChange={() => setBasketId(b.id)} />
-            <span className="row between" style={{ flexWrap: "nowrap" }}>
-              <strong>{b.name}</strong><span className="num" style={{ fontWeight: 700 }}>{money(b.price)}</span>
-            </span>
-            <span className="xs muted">{b.items.join(" · ")}</span>
-          </label>
-        ))}
-      </fieldset>
+      <div className="stack-sm">
+        <span className="label">Choose what {firstName(beneficiary.name)} needs</span>
+        <ItemPicker items={items} cart={cart} onChange={setCart} currency={mandate.currency} />
+      </div>
 
       <fieldset className="fulfil">
         <legend className="label">How does {firstName(beneficiary.name)} get it?</legend>
@@ -83,7 +78,7 @@ export default function GroceryTile({ c, mandate, beneficiary, grocer, onDone }:
 
       <div className="row between">
         <span><span className="xs muted">Total </span><span className="amount md">{money(total)}</span></span>
-        <button className="btn primary" disabled={busy || !chosen} onClick={send}>
+        <button className="btn primary" disabled={busy || !lines.length} onClick={send}>
           {busy ? <span className="spinner" /> : <Icon name="groceries" size={18} />}Send groceries
         </button>
       </div>
