@@ -162,6 +162,8 @@ def record_payment(premium, transaction_id, amount):
     """One PayPal premium payment: fund the mandate once, then pay the provider through the rules.
     Returns the premium Request, or None when this payment was already recorded or does not match."""
     amount = Decimal(str(amount)).quantize(Decimal("0.01"))
+    # A webhook and a sync can report the same payment at once: one at a time per premium.
+    premium = PremiumSubscription.objects.select_for_update().select_related("mandate", "funder").get(pk=premium.pk)
     if amount != premium.amount or Funding.objects.filter(external_id=transaction_id).exists():
         return None
     mandate = premium.mandate

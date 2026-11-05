@@ -72,6 +72,9 @@ def pay_request(request):
     return tx
 
 
+TERMINAL = (RailTransaction.FAILED, RailTransaction.RETURNED)
+
+
 def _set_request(request, status):
     request.status = status
     request.save(update_fields=["status", "updated_at"])
@@ -83,7 +86,11 @@ def apply_rail_status(tx, status, raw=None):
     tx = RailTransaction.objects.select_for_update(of=("self",)).select_related("request__mandate").get(pk=tx.pk)
     if raw:
         tx.raw = {**tx.raw, "last_update": raw}
-    if tx.status == status:
+    # Forward only: events can arrive out of order (a batch SUCCESS after its item FAILED or RETURNED),
+    # and money that failed or came back never turns into a payment again.
+    stale = status == tx.status or tx.status in TERMINAL or \
+        (tx.status == RailTransaction.SUCCESS and status == RailTransaction.PENDING)
+    if stale:
         tx.save(update_fields=["raw", "updated_at"])
         return tx
     tx.status = status

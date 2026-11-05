@@ -242,7 +242,7 @@ function AddPayee({ onSaved }: { onSaved: () => void }) {
   if (!open) return <button className="btn outline" style={{ alignSelf: "flex-start" }} onClick={() => setOpen(true)}><Icon name="plus" size={18} />Add a payee</button>;
   return (
     <div className="card stack">
-      <div className="stack-sm"><h3>Add a payee</h3><span className="small muted">New payees start unverified. They are paid by PayPal Payout to their PayPal email.</span></div>
+      <div className="stack-sm"><h3>Add a payee</h3><span className="small muted">New payees start unverified and cannot be paid until Hukama checks them. Then they are paid by PayPal Payout to their PayPal email.</span></div>
       <div className="form-grid">
         <div className="field"><label htmlFor="p-name">Business name</label><input id="p-name" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} /></div>
         <div className="field">

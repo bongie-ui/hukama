@@ -31,6 +31,7 @@ class Beneficiary(BaseModel):
     registered_by = models.ForeignKey(User, on_delete=models.PROTECT, related_name="+")
     verified_at = models.DateTimeField(null=True, blank=True)
     phone_changed_at = models.DateTimeField(null=True, blank=True)
+    address_changed_at = models.DateTimeField(null=True, blank=True)
 
     class Meta(BaseModel.Meta):
         verbose_name_plural = "beneficiaries"
@@ -160,6 +161,8 @@ class Funding(BaseModel):
     contributor_name = models.CharField(max_length=120, blank=True)
     contributor_phone = models.CharField(max_length=16, blank=True)
     failure_reason = models.CharField(max_length=200, blank=True)
+    # Money PayPal later gave back to the payer (refund or chargeback); it no longer counts towards the mandate.
+    refunded = money_field(default=0)
 
 
 class Request(BaseModel):
@@ -326,9 +329,10 @@ class LedgerEntry(BaseModel):
     FRAUD_CONFIRMED = "FRAUD_CONFIRMED"
     RULES_CHANGED = "RULES_CHANGED"
     PREMIUM_CHANGED = "PREMIUM_CHANGED"
+    REFUNDED = "REFUNDED"  # PayPal gave funding back to the payer (refund or chargeback)
     EVENTS = [(e, e.replace("_", " ").title()) for e in
               (FUNDED, REQUESTED, ASSESSED, DECIDED, APPROVED_BY_FUNDER, PAID, DELIVERED, FAILED,
-               FRAUD_HELD, FRAUD_CONFIRMED, RULES_CHANGED, PREMIUM_CHANGED)]
+               FRAUD_HELD, FRAUD_CONFIRMED, RULES_CHANGED, PREMIUM_CHANGED, REFUNDED)]
 
     family = models.ForeignKey(Family, on_delete=models.PROTECT, related_name="ledger")
     mandate = models.ForeignKey(Mandate, on_delete=models.PROTECT, related_name="ledger")

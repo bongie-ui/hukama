@@ -16,6 +16,8 @@ _STATUS_MAP = {
     "CANCELED": RailStatus.FAILED,
 }
 
+_ITEM_FAILED = {"FAILED", "RETURNED", "BLOCKED", "DENIED", "REFUNDED", "REVERSED"}
+
 
 class PayPalPayoutRail(Rail):
     name = "paypal_payouts"
@@ -50,11 +52,19 @@ class PayPalPayoutRail(Rail):
 
     def _result(self, data, reference):
         header = data.get("batch_header", {})
+        status = _STATUS_MAP.get(header.get("batch_status"), RailStatus.PENDING)
+        # A batch can be SUCCESS while its one item failed, came back or waits unclaimed: the item decides.
+        items = [i.get("transaction_status") for i in data.get("items") or []]
+        if status == RailStatus.SUCCEEDED and items:
+            if any(s in _ITEM_FAILED for s in items):
+                status = RailStatus.FAILED
+            elif any(s != "SUCCESS" for s in items):
+                status = RailStatus.PENDING
         return RailResult(
             rail=self.name,
             reference=reference,
             external_id=header.get("payout_batch_id", ""),
-            status=_STATUS_MAP.get(header.get("batch_status"), RailStatus.PENDING),
+            status=status,
             simulated=False,
             raw=data,
         )

@@ -135,6 +135,9 @@ def deterministic_signals(request, now=None):
 
     if beneficiary and beneficiary.phone_changed_at and now - beneficiary.phone_changed_at < PHONE_CHANGE_WINDOW:
         add("BENEFICIARY_RECENTLY_CHANGED", "The beneficiary's registered number changed in the last 72 hours")
+    elif (beneficiary and request.fulfilment == Request.DELIVERY and beneficiary.address_changed_at
+          and now - beneficiary.address_changed_at < PHONE_CHANGE_WINDOW):
+        add("BENEFICIARY_RECENTLY_CHANGED", "The beneficiary's delivery address changed in the last 72 hours")
 
     if beneficiary:
         history = list(Request.objects.filter(beneficiary=beneficiary, status=Request.PAID)
@@ -218,6 +221,19 @@ def verification_step(request, ai_suggestion=""):
     if ai_suggestion and all(p in registered for p in find_phones(ai_suggestion)):
         step += f" {ai_suggestion}"
     return step
+
+
+def keep_higher_risk(risk, previous):
+    """After a re-check, keep the earlier, higher score and its signals (risk only ever goes up)."""
+    seen = {s["signal"] for s in risk.signals}
+    risk.signals = risk.signals + [s for s in previous.signals if s["signal"] not in seen]
+    risk.ai_flags = risk.ai_flags or previous.ai_flags
+    risk.score = previous.score
+    risk.level = level_for(previous.score)
+    if risk.level != RiskAssessment.LOW and not risk.suggested_verification:
+        risk.suggested_verification = previous.suggested_verification or verification_step(risk.request)
+    risk.save(update_fields=["signals", "ai_flags", "score", "level", "suggested_verification", "updated_at"])
+    return risk
 
 
 def assess(request, intent_analyzer=no_intent_analyzer, now=None):

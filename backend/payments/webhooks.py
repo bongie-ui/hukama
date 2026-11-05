@@ -24,7 +24,8 @@ EVENT_TYPES = ("PAYMENT.CAPTURE.COMPLETED", "PAYMENT.CAPTURE.DENIED", "PAYMENT.P
                "PAYMENT.PAYOUTSBATCH.DENIED", "PAYMENT.PAYOUTS-ITEM.SUCCEEDED", "PAYMENT.PAYOUTS-ITEM.FAILED",
                "PAYMENT.PAYOUTS-ITEM.RETURNED", "PAYMENT.PAYOUTS-ITEM.BLOCKED", "PAYMENT.PAYOUTS-ITEM.DENIED",
                "BILLING.SUBSCRIPTION.ACTIVATED", "BILLING.SUBSCRIPTION.CANCELLED", "BILLING.SUBSCRIPTION.SUSPENDED",
-               "BILLING.SUBSCRIPTION.EXPIRED", "PAYMENT.SALE.COMPLETED")
+               "BILLING.SUBSCRIPTION.EXPIRED", "PAYMENT.SALE.COMPLETED", "PAYMENT.CAPTURE.REFUNDED",
+               "PAYMENT.CAPTURE.REVERSED")
 HEADERS = {"auth_algo": "PAYPAL-AUTH-ALGO", "cert_url": "PAYPAL-CERT-URL", "transmission_id": "PAYPAL-TRANSMISSION-ID",
            "transmission_sig": "PAYPAL-TRANSMISSION-SIG", "transmission_time": "PAYPAL-TRANSMISSION-TIME"}
 
@@ -68,15 +69,19 @@ def receive(headers, event, client=None):
         raise WebhookError("Not a PayPal event")
     if not verify(headers, event, client):
         raise WebhookError("Signature could not be verified")
+    # Store and apply in one transaction: if applying fails, the event is not kept as seen, PayPal retries it,
+    # and the retry is applied instead of being dropped as a duplicate.
     try:
         with transaction.atomic():
             stored = WebhookEvent.objects.create(paypal_event_id=event["id"], event_type=event.get("event_type", ""),
                                                  payload=event)
+            handled = apply(event)
+            stored.processed_at = timezone.now()
+            stored.save(update_fields=["processed_at", "updated_at"])
     except IntegrityError:
-        return "duplicate"
-    handled = apply(event)
-    stored.processed_at = timezone.now()
-    stored.save(update_fields=["processed_at", "updated_at"])
+        if WebhookEvent.objects.filter(paypal_event_id=event["id"]).exists():
+            return "duplicate"
+        raise
     return "processed" if handled else "ignored"
 
 
@@ -86,6 +91,8 @@ def apply(event):
         return _capture_completed(resource)
     if kind == "PAYMENT.CAPTURE.DENIED":
         return _capture_denied(resource)
+    if kind in ("PAYMENT.CAPTURE.REFUNDED", "PAYMENT.CAPTURE.REVERSED"):
+        return _capture_returned(resource, reversed_=kind.endswith("REVERSED"))
     if kind.startswith("PAYMENT.PAYOUTSBATCH."):
         return _payout(resource.get("batch_header", {}).get("payout_batch_id"),
                        resource.get("batch_header", {}).get("batch_status"), event)
@@ -136,9 +143,38 @@ def _capture_denied(resource):
     return True
 
 
+def _capture_id(resource):
+    """The capture a refund belongs to: its HATEOAS "up" link ends with the capture id."""
+    for link in resource.get("links") or []:
+        if link.get("rel") == "up" and "/captures/" in link.get("href", ""):
+            return link["href"].rstrip("/").rsplit("/", 1)[-1]
+    return None
+
+
+def _capture_returned(resource, reversed_):
+    """A refund or chargeback: that money no longer counts towards the mandate (captured_total drops)."""
+    if reversed_:  # the resource is the capture itself
+        funding = _funding_for(resource) or Funding.objects.filter(external_id=resource.get("id") or "-").first()
+    else:
+        capture_id = _capture_id(resource)
+        funding = _funding_for(resource) or (Funding.objects.filter(external_id=capture_id).first()
+                                             if capture_id else None)
+    if funding is None:
+        return False
+    if reversed_:
+        refunded = funding.amount
+    else:
+        total = ((resource.get("seller_payable_breakdown") or {}).get("total_refunded_amount") or {}).get("value")
+        value = total if total is not None else (resource.get("amount") or {}).get("value", "0")
+        refunded = Decimal(str(value)) if total is not None else funding.refunded + Decimal(str(value))
+    services.record_refund(funding, refunded, refund_id=resource.get("id", ""), chargeback=reversed_)
+    return True
+
+
 _PAYOUT_STATUS = {"SUCCESS": RailTransaction.SUCCESS, "SUCCEEDED": RailTransaction.SUCCESS,
                   "FAILED": RailTransaction.FAILED, "DENIED": RailTransaction.FAILED,
-                  "BLOCKED": RailTransaction.FAILED, "RETURNED": RailTransaction.RETURNED}
+                  "BLOCKED": RailTransaction.FAILED, "RETURNED": RailTransaction.RETURNED,
+                  "REFUNDED": RailTransaction.RETURNED, "REVERSED": RailTransaction.RETURNED}
 
 
 def _payout(batch_id, status, event):

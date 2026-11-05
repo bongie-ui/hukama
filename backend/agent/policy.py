@@ -248,6 +248,9 @@ def precheck(request, now=None):
         return "The mandate has expired"
     if request.amount <= 0:
         return "The amount must be positive"
+    if request.payee_id and not request.payee.verified:
+        return (f"{request.payee.name} has not been verified by Hukama yet, so it cannot be paid. "
+                "New payees are checked before they can receive money")
     balance = mandate_balance(mandate, exclude_request=request)
     if request.amount > balance:
         return f"Insufficient mandate funds: {money(balance, mandate.currency)} available"

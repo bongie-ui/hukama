@@ -47,7 +47,7 @@ def tables(family):
                              "funders": m.mandate_funders.count()})
 
     funding_rows = [{"funding_id": str(f.id), "mandate_id": str(f.mandate_id),
-                     "funder": names.get(f.funder_id) or f.contributor_name or "Local contributor", "amount": _money(f.amount),
+                     "funder": names.get(f.funder_id) or f.contributor_name or "Local contributor", "amount": _money(f.amount - f.refunded),
                      "rail": f.get_rail_display(), "date": f.created_at.date().isoformat()}
                     for f in Funding.objects.filter(mandate__in=mandates, status=Funding.CAPTURED)]
 

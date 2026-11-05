@@ -73,7 +73,7 @@ def validate_amount(amount):
         amount = Decimal(str(amount)).quantize(Decimal("0.01"))
     except (ArithmeticError, ValueError):
         raise services.ServiceError("Enter an amount in dollars")
-    if amount <= 0 or amount > MAX_AMOUNT:
+    if amount < 1 or amount > MAX_AMOUNT:
         raise services.ServiceError(f"Enter an amount between $1 and ${MAX_AMOUNT:,.0f}")
     return amount
 

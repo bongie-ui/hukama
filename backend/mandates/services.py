@@ -5,7 +5,7 @@ Every state change writes an append-only LedgerEntry.
 
 import hashlib
 import secrets
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 
 from django.conf import settings
 from django.db import transaction
@@ -17,7 +17,7 @@ from core.phones import find_phones, normalize_phone
 
 from . import signing
 from .models import (Approval, Beneficiary, BlockedPhone, Decision, Funding, LedgerEntry, Mandate, MandateFunder,
-                     Payee, Request, Rule, Upload)
+                     Payee, Request, RiskAssessment, Rule, Upload)
 from .templates import validate_rules
 
 SYSTEM = "SYSTEM"
@@ -185,8 +185,24 @@ def mark_funding_captured(funding, external_id=None):
     return funding
 
 
+@transaction.atomic
+def record_refund(funding, refunded, refund_id="", chargeback=False):
+    """Set how much of a captured funding PayPal gave back (idempotent: the total, not an increment)."""
+    funding = Funding.objects.select_for_update().get(pk=funding.pk)
+    refunded = min(max(Decimal(refunded), Decimal("0")), funding.amount)
+    if funding.status != Funding.CAPTURED or refunded <= funding.refunded:
+        return funding
+    funding.refunded = refunded
+    funding.save(update_fields=["refunded", "updated_at"])
+    record(funding.mandate, LedgerEntry.REFUNDED, "PAYPAL", amount=refunded, funding_id=str(funding.id),
+           refund_id=refund_id, chargeback=chargeback)
+    return funding
+
+
 def captured_total(mandate):
-    return mandate.fundings.filter(status=Funding.CAPTURED).aggregate(t=Sum("amount"))["t"] or Decimal("0")
+    """Money PayPal captured for the mandate, less anything later refunded or charged back."""
+    totals = mandate.fundings.filter(status=Funding.CAPTURED).aggregate(t=Sum("amount"), r=Sum("refunded"))
+    return (totals["t"] or Decimal("0")) - (totals["r"] or Decimal("0"))
 
 
 def committed_total(mandate, exclude_request=None):
@@ -205,8 +221,8 @@ def funder_contributions(mandate):
     """{user_id: captured amount} for every funder of the mandate (zero if they have not funded yet)."""
     totals = {f.user_id: Decimal("0") for f in mandate.mandate_funders.all()}
     for row in mandate.fundings.filter(status=Funding.CAPTURED, funder__isnull=False) \
-            .values("funder_id").annotate(t=Sum("amount")):
-        totals[row["funder_id"]] = row["t"]
+            .values("funder_id").annotate(t=Sum("amount"), r=Sum("refunded")):
+        totals[row["funder_id"]] = row["t"] - row["r"]
     return totals
 
 
@@ -220,6 +236,17 @@ def register_beneficiary(*, family, name, phone, registered_by, relationship="",
     return Beneficiary.objects.create(family=family, name=name, phone=e164, relationship=relationship,
                                       allowed_products=list(allowed_products), registered_by=registered_by,
                                       address=address.strip()[:200], verified_at=timezone.now())
+
+
+def change_beneficiary_address(beneficiary, address, user):
+    """Deliveries only go to the registered address, so changing it is watched like a number change."""
+    require_funder(user, beneficiary.family)
+    address = (address or "").strip()[:200]
+    if address != beneficiary.address:
+        beneficiary.address = address
+        beneficiary.address_changed_at = timezone.now()
+        beneficiary.save(update_fields=["address", "address_changed_at", "updated_at"])
+    return beneficiary
 
 
 def change_beneficiary_phone(beneficiary, phone, user):
@@ -300,8 +327,9 @@ def submit_request(*, mandate, amount, idempotency_key, channel=Request.APP, req
         return existing
     if requester_user is not None and membership(requester_user, mandate.family) is None:
         raise ServiceError("You are not a member of this family")
+    amount = clean_amount(amount)
     request = Request.objects.create(
-        mandate=mandate, amount=Decimal(amount), idempotency_key=idempotency_key, channel=channel,
+        mandate=mandate, amount=amount, idempotency_key=idempotency_key, channel=channel,
         requester_user=requester_user, requester_phone=normalize_phone(requester_phone) or requester_phone,
         requester_display=requester_display, beneficiary=beneficiary, payee=payee, product=product,
         message_text=message_text, summary_en=summary_en, fulfilment=fulfilment, details=details or {})
@@ -320,10 +348,30 @@ def submit_request(*, mandate, amount, idempotency_key, channel=Request.APP, req
     record(mandate, LedgerEntry.ASSESSED, "POLICY", request=request, score=risk.score, level=risk.level,
            signals=[s["signal"] for s in risk.signals], ai_flags=[f["flag"] for f in risk.ai_flags])
 
+    lock_mandate(mandate)  # caps and balance are checked and committed one request at a time
     policy.evaluate(request, now=now)
     execute_decision(request)
     request.refresh_from_db()
     return request
+
+
+def clean_amount(amount):
+    """A positive amount in cents (PayPal pays whole cents only)."""
+    try:
+        value = Decimal(str(amount))
+    except (InvalidOperation, ValueError, TypeError):
+        raise ServiceError("Enter the amount as a number")
+    if not value.is_finite() or value <= 0:
+        raise ServiceError("The amount must be positive")
+    if value != value.quantize(Decimal("0.01")):
+        raise ServiceError("Use at most two decimal places")
+    return value.quantize(Decimal("0.01"))
+
+
+def lock_mandate(mandate):
+    """Serialise decisions on one mandate so two requests at the same moment cannot both use the last of a
+    cap or the balance (e.g. two siblings topping up the same airtime together)."""
+    return Mandate.objects.select_for_update().get(pk=mandate.pk)
 
 
 def reassess(request, intent_analyzer=None, now=None):
@@ -333,9 +381,16 @@ def reassess(request, intent_analyzer=None, now=None):
 
     if request.status not in (Request.NEW, Request.ASSESSED, Request.REFUSED):
         raise ServiceError("This request can no longer be re-checked")
-    fraud.assess(request, intent_analyzer=intent_analyzer or _intent_analyzer(), now=now)
-    policy.evaluate(request, now=now)
-    execute_decision(request)
+    if request.approvals.filter(action__in=(Approval.REJECT, Approval.REPORT_FRAUD)).exists():
+        raise ServiceError("A funder rejected this request; send a new request instead")
+    with transaction.atomic():
+        previous = RiskAssessment.objects.filter(request=request).first()
+        risk = fraud.assess(request, intent_analyzer=intent_analyzer or _intent_analyzer(), now=now)
+        if previous is not None and previous.score > risk.score:
+            fraud.keep_higher_risk(risk, previous)  # a re-check can add risk, never remove it
+        lock_mandate(request.mandate)
+        policy.evaluate(request, now=now)
+        execute_decision(request)
     request.refresh_from_db()
     return request
 
@@ -407,6 +462,7 @@ def apply_approval(request, user, action, note=""):
     from agent import fraud, policy
 
     request = Request.objects.select_for_update().get(pk=request.pk)
+    lock_mandate(request.mandate)
     if not request.mandate.mandate_funders.filter(user=user).exists():
         raise ServiceError("Only this mandate's funders can approve its requests")
     allowed = ALLOWED_ACTIONS.get(request.status)

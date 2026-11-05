@@ -71,7 +71,9 @@ def beneficiary_detail(request, pk):
     data = request.data
     if "phone" in data:
         services.change_beneficiary_phone(b, data["phone"], request.user)
-    fields = [f for f in ("name", "relationship", "allowed_products", "address") if f in data]
+    if "address" in data:
+        services.change_beneficiary_address(b, data["address"], request.user)
+    fields = [f for f in ("name", "relationship", "allowed_products") if f in data]
     for f in fields:
         setattr(b, f, data[f])
     if fields:
