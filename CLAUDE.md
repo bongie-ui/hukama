@@ -158,6 +158,7 @@ Sandbox accounts are all US PayPal accounts; story locations differ.
   - Payout status only moves forward (FAILED/RETURNED are terminal, so a late batch SUCCESS can't undo them); polling reads the item status, not just the batch
   - Webhooks store and apply in one transaction, so if applying an event fails PayPal can retry it instead of it being dropped as a duplicate
   - Premium payments lock the subscription, so a webhook and a sync can't record the same sale twice
+  - Verified on Render 5 Nov after deploy (`22fc88b`, CI green): webhook `6A597005RK7522420` now includes CAPTURE.REFUNDED/REVERSED; Postman tour 11/11, 19/19 (collection unchanged: no payee creation, whole-dollar amounts); live $5 airtime approved → batch `U6T5LDE7RSQB8` SUCCESS (verified webhook) → delivering
   - Known limits, not fixed: the mandate owner can change rules on a mandate others also fund (recorded in the ledger, and money can only go to verified payees); public pool checkout has no rate limit; a viewer can submit requests (the rules and fraud checks still decide)
 - [ ] Phase 9 — Video + Devpost text
 - [ ] Phase 10 — Submitted
