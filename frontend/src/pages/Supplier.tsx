@@ -9,7 +9,10 @@ interface PayeeRequest {
   id: string; mandate: string; amount: string; currency: string; status: string; state: string;
   can_add_files: boolean; to_fix: string[]; created_at: string;
 }
-interface PayeeView { payee: string; family: string; mandates: PayeeMandate[]; requests: PayeeRequest[] }
+interface PayeeView {
+  payee: string; family: string; mandates: PayeeMandate[]; requests: PayeeRequest[];
+  paypal_login: { required: boolean; verified_as: string | null; account: string };
+}
 
 const KINDS: [string, string][] = [["INVOICE", "Invoice"], ["QUOTE", "Quote"], ["MILESTONE_PHOTO", "Progress photo"]];
 const TONE: Record<string, string> = { PAID: "ok", APPROVED: "ok", REFUSED: "warn", CONFIRMED_FRAUD: "warn", FAILED: "warn" };
@@ -19,9 +22,12 @@ function newKey() {
 }
 
 /** A payee's private upload link: a school or builder with no account sends invoices, quotes and photos. */
-export default function Supplier({ token }: { token: string }) {
+export default function Supplier({ token, login }: { token: string; login?: string | null }) {
   const base = `/public/payee/${encodeURIComponent(token)}`;
   const view = useApi<PayeeView>(`${base}/`);
+  const auth = view.data?.paypal_login;
+  const locked = !!auth?.required && !auth.verified_as;
+  const logout = async () => { await api.post(`${base}/logout/`); void view.reload(); };
   const [mandateId, setMandateId] = useState("");
   const [kind, setKind] = useState("INVOICE");
   const [amount, setAmount] = useState("");
@@ -79,6 +85,20 @@ export default function Supplier({ token }: { token: string }) {
               <p>Send a photo of your invoice, quote or progress on site. It is checked against the family's rules, and approved payments come straight to your PayPal account.</p>
             </section>
 
+            {login && login !== "ok" && <Notice tone="warn" icon="lock">{login}</Notice>}
+            {auth?.required && (locked ? (
+              <div className="card stack" style={{ gap: 12 }}>
+                <h2>First, log in with PayPal</h2>
+                <span className="small ink-2">So the family knows this really comes from {view.data.payee}, log in with the PayPal account that receives the payments ({auth.account}). Hukama only checks the email; it never sees your password.</span>
+                <a className="btn primary" href={`/api${base}/paypal-login/`}><Icon name="lock" size={18} />Log in with PayPal</a>
+              </div>
+            ) : (
+              <div className="row between small" style={{ flexWrap: "nowrap" }}>
+                <span className="row" style={{ gap: 6 }}><Icon name="check" size={16} />Logged in with PayPal as {auth.verified_as}</span>
+                <button className="linkbtn small" onClick={logout}>Not you? Log out</button>
+              </div>
+            ))}
+
             {result && (
               <Notice tone={TONE[result.state] ?? "info"} icon={TONE[result.state] === "ok" ? "check" : "clock"}>
                 <strong>{money(result.amount, result.currency)} for {result.mandate}: {result.status}.</strong>
@@ -86,7 +106,7 @@ export default function Supplier({ token }: { token: string }) {
               </Notice>
             )}
 
-            {mandates.length === 0 ? (
+            {locked ? null : mandates.length === 0 ? (
               <div className="card"><span className="small muted">There is nothing to send for right now.</span></div>
             ) : (
               <div className="card stack" style={{ gap: 16 }}>

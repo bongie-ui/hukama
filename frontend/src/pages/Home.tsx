@@ -3,7 +3,8 @@ import { ActivityList } from "../components/Activity";
 import Icon, { TYPE_ICON } from "../components/Icon";
 import { Avatar, Empty, ErrorNote, firstName, LoadingCards, Money, splitType } from "../components/ui";
 import { useApi, useSession } from "../hooks";
-import type { Mandate, PayRequest } from "../types";
+import { useState } from "react";
+import type { Beneficiary, Family, Mandate, Payee, PayRequest } from "../types";
 
 function greeting() {
   const h = new Date().getHours();
@@ -30,9 +31,10 @@ export default function Home() {
           <span className="eyebrow">{session.user?.family?.name}</span>
           <h1>{greeting()}, {firstName(session.user?.name ?? "")}</h1>
         </div>
-        <a className="btn primary" href="#/mandates/new"><Icon name="plus" />New mandate</a>
+        <a className="btn primary" href="#/mandates/new" data-tour="new-mandate"><Icon name="plus" />New mandate</a>
       </div>
 
+      <GettingStarted mandates={mandates.data} />
       <Attention items={inbox.data} />
       <Notifications />
 
@@ -82,6 +84,51 @@ export default function Home() {
 
 function unique<T>(xs: T[]) {
   return [...new Set(xs)];
+}
+
+/** For a new family: the five steps to the first payment. Hidden once done (or dismissed on this device). */
+function GettingStarted({ mandates }: { mandates: Mandate[] | null }) {
+  const { session } = useSession();
+  const beneficiaries = useApi<Beneficiary[]>("/beneficiaries/");
+  const payees = useApi<Payee[]>("/payees/");
+  const family = useApi<Family>("/family/");
+  const key = `hukama-start-hidden-${session.user?.id}`;
+  const [hidden, setHidden] = useState(() => { try { return !!localStorage.getItem(key); } catch { return false; } });
+  if (!mandates || !beneficiaries.data || !payees.data || !family.data || hidden) return null;
+  const funded = mandates.find((m) => Number(m.funded) > 0);
+  const steps = [
+    { done: beneficiaries.data.length > 0, title: "Add someone you support at home", sub: "Their registered phone number is the one Hukama trusts.", href: "#/people" },
+    { done: payees.data.some((p) => !p.shared), title: "Add who gets paid", sub: "A school, builder or shop with a PayPal account. Hukama checks each payee before it can be paid.", href: "#/people" },
+    { done: mandates.length > 0, title: "Create a mandate", sub: "Describe the purpose in plain words; the assistant drafts the rules.", href: "#/mandates/new" },
+    { done: !!funded, title: "Fund it with PayPal", sub: "Money only counts once PayPal confirms it.", href: mandates[0] ? `#/mandates/${mandates[0].id}` : "#/mandates/new" },
+    { done: family.data.members.length > 1, title: "Invite your family", sub: "Brothers and sisters abroad can fund the same mandate and share its limits.", href: "#/people" },
+  ];
+  const left = steps.filter((s) => !s.done).length;
+  if (left === 0) return null;
+  const hide = () => { setHidden(true); try { localStorage.setItem(key, "1"); } catch { /* ignore */ } };
+  return (
+    <section className="card stack" aria-labelledby="start-h" style={{ gap: 12 }}>
+      <div className="row between">
+        <div className="stack-sm" style={{ gap: 2 }}>
+          <h2 id="start-h">Getting started</h2>
+          <span className="small muted">{steps.length - left} of {steps.length} done. Five steps to your first payment.</span>
+        </div>
+        <button className="linkbtn small" onClick={hide}>Hide</button>
+      </div>
+      <div className="meter thin"><span style={{ width: `${((steps.length - left) / steps.length) * 100}%`, background: "var(--primary)" }} /></div>
+      <ol className="checklist">
+        {steps.map((s) => (
+          <li key={s.title} className={s.done ? "done" : ""}>
+            <a href={s.href}>
+              <span className="tick">{s.done ? <Icon name="check" size={14} stroke={2.6} /> : null}</span>
+              <span className="stack-sm" style={{ gap: 0, minWidth: 0 }}><span className="title" style={{ fontWeight: 700 }}>{s.title}</span><span className="xs muted">{s.sub}</span></span>
+              {!s.done && <Icon name="chevron" size={16} />}
+            </a>
+          </li>
+        ))}
+      </ol>
+    </section>
+  );
 }
 
 interface NotificationList { unread: number; items: { id: string; text: string; request: string | null; read: boolean; created_at: string }[] }

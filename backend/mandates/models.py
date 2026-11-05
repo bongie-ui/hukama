@@ -273,6 +273,10 @@ class ShopLink(BaseModel):
     beneficiary = models.ForeignKey(Beneficiary, on_delete=models.CASCADE, related_name="shop_links")
     token = models.CharField(max_length=32, unique=True)
     active = models.BooleanField(default=True)
+    # The link alone is not enough: a PIN the family tells the person by phone (stored hashed). Five wrong
+    # tries turn the link off and tell the family.
+    pin_hash = models.CharField(max_length=128, blank=True)
+    failed_attempts = models.PositiveSmallIntegerField(default=0)
     created_by = models.ForeignKey(User, null=True, on_delete=models.SET_NULL, related_name="+")
 
     class Meta(BaseModel.Meta):

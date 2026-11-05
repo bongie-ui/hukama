@@ -14,6 +14,7 @@ export default function Login() {
   const [who, setWho] = useState<string | null>(null);
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [signingUp, setSigningUp] = useState(false);
 
   const asPersona = (u: string) => {
     setWho(u);
@@ -47,7 +48,7 @@ export default function Login() {
       </section>
 
       <section className="login-panel">
-        <div>
+        {signingUp ? <Signup onCancel={() => setSigningUp(false)} onDone={refresh} /> : <div>
           {session.demo_mode && (
             <div className="stack">
               <div className="stack-sm">
@@ -84,8 +85,57 @@ export default function Login() {
             <button className="btn primary block lg" disabled={busy || !username || !password}>Sign in</button>
           </form>
           <ErrorNote error={error} />
-        </div>
+          <div className="or">new to Hukama?</div>
+          <button className="btn outline block lg" onClick={() => setSigningUp(true)}><Icon name="people" size={18} />Start your family</button>
+        </div>}
       </section>
     </div>
+  );
+}
+
+const COUNTRIES: [string, string][] = [["ZA", "South Africa"], ["GB", "United Kingdom"], ["US", "United States"],
+  ["BW", "Botswana"], ["AU", "Australia"], ["CA", "Canada"], ["IE", "Ireland"], ["ZW", "Zimbabwe"]];
+
+/** A new family: the person becomes its admin and can then add people at home, payees and the rest of the family. */
+function Signup({ onCancel, onDone }: { onCancel: () => void; onDone: () => Promise<void> | void }) {
+  const [form, setForm] = useState({ first_name: "", last_name: "", email: "", password: "", family_name: "", country: "", phone: "" });
+  const { busy, error, run } = useAction();
+  const set = (k: keyof typeof form) => (e: { target: { value: string } }) => setForm({ ...form, [k]: e.target.value });
+  const submit = (e: FormEvent) => {
+    e.preventDefault();
+    void run(async () => {
+      await api.post("/auth/signup/", form);
+      await onDone();
+    });
+  };
+  return (
+    <form className="stack" onSubmit={submit}>
+      <div className="stack-sm">
+        <h2>Start your family</h2>
+        <p className="muted small">You'll be the family's admin. Next you add the people you support at home, who gets paid, and the rest of the family.</p>
+      </div>
+      <div className="form-grid">
+        <div className="field"><label htmlFor="s-first">First name</label><input id="s-first" autoComplete="given-name" value={form.first_name} onChange={set("first_name")} /></div>
+        <div className="field"><label htmlFor="s-last">Last name</label><input id="s-last" autoComplete="family-name" value={form.last_name} onChange={set("last_name")} /></div>
+      </div>
+      <div className="field"><label htmlFor="s-fam">Family name</label><input id="s-fam" placeholder={form.last_name ? `${form.last_name} family` : "e.g. the Moyo family"} value={form.family_name} onChange={set("family_name")} /></div>
+      <div className="field"><label htmlFor="s-email">Email</label><input id="s-email" type="email" autoComplete="email" value={form.email} onChange={set("email")} />
+        <span className="hint">Use the email of your PayPal account, so funding is easy.</span></div>
+      <div className="field"><label htmlFor="s-pass">Password</label><input id="s-pass" type="password" autoComplete="new-password" value={form.password} onChange={set("password")} />
+        <span className="hint">At least 8 characters, not a common password.</span></div>
+      <div className="form-grid">
+        <div className="field">
+          <label htmlFor="s-country">You live in</label>
+          <select id="s-country" value={form.country} onChange={set("country")}>
+            <option value="">Choose…</option>
+            {COUNTRIES.map(([c, n]) => <option key={c} value={c}>{n}</option>)}
+          </select>
+        </div>
+        <div className="field"><label htmlFor="s-phone">Phone <span className="muted">(optional)</span></label><input id="s-phone" inputMode="tel" placeholder="+44…" value={form.phone} onChange={set("phone")} /></div>
+      </div>
+      <button className="btn primary block lg" disabled={busy || !form.first_name || !form.email || !form.password}>{busy ? <span className="spinner" /> : null}Create my family</button>
+      <button type="button" className="linkbtn small" style={{ alignSelf: "center" }} onClick={onCancel}>I already have an account</button>
+      <ErrorNote error={error} />
+    </form>
   );
 }

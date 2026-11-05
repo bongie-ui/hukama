@@ -132,17 +132,19 @@ Sandbox accounts are all US PayPal accounts; story locations differ. Personas: `
 
 ## Current status (5 Nov 2026)
 
-Phases 1–8 are done and verified live on Render with the real model and sandbox PayPal (248 tests, CI green). Details, batch ids and verifications are in `docs/HISTORY.md`.
+Phases 1–8 are done and verified live on Render with the real model and sandbox PayPal (262 tests, CI green). Details, batch ids and verifications are in `docs/HISTORY.md`.
 
 - [x] Phases 1 Foundations · 2 Policy + fraud · 3 Render · 4 PayPal funding, payouts, mobile money rail, webhooks (built with the APIMatic plugin) · 5 Agent · 6 Frontend + seed_demo · 7 AG Studio dashboard, Isililo pool, Postman · 8 Hardening, README, OpenAPI
 - [x] Extras: Hukama rebrand + redesign, funeral cover premiums (PayPal Subscriptions; live subscription `I-URGX2TF3YXPV` active), family invite, groceries, pool contribution link
 - [x] 5 Nov loophole audit: unverified payees can't be paid, per-mandate locking, a funder's rejection can't be undone by a re-check, risk never lowered, address-change signal, refunds/chargebacks, forward-only payout status, atomic webhooks, premium dedupe, whole-cent amounts
 - [x] 5 Nov payee upload link (schools/builders send invoices without an account); verified live (batch `N2QL9D63HU7W8`)
 - [x] 6 Nov groceries by item; Mama's shop link (`#/shop/<token>`): the fund pays when it can, otherwise the list is invoiced to every son or the one she picks; the first to pay with PayPal covers it and the others are notified in the app
+- [x] 6 Nov who is really asking: payee links need Log in with PayPal as the payee's own account; shop links need a PIN told by phone (5 wrong = off + family told; family notified of every list); "Start your family" sign-up; first-visit guided tour + Getting started checklist; upload-link box on the mandate page
 - [ ] **Phase 9 — Video + Devpost text** (next). Drafts are in `docs/devpost/SUBMISSION.md`; update them for the payee link, refunds and the production caveat. Suggested video beats: mandate drafted in plain words → fund with PayPal → $14 quote refused, $10.50 approved and paid → a sibling's double top-up refused → scam held, reported as fraud → the school sends its invoice through its upload link → payment visible in the school's sandbox PayPal account → dashboard
 - [ ] Phase 10 — Submitted (by 11 Nov)
 
 **Open items that need the user's logins or decisions**
+- PayPal developer dashboard: enable Log in with PayPal on the `thuma-platform` sandbox app, return URL `https://thuma.onrender.com/paypal/payee-login/`, email scope (until then payee links can't send; `PAYEE_PAYPAL_LOGIN=false` turns the check off)
 - GitHub About still reads "Paypal Hackaton" with no website (set the description and `https://thuma.onrender.com`)
 - Phone check of `#/supplier/<token>` and the People link panel (headless screenshots can't go below 500px)
 - The AG Studio licence is a 45-day trial key (`VITE_AG_STUDIO_LICENSE_KEY`, build-time)

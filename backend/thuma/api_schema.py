@@ -59,6 +59,11 @@ ANNOTATIONS = [
     (accounts.me, None, dict(tags=["Session"], summary="Who is signed in; returns the CSRF token", responses=OBJ)),
     (accounts.login_view, None, dict(tags=["Session"], summary="Sign in with username and password",
                                      request=body("LoginInput", username=text(), password=text()), responses=OBJ)),
+    (accounts.signup_view, None, dict(
+        tags=["Session"], summary="Start a new family (you become its admin) and sign in",
+        request=body("SignupInput", first_name=text(), last_name=text(required=False), email=text(), password=text(),
+                     family_name=text(), country=text(required=False), phone=text(required=False)),
+        responses=OBJ)),
     (accounts.logout_view, None, dict(tags=["Session"], summary="Sign out", request=None, responses=OBJ)),
     (accounts.demo_users, None, dict(tags=["Session"], summary="Demo personas (DEMO_MODE only)", responses=OBJ)),
     (accounts.demo_login, None, dict(tags=["Session"], summary="Sign in as a demo persona (DEMO_MODE only)",
@@ -213,6 +218,14 @@ ANNOTATIONS = [
                      items=s.ListField(child=s.DictField()), fulfilment=s.ChoiceField(["COLLECT", "DELIVERY"]),
                      ask=text(required=False), note=text(required=False), idempotency_key=text(required=False)),
         responses=OBJ)),
+    (mandates.public_shop_unlock, None, dict(
+        tags=["Shop link"], summary="Public: enter the PIN the family gave (5 wrong tries turn the link off)",
+        auth=[], request=body("ShopUnlockInput", pin=text()), responses=OBJ)),
+    (payments.payee_paypal_login, None, dict(
+        tags=["Payee upload link"], summary="Public: go to Log in with PayPal (the payee's own account unlocks the link)",
+        auth=[], responses={302: None})),
+    (payments.payee_logout, None, dict(tags=["Payee upload link"], summary="Public: forget the PayPal login",
+                                       auth=[], request=None, responses=OBJ)),
     (payments.invoice_create_order, None, dict(
         tags=["Shop link"], summary="A funder starts paying a shopping list with PayPal", request=None,
         responses=OBJ)),

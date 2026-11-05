@@ -121,12 +121,13 @@ def payee_upload_link(request, pk):
 @api_view(["POST", "DELETE"])
 @permission_classes(PERMS)
 def beneficiary_shop_link(request, pk):
-    """A funder gets the beneficiary's private shop link (POST; {"new": true} replaces it) or turns it off."""
+    """A funder gets the beneficiary's private shop link (POST; {"new": true} replaces it, {"reset_pin": true} issues a
+    new PIN) or turns it off. A new link or PIN is returned once, to tell the person by phone."""
     family = current_family(request)
     b = get_or_404(family.beneficiaries, pk=pk)
-    link = services.set_shop_link(family, b, request.user, enabled=request.method == "POST",
-                                  new=bool(request.data.get("new")))
-    return Response({"beneficiary": str(b.id), "shop_link": link.token if link else None})
+    link, pin = services.set_shop_link(family, b, request.user, enabled=request.method == "POST",
+                                       new=bool(request.data.get("new")), reset_pin=bool(request.data.get("reset_pin")))
+    return Response({"beneficiary": str(b.id), "shop_link": link.token if link else None, "pin": pin})
 
 
 @api_view(["GET"])
@@ -152,6 +153,41 @@ def notifications_read(request):
 
 
 # --- Public shop link (no sign-in) -------------------------------------------------------------------------
+
+SHOP_COOKIE, SHOP_COOKIE_PATH, SHOP_SESSION_SECONDS = "hukama_shop", "/api/public/shop/", 30 * 24 * 3600
+
+
+def _shop_unlocked(request, link):
+    from django.core import signing
+
+    try:
+        data = signing.loads(request.COOKIES.get(SHOP_COOKIE, ""), salt="shop-session", max_age=SHOP_SESSION_SECONDS)
+    except signing.BadSignature:
+        return False
+    return data.get("link") == str(link.id) and data.get("pin") == link.pin_hash[-12:]
+
+
+def _active_shop(token):
+    try:
+        return services.active_shop_link(token)
+    except services.ServiceError:
+        raise NotFound("This shop link is not active")
+
+
+@api_view(["POST"])
+@authentication_classes([])
+@permission_classes([AllowAny])
+def public_shop_unlock(request, token):
+    """The person enters the PIN the family told them; their phone then stays unlocked for 30 days."""
+    from django.core import signing
+
+    link = services.unlock_shop_link(_active_shop(token), request.data.get("pin"))
+    response = Response({"unlocked": True})
+    # Tied to this PIN: a PIN reset by the family locks every phone again.
+    response.set_cookie(SHOP_COOKIE, signing.dumps({"link": str(link.id), "pin": link.pin_hash[-12:]}, salt="shop-session"),
+                        max_age=SHOP_SESSION_SECONDS, path=SHOP_COOKIE_PATH, httponly=True, samesite="Lax",
+                        secure=request.is_secure())
+    return response
 
 _SHOP_STATUS = {Request.APPROVED: "Paid, being prepared", Request.PAID: "Paid", Request.REFUSED: "Not approved",
                 Request.FAILED: "Payment failed; the family will follow up", Request.ESCALATED: "Waiting for the family",
@@ -193,12 +229,12 @@ def _shop_cap(mandate, beneficiary):
 @authentication_classes([])
 @permission_classes([AllowAny])
 def public_shop(request, token):
-    """What the beneficiary sees: the store's price list, who they can ask, and their recent shopping."""
-    try:
-        link = services.active_shop_link(token)
-    except services.ServiceError:
-        raise NotFound("This shop link is not active")
+    """What the beneficiary sees: the store's price list, who they can ask, and their recent shopping.
+    Until the PIN is entered on this phone, only their first name is shown."""
+    link = _active_shop(token)
     b = link.beneficiary
+    if not _shop_unlocked(request, link):
+        return Response({"name": b.name.split()[0], "family": link.family.name, "unlocked": False})
     payload = []
     for m, stores in services.shop_mandates(link.family, b):
         payload.append({
@@ -210,7 +246,7 @@ def public_shop(request, token):
         })
     recent = Request.objects.filter(beneficiary=b, product="groceries", mandate__family=link.family) \
         .select_related("mandate", "payee", "invoice_to").prefetch_related("decisions").order_by("-created_at")[:8]
-    return Response({"name": b.name.split()[0], "family": link.family.name, "address": b.address,
+    return Response({"name": b.name.split()[0], "family": link.family.name, "address": b.address, "unlocked": True,
                      "mandates": payload, "orders": [_shop_order(r) for r in recent]})
 
 
@@ -219,10 +255,9 @@ def public_shop(request, token):
 @permission_classes([AllowAny])
 def public_shop_order(request, token):
     """The beneficiary sends a shopping list: paid from the fund if it can, otherwise sent to the family to pay."""
-    try:
-        link = services.active_shop_link(token)
-    except services.ServiceError:
-        raise NotFound("This shop link is not active")
+    link = _active_shop(token)
+    if not _shop_unlocked(request, link):
+        return Response({"detail": "Enter your PIN first"}, status=status.HTTP_403_FORBIDDEN)
     d = request.data
     req = services.place_shop_order(link, mandate_id=d.get("mandate"), store_id=d.get("store"),
                                     lines=d.get("items") or [], fulfilment=d.get("fulfilment"), ask=d.get("ask") or "all",
@@ -278,8 +313,13 @@ def public_payee(request, token):
     mandates = services.payee_mandates(link.family, link.payee)
     recent = Request.objects.filter(mandate__family=link.family, payee=link.payee).select_related("mandate") \
         .prefetch_related("decisions", "approvals").order_by("-created_at")[:10]
+    from payments import identity
+
+    verified = identity.verified_email(request, link)
     return Response({
         "payee": link.payee.name, "family": link.family.name,
+        "paypal_login": {"required": identity.required(), "verified_as": verified,
+                         "account": identity.mask(link.payee.paypal_email)},
         "mandates": [{"id": str(m.id), "title": m.title, "type": TEMPLATES[m.type].label, "currency": m.currency,
                       "needs": _needs(m)} for m in mandates],
         "requests": [_public_request(r) for r in recent],
@@ -296,12 +336,18 @@ def public_payee_send(request, token):
         link = services.active_payee_link(token)
     except services.ServiceError:
         raise NotFound("This upload link is not active")
+    from payments import identity
+
+    verified = identity.verified_email(request, link)
+    if identity.required() and not verified:
+        return Response({"detail": f"Log in with {link.payee.name}'s PayPal account first, so the family knows "
+                                   "it is really you"}, status=status.HTTP_403_FORBIDDEN)
     f = request.FILES.get("file")
     if f is None:
         raise ValidationError({"file": "Attach a photo or scan"})
     d = request.data
     req = services.submit_via_payee_link(
-        link, mandate_id=d.get("mandate"), kind=d.get("kind", ""), data=f.read(), content_type=f.content_type,
+        link, verified_email=verified or "", mandate_id=d.get("mandate"), kind=d.get("kind", ""), data=f.read(), content_type=f.content_type,
         name=f.name, amount=d.get("amount"), note=d.get("note", ""), request_id=d.get("request") or None,
         idempotency_key=d.get("idempotency_key", ""))
     return Response(_public_request(req), status=status.HTTP_201_CREATED)

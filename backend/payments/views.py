@@ -13,7 +13,7 @@ from rest_framework.response import Response
 from core.api import IsFamilyMember, current_family, get_or_404
 from mandates.models import Funding
 
-from . import checkout, last_mile, premiums, webhooks
+from . import checkout, identity, last_mile, premiums, webhooks
 from .models import PremiumSubscription, RailTransaction, WebhookEvent
 from .paypal_client import PayPalError, get_client
 
@@ -275,6 +275,52 @@ def premium_cancel(request, pk):
     except premiums.CheckoutError as exc:
         return _checkout_error(exc)
     return Response(_premium_data(premium))
+
+
+@api_view(["GET"])
+@authentication_classes([])
+@permission_classes([AllowAny])
+def payee_paypal_login(request, token):
+    """Send the payee to Log in with PayPal for their upload link."""
+    from mandates.services import ServiceError, active_payee_link
+
+    try:
+        link = active_payee_link(token)
+    except ServiceError:
+        raise NotFound("This upload link is not active")
+    return redirect(identity.authorize_url(link, premiums.public_base(request)))
+
+
+def payee_login_return(request):
+    """PayPal sends the payee back here. Only the payee's own PayPal account unlocks their link."""
+    from urllib.parse import quote
+
+    from mandates.models import PayeeLink
+
+    try:
+        link_id = identity.link_id_from_state(request.GET.get("state"))
+        link = PayeeLink.objects.select_related("payee").filter(pk=link_id, active=True).first()
+        if link is None:
+            raise identity.LoginError("This upload link is not active")
+        if not request.GET.get("code"):
+            raise identity.LoginError("The PayPal login was cancelled")
+        email = identity.verify(request.GET["code"], link.payee)
+    except identity.LoginError as exc:
+        token = link.token if "link" in locals() and link else ""
+        return redirect(f"/#/supplier/{token}?login={quote(str(exc))}" if token else "/")
+    response = redirect(f"/#/supplier/{link.token}?login=ok")
+    response.set_cookie(identity.COOKIE, identity.session_value(link, email), max_age=identity.SESSION_SECONDS,
+                        path=identity.COOKIE_PATH, httponly=True, samesite="Lax", secure=request.is_secure())
+    return response
+
+
+@api_view(["POST"])
+@authentication_classes([])
+@permission_classes([AllowAny])
+def payee_logout(request, token):
+    response = Response({"ok": True})
+    response.delete_cookie(identity.COOKIE, path=identity.COOKIE_PATH)
+    return response
 
 
 def premium_return(request):

@@ -625,7 +625,8 @@ def _link_upload(link, data, content_type, name):
 
 
 def submit_via_payee_link(link, *, mandate_id, kind, data, content_type, name="", amount=None, note="",
-                          request_id=None, idempotency_key="", intent_analyzer=None, extractor=None):
+                          request_id=None, idempotency_key="", intent_analyzer=None, extractor=None,
+                          verified_email=""):
     """A payee sends a quote, invoice or photo through their link.
 
     With `request_id` the file is added to one of this payee's own open requests and re-checked; otherwise it
@@ -645,6 +646,9 @@ def submit_via_payee_link(link, *, mandate_id, kind, data, content_type, name=""
             raise ServiceError("This request is already decided; send a new one instead")
         upload = _link_upload(link, data, content_type, name)
         attach_evidence(request, upload, kind, extractor=extractor)
+        if verified_email:
+            request.details = {**request.details, "paypal_login": verified_email}
+            request.save(update_fields=["details", "updated_at"])
         return reassess(request, intent_analyzer=intent_analyzer)
 
     key = f"link-{link.id}-{idempotency_key or secrets.token_hex(8)}"[:100]
@@ -663,6 +667,7 @@ def submit_via_payee_link(link, *, mandate_id, kind, data, content_type, name=""
         mandate=mandate, amount=amount, product=product, payee=payee, channel=Request.LINK,
         requester_phone=payee.phone, requester_display=payee.name, message_text=(note or "").strip()[:1000],
         summary_en=f"{payee.name} sent a {kind.replace('_', ' ').lower()} for {amount:.2f}",
+        details={"paypal_login": verified_email} if verified_email else None,
         uploads=[(upload, kind)], idempotency_key=key,
         intent_analyzer=intent_analyzer, extractor=extractor)
 
@@ -733,9 +738,19 @@ def shop_mandates(family, beneficiary):
     return result
 
 
+SHOP_PIN_TRIES = 5
+
+
+def _new_pin():
+    return f"{secrets.randbelow(10000):04d}"
+
+
 @transaction.atomic
-def set_shop_link(family, beneficiary, user, enabled, new=False):
-    """A funder gets the beneficiary's shop link (the active one, or a new secret) or turns it off."""
+def set_shop_link(family, beneficiary, user, enabled, new=False, reset_pin=False):
+    """A funder gets the beneficiary's shop link or turns it off. Returns (link or None, pin or None): a new link
+    or a PIN reset comes with a fresh PIN, shown once, for the funder to tell the person by phone."""
+    from django.contrib.auth.hashers import make_password
+
     from .models import ShopLink
 
     require_funder(user, family)
@@ -743,14 +758,61 @@ def set_shop_link(family, beneficiary, user, enabled, new=False):
         raise ServiceError("That person belongs to another family")
     current = ShopLink.objects.select_for_update().filter(beneficiary=beneficiary, active=True).first()
     if enabled and current is not None and not new:
-        return current
+        if not reset_pin:
+            return current, None
+        pin = _new_pin()
+        current.pin_hash, current.failed_attempts = make_password(pin), 0
+        current.save(update_fields=["pin_hash", "failed_attempts", "updated_at"])
+        return current, pin
     ShopLink.objects.filter(beneficiary=beneficiary, active=True).update(active=False)
     if not enabled:
-        return None
+        return None, None
     if not shop_mandates(family, beneficiary):
         raise ServiceError(f"No mandate covers groceries for {beneficiary.name} from a store with a price list")
+    pin = _new_pin()
     return ShopLink.objects.create(family=family, beneficiary=beneficiary, token=secrets.token_urlsafe(16),
-                                   created_by=user)
+                                   created_by=user, pin_hash=make_password(pin)), pin
+
+
+def unlock_shop_link(link, pin):
+    """Check the person's PIN. Five wrong tries turn the link off and tell every funder who covers them."""
+    from django.contrib.auth.hashers import check_password
+
+    from .models import ShopLink
+
+    with transaction.atomic():
+        link = ShopLink.objects.select_for_update().select_related("beneficiary", "family").get(pk=link.pk)
+        if not link.active:
+            raise ServiceError("This shop link is not active")
+        if not link.pin_hash:  # a link made before PINs existed: the family must set one first
+            raise ServiceError("Ask your family to give you a PIN for this link")
+        if check_password(str(pin or "").strip(), link.pin_hash):
+            if link.failed_attempts:
+                link.failed_attempts = 0
+                link.save(update_fields=["failed_attempts", "updated_at"])
+            return link
+        link.failed_attempts += 1
+        locked = link.failed_attempts >= SHOP_PIN_TRIES
+        if locked:
+            link.active = False
+        link.save(update_fields=["failed_attempts", "active", "updated_at"])
+        if locked:
+            first = link.beneficiary.name.split()[0]
+            funders = {f.user for m, _ in shop_mandates(link.family, link.beneficiary)
+                       for f in m.mandate_funders.select_related("user")}
+            _notify_family(link.family, funders, f"Someone entered a wrong PIN {SHOP_PIN_TRIES} times on {first}'s "
+                                                 f"shop link, so it was turned off. Call {first} on the registered "
+                                                 "number, then make a new link on People.")
+    if locked:
+        raise ServiceError("Too many wrong PINs. This link is now off; the family has been told")
+    left = SHOP_PIN_TRIES - link.failed_attempts
+    raise ServiceError(f"That PIN is not right. {left} {'try' if left == 1 else 'tries'} left")
+
+
+def _notify_family(family, users, text):
+    from .models import Notification
+
+    Notification.objects.bulk_create(Notification(family=family, user=u, text=text[:300]) for u in users)
 
 
 def active_shop_link(token):
@@ -798,6 +860,11 @@ def place_shop_order(link, *, mandate_id, store_id, lines, fulfilment, ask="all"
         intent_analyzer=intent_analyzer, now=now)
     if request.status == Request.REFUSED and policy.funds_short(request):
         _fund_short(request, funders.get(str(ask)) if ask not in ("all", None, "") else None, now)
+    elif request.status in (Request.APPROVED, Request.PAID):
+        # Every list paid from the fund is shown to the family, so one that wasn't really theirs is noticed fast.
+        first = beneficiary.name.split()[0]
+        notify(list(funders.values()), f"{first} sent a shopping list from {store.name} (${amount:.2f}), paid from "
+                                       f"{mandate.title}. Not {first}? Turn off the shop link on People.", request)
     request.refresh_from_db()
     return request
 

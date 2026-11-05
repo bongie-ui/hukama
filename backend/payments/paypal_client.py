@@ -102,6 +102,32 @@ class PayPalClient:
     def get_payout_batch(self, payout_batch_id):
         return self.request("GET", f"/v1/payments/payouts/{payout_batch_id}")
 
+    # --- Log in with PayPal (Identity REST API; not in the Server SDK) -----------------------------------
+
+    def user_token(self, code):
+        """Exchange a Log in with PayPal authorization code for that user's access token."""
+        try:
+            resp = requests.post(f"{self.base_url}/v1/oauth2/token", auth=(self.client_id, self.client_secret),
+                                 data={"grant_type": "authorization_code", "code": code},
+                                 headers={"Accept": "application/json"}, timeout=TIMEOUT_SECONDS)
+        except requests.RequestException as exc:
+            raise PayPalError(f"Could not reach PayPal: {exc}") from exc
+        if resp.status_code != 200:
+            raise PayPalError("PayPal login failed", resp.status_code, _safe_json(resp))
+        return resp.json()["access_token"]
+
+    def user_info(self, user_access_token):
+        """The logged-in user's PayPal profile (user id and email addresses)."""
+        try:
+            resp = requests.get(f"{self.base_url}/v1/identity/oauth2/userinfo", params={"schema": "paypalv1.1"},
+                                headers={"Authorization": f"Bearer {user_access_token}", "Accept": "application/json"},
+                                timeout=TIMEOUT_SECONDS)
+        except requests.RequestException as exc:
+            raise PayPalError(f"Could not reach PayPal: {exc}") from exc
+        if resp.status_code != 200:
+            raise PayPalError("PayPal could not share the account details", resp.status_code, _safe_json(resp))
+        return _safe_json(resp)
+
 
 def _safe_json(resp):
     try:

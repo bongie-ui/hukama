@@ -130,6 +130,9 @@ PAYPAL_CLIENT_ID = "" if TESTING else os.environ.get("PAYPAL_CLIENT_ID", "")
 PAYPAL_CLIENT_SECRET = "" if TESTING else os.environ.get("PAYPAL_CLIENT_SECRET", "")
 PAYPAL_BASE_URL = os.environ.get("PAYPAL_BASE_URL") or "https://api-m.sandbox.paypal.com"
 PAYPAL_WEBHOOK_ID = os.environ.get("PAYPAL_WEBHOOK_ID", "")
+# Payee upload links require "Log in with PayPal" as the payee's own PayPal account (on whenever PayPal is set
+# up; needs Log in with PayPal enabled on the app with the /paypal/payee-login/ return URL).
+PAYEE_PAYPAL_LOGIN = env_bool("PAYEE_PAYPAL_LOGIN", bool(PAYPAL_CLIENT_ID))
 
 # HMAC key for mandate signatures (mandates/signing.py). production.py refuses to start without it.
 MANDATE_SIGNING_KEY = os.environ.get("MANDATE_SIGNING_KEY", "")

@@ -38,7 +38,7 @@ class ShopTests(TestCase):
         b.address, b.allowed_products = "1 Test Street", ["airtime", "bundles", "cash", "groceries"]
         b.save()
         self.mandate = self.support(fund=Decimal("100"))
-        self.link = services.set_shop_link(self.f.family, b, self.f.funders[1], enabled=True)
+        self.link, self.pin = services.set_shop_link(self.f.family, b, self.f.funders[1], enabled=True)
 
     def support(self, fund):
         return self.f.mandate(Mandate.ISIKHWAMA, [
@@ -87,11 +87,12 @@ class ShopTests(TestCase):
 
     # --- the fund pays first ---------------------------------------------------------------------------
 
-    def test_paid_from_the_fund_when_it_can(self):
+    def test_paid_from_the_fund_when_it_can_and_the_family_is_told(self):
         req = self.order()
         self.assertEqual((req.status, req.channel, req.payee, req.amount),
                          (Request.APPROVED, Request.SHOP, self.grocer, Decimal("21.20")))
-        self.assertEqual(Notification.objects.count(), 0)
+        for funder in self.f.funders:  # so a list that wasn't really theirs is noticed quickly
+            self.assertTrue(any("paid from" in t and "Turn off the shop link" in t for t in self.unread(funder)))
 
     def test_over_the_monthly_limit_is_refused_not_invoiced(self):
         self.drain(leave="0")
@@ -161,6 +162,11 @@ class ShopTests(TestCase):
 
     def test_public_shop_page_and_order(self):
         api = APIClient(enforce_csrf_checks=True)
+        locked = api.get(f"/api/public/shop/{self.link.token}/").data
+        self.assertEqual(set(locked), {"name", "family", "unlocked"})  # nothing else until the PIN is entered
+        self.assertEqual(api.post(f"/api/public/shop/{self.link.token}/order/", {}, format="json").status_code, 403)
+        self.assertEqual(api.post(f"/api/public/shop/{self.link.token}/unlock/", {"pin": self.pin},
+                                  format="json").status_code, 200)
         data = api.get(f"/api/public/shop/{self.link.token}/").data
         m = data["mandates"][0]
         self.assertEqual([i["id"] for i in m["stores"][0]["items"]], ["meal", "oil", "soap"])
@@ -174,6 +180,33 @@ class ShopTests(TestCase):
                 "fulfilment": "DELIVERY", "idempotency_key": "k"}, format="json")
         self.assertEqual(r.status_code, 201, r.data)
         self.assertEqual((r.data["amount"], r.data["state"]), ("7.00", Request.APPROVED))
+
+    def test_five_wrong_pins_turn_the_link_off_and_tell_the_family(self):
+        api = APIClient()
+        wrong = "0000" if self.pin != "0000" else "1111"
+        for i in range(4):
+            r = api.post(f"/api/public/shop/{self.link.token}/unlock/", {"pin": wrong}, format="json")
+            self.assertEqual(r.status_code, 400)
+        self.assertIn("1 try left", r.data["detail"])
+        r = api.post(f"/api/public/shop/{self.link.token}/unlock/", {"pin": wrong}, format="json")
+        self.assertIn("now off", r.data["detail"])
+        self.assertEqual(api.get(f"/api/public/shop/{self.link.token}/").status_code, 404)
+        for funder in self.f.funders:
+            self.assertTrue(any("wrong PIN" in t for t in self.unread(funder)))
+        self.assertEqual(api.post(f"/api/public/shop/{self.link.token}/unlock/", {"pin": self.pin},
+                                  format="json").status_code, 404)
+
+    def test_a_new_pin_locks_phones_that_used_the_old_one(self):
+        api = APIClient()
+        api.post(f"/api/public/shop/{self.link.token}/unlock/", {"pin": self.pin}, format="json")
+        self.assertTrue(api.get(f"/api/public/shop/{self.link.token}/").data["unlocked"])
+        same, new_pin = services.set_shop_link(self.f.family, self.f.beneficiary, self.f.owner, enabled=True,
+                                               reset_pin=True)
+        self.assertEqual(same.token, self.link.token)
+        self.assertIsNotNone(new_pin)
+        self.assertFalse(api.get(f"/api/public/shop/{self.link.token}/").data["unlocked"])
+        again, no_pin = services.set_shop_link(self.f.family, self.f.beneficiary, self.f.owner, enabled=True)
+        self.assertIsNone(no_pin)  # the PIN is only ever shown when it is made
 
     def test_turned_off_links_do_nothing(self):
         services.set_shop_link(self.f.family, self.f.beneficiary, self.f.owner, enabled=False)

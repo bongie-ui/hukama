@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api } from "./api";
 import Icon from "./components/Icon";
+import Tour, { MAIN_TOUR } from "./components/Tour";
 import { Avatar, ErrorNote, PageLoading } from "./components/ui";
 import { SessionContext, useApi, usePoll, useSession } from "./hooks";
 import Chat from "./pages/Chat";
@@ -15,7 +16,7 @@ import MandateDetail from "./pages/MandateDetail";
 import NewMandate from "./pages/NewMandate";
 import People from "./pages/People";
 import RequestDetail from "./pages/RequestDetail";
-import { match, usePath } from "./router";
+import { match, query, usePath } from "./router";
 import type { PayRequest, Session } from "./types";
 
 export default function App() {
@@ -25,7 +26,7 @@ export default function App() {
   if (give) return <Give token={give.token} />;
   // A payee's private upload link (schools, builders): no account needed either.
   const supplier = match("/supplier/:token", path);
-  if (supplier) return <Supplier token={supplier.token} />;
+  if (supplier) return <Supplier token={supplier.token} login={query(path).get("login")} />;
   // A beneficiary's own shop link (choose groceries; the fund or the family pays).
   const shop = match("/shop/:token", path);
   if (shop) return <Shop token={shop.token} />;
@@ -84,6 +85,18 @@ function Shell() {
   const active = (key: string) => section === key || (key === "home" && (section === "mandates" || section === "requests"));
   const count = inbox.data?.length ?? 0;
   const user = session.user!;
+  const tourKey = `hukama-tour-done-${user.id}`;
+  const [tour, setTour] = useState(false);
+  useEffect(() => {
+    // First visit for this person on this device: show the tour once (storage may be unavailable; then skip).
+    try {
+      if (!localStorage.getItem(tourKey)) { const t = window.setTimeout(() => setTour(true), 700); return () => window.clearTimeout(t); }
+    } catch { /* no storage: no automatic tour */ }
+  }, [tourKey]);
+  const endTour = () => {
+    setTour(false);
+    try { localStorage.setItem(tourKey, "1"); } catch { /* ignore */ }
+  };
   const logout = async () => {
     await api.post("/auth/logout/");
     window.location.hash = "/";
@@ -95,12 +108,13 @@ function Shell() {
       <aside className="sidebar" aria-label="Main">
         <a className="brand" href="#/"><img src="/favicon.svg" alt="" /><span>Hukama</span></a>
         {NAV.map((n) => (
-          <a key={n.key} className="navlink" href={`#${n.href}`} aria-current={active(n.key) ? "page" : undefined}>
+          <a key={n.key} className="navlink" href={`#${n.href}`} data-tour={`nav-${n.key}`} aria-current={active(n.key) ? "page" : undefined}>
             <Icon name={n.icon} />{n.label}
             {n.key === "inbox" && count > 0 && <span className="count" aria-label={`${count} waiting`}>{count}</span>}
           </a>
         ))}
-        <a className="navlink" href="#/mandates/new" style={{ marginTop: 8 }}><Icon name="plus" />New mandate</a>
+        <a className="navlink" href="#/mandates/new" data-tour="new-mandate" style={{ marginTop: 8 }}><Icon name="plus" />New mandate</a>
+        <button className="navlink" onClick={() => setTour(true)} style={{ border: 0, background: "none", font: "inherit", cursor: "pointer", textAlign: "left" }}><Icon name="sparkle" />Take the tour</button>
         <div className="me">
           <Avatar name={user.name} />
           <div>
@@ -114,6 +128,7 @@ function Shell() {
 
       <header className="topbar">
         <a className="brand" href="#/"><img src="/favicon.svg" alt="" /><span>Hukama</span></a>
+        <button className="btn ghost sm" onClick={() => setTour(true)} aria-label="Take the tour"><Icon name="sparkle" size={18} /></button>
         <button className="btn ghost sm" onClick={logout} aria-label={session.demo_mode ? "Switch person" : "Log out"}>
           <Avatar name={user.name} size="sm" />{session.demo_mode ? "Switch" : "Log out"}
         </button>
@@ -122,10 +137,11 @@ function Shell() {
       <main className="content" id="main">
         <Route path={path} />
       </main>
+      {tour && <Tour steps={MAIN_TOUR} onClose={endTour} />}
 
       <nav className="tabbar" aria-label="Main">
         {NAV.map((n) => (
-          <a key={n.key} href={`#${n.href}`} aria-current={active(n.key) ? "page" : undefined}>
+          <a key={n.key} href={`#${n.href}`} data-tour={`nav-${n.key}`} aria-current={active(n.key) ? "page" : undefined}>
             <Icon name={n.icon} size={22} />{n.label}
             {n.key === "inbox" && count > 0 && <span className="count">{count}</span>}
           </a>

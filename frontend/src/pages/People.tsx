@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { api } from "../api";
 import Icon from "../components/Icon";
+import LinkPanel from "../components/LinkPanel";
 import { Avatar, ErrorNote, Notice, SimTag, Skeleton } from "../components/ui";
 import { useAction, useApi } from "../hooks";
 import type { Beneficiary, Family, Payee } from "../types";
@@ -131,8 +132,9 @@ function BeneficiaryCard({ b, onSaved }: { b: Beneficiary; onSaved: () => void }
       )}
       {shop && (
         <LinkPanel token={b.shop_link} route="shop" endpoint={`/beneficiaries/${b.id}/shop-link/`} onChange={onSaved}
-          intro={`${b.name.split(" ")[0]} chooses groceries herself here. The support fund pays when it can; if it is short, her list comes to the family to pay. Delivery only ever goes to her registered address.`}
-          empty={`Let ${b.name.split(" ")[0]} choose her own groceries from the family's store.`} />
+          pinNote={`Call ${b.name.split(" ")[0]} on the registered number and tell them this PIN. Never send it in the same message as the link, and remind them the family will never ask for it.`}
+          intro={`${b.name.split(" ")[0]} chooses groceries here with the PIN you give them by phone. The support fund pays when it can; if it is short, the list comes to the family to pay. Delivery only ever goes to the registered address, and the family is told about every list.`}
+          empty={`Let ${b.name.split(" ")[0]} choose their own groceries from the family's store.`} />
       )}
     </div>
   );
@@ -247,53 +249,6 @@ function InviteMember({ onSaved }: { onSaved: () => void }) {
 }
 
 const LINK_KINDS = ["SUPPLIER", "SCHOOL", "FUNERAL_PROVIDER", "GROCER", "MEDICAL_AID", "OTHER"];
-
-/** A private link for someone without an account: a payee's upload link or a beneficiary's shop link. */
-function LinkPanel({ token, route, endpoint, intro, empty, onChange }:
-  { token?: string | null; route: string; endpoint: string; intro: string; empty: string; onChange: () => void }) {
-  const { busy, error, run } = useAction();
-  const [copied, setCopied] = useState(false);
-  const link = token ? `${window.location.origin}/#/${route}/${token}` : "";
-  const change = (method: "post" | "delete", body?: unknown) => run(async () => {
-    await (method === "post" ? api.post(endpoint, body) : api.delete(endpoint));
-    onChange();
-  });
-  const copy = async () => {
-    try {
-      await navigator.clipboard.writeText(link);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 2000);
-    } catch {
-      (document.getElementById(`link-${endpoint}`) as HTMLInputElement | null)?.select();
-    }
-  };
-  return (
-    <div className="stack" style={{ gap: 10, flexBasis: "100%", paddingTop: 8 }}>
-      {link ? (
-        <>
-          <span className="small ink-2">{intro}</span>
-          <div className="row" style={{ flexWrap: "nowrap" }}>
-            <input id={`link-${endpoint}`} className="input" readOnly value={link} onFocus={(e) => e.target.select()} style={{ minWidth: 0 }} />
-            <button className="btn primary" onClick={copy}>{copied ? "Copied" : "Copy link"}</button>
-          </div>
-          <div className="row between">
-            <a className="small" href={`#/${route}/${token}`} target="_blank" rel="noreferrer">Preview the page</a>
-            <div className="row" style={{ gap: 14 }}>
-              <button className="linkbtn small" disabled={busy} onClick={() => change("post", { new: true })}>New link</button>
-              <button className="linkbtn small" disabled={busy} onClick={() => change("delete")}>Turn off</button>
-            </div>
-          </div>
-        </>
-      ) : (
-        <div className="row between">
-          <span className="small ink-2">{empty}</span>
-          <button className="btn primary sm" disabled={busy} onClick={() => change("post")}>Create link</button>
-        </div>
-      )}
-      <ErrorNote error={error} />
-    </div>
-  );
-}
 
 function PayeeLink({ payee, onChange }: { payee: Payee; onChange: () => void }) {
   return <LinkPanel token={payee.upload_link} route="supplier" endpoint={`/payees/${payee.id}/upload-link/`} onChange={onChange}

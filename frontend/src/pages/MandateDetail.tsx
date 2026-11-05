@@ -6,6 +6,7 @@ import PremiumCard from "../components/PremiumCard";
 import Icon, { TYPE_ICON } from "../components/Icon";
 import Ledger from "../components/Ledger";
 import QuickActions from "../components/QuickActions";
+import PayeeLinkHint from "../components/PayeeLinkHint";
 import RequestForm from "../components/RequestForm";
 import { Avatar, ErrorNote, Money, PageLoading, splitType } from "../components/ui";
 import { useApi } from "../hooks";
@@ -75,6 +76,7 @@ export default function MandateDetail({ id }: { id: string }) {
           {covered.map((b) => <QuickActions key={b.id} mandate={m} beneficiary={b} onChange={refresh} />)}
           {m.premium && <PremiumCard mandate={m} onChange={refresh} />}
           {m.public_contributions && <PoolContributions mandate={m} onChange={refresh} />}
+          {covered.length === 0 && !m.premium && <PayeeLinkHint mandate={m} />}
           {covered.length === 0 && !m.premium && <RequestForm mandate={m} />}
 
           <section className="section" aria-labelledby="req-h">

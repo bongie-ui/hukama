@@ -16,7 +16,9 @@ interface ShopOrder {
   items: { name: string; size: string; quantity: number }[]; to_fix: string[]; delivery: string | null;
   collection_code: string | null; created_at: string;
 }
-interface ShopView { name: string; family: string; address: string; mandates: ShopMandate[]; orders: ShopOrder[] }
+interface ShopView {
+  name: string; family: string; unlocked: boolean; address?: string; mandates?: ShopMandate[]; orders?: ShopOrder[];
+}
 
 const TONE: Record<string, string> = { APPROVED: "ok", PAID: "ok", INVOICED: "info", REFUSED: "warn", FAILED: "warn" };
 
@@ -38,6 +40,16 @@ export default function Shop({ token }: { token: string }) {
   const { busy, error, run } = useAction();
 
   const mandates = view.data?.mandates ?? [];
+  const [pin, setPin] = useState("");
+  const unlock = useAction();
+  const enterPin = (e: React.FormEvent) => {
+    e.preventDefault();
+    void unlock.run(async () => {
+      await api.post(`${base}/unlock/`, { pin });
+      setPin("");
+      await view.reload();
+    });
+  };
   useEffect(() => {
     if (!mandateId && mandates.length) setMandateId(mandates[0].id);
   }, [mandates, mandateId]);
@@ -71,7 +83,28 @@ export default function Shop({ token }: { token: string }) {
             <strong>This link isn't active</strong><span className="small">Ask the family for a new link.</span></div></div>
         )}
         {!view.data && !view.error && <Skeleton h={420} r={24} />}
-        {view.data && (
+        {view.data && !view.data.unlocked && (
+          <>
+            <section className="give-hero">
+              <span className="eyebrow">{view.data.family}</span>
+              <h1>Hello {view.data.name}</h1>
+              <p>Enter the PIN your family gave you on the phone. You only need to do this once on this phone.</p>
+            </section>
+            <form className="card stack" style={{ gap: 14 }} onSubmit={enterPin}>
+              <div className="field">
+                <label htmlFor="sh-pin">Your PIN</label>
+                <input id="sh-pin" className="input" inputMode="numeric" autoComplete="one-time-code" maxLength={8}
+                  style={{ fontSize: 28, letterSpacing: ".4em", textAlign: "center" }} value={pin}
+                  onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))} />
+              </div>
+              <button className="btn primary block lg" disabled={unlock.busy || pin.length < 4}>{unlock.busy ? <span className="spinner" /> : null}Open my shop</button>
+              <ErrorNote error={unlock.error} />
+              <span className="xs muted row" style={{ gap: 6 }}><Icon name="lock" size={14} />
+                Your family will never ask you for this PIN. If someone calls asking for it, hang up and call your family.</span>
+            </form>
+          </>
+        )}
+        {view.data?.unlocked && (
           <>
             <section className="give-hero">
               <span className="eyebrow">{view.data.family}</span>
@@ -152,11 +185,11 @@ export default function Shop({ token }: { token: string }) {
               </div>
             )}
 
-            {view.data.orders.length > 0 && (
+            {(view.data.orders ?? []).length > 0 && (
               <section className="card stack">
                 <h3>My shopping</h3>
                 <div className="list">
-                  {view.data.orders.map((o) => (
+                  {(view.data.orders ?? []).map((o) => (
                     <div key={o.id} className="list-item" style={{ paddingInline: 0, alignItems: "flex-start" }}>
                       <div className="main">
                         <span className="title">{money(o.amount, o.currency)} · {o.store}</span>

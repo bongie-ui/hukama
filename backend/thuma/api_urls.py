@@ -20,6 +20,7 @@ urlpatterns = [
     path("auth/me/", accounts.me),
     path("auth/login/", accounts.login_view),
     path("auth/logout/", accounts.logout_view),
+    path("auth/signup/", accounts.signup_view),
     path("auth/demo-users/", accounts.demo_users),
     path("auth/demo-login/", accounts.demo_login),
 
@@ -30,12 +31,15 @@ urlpatterns = [
     path("beneficiaries/<uuid:pk>/shop-link/", mandates.beneficiary_shop_link),
     path("public/shop/<str:token>/", mandates.public_shop),
     path("public/shop/<str:token>/order/", mandates.public_shop_order),
+    path("public/shop/<str:token>/unlock/", mandates.public_shop_unlock),
     path("notifications/", mandates.notifications),
     path("notifications/read/", mandates.notifications_read),
     path("payees/", mandates.payees),
     path("payees/<uuid:pk>/upload-link/", mandates.payee_upload_link),
     path("public/payee/<str:token>/", mandates.public_payee),
     path("public/payee/<str:token>/send/", mandates.public_payee_send),
+    path("public/payee/<str:token>/paypal-login/", payments.payee_paypal_login),
+    path("public/payee/<str:token>/logout/", payments.payee_logout),
 
     path("mandate-types/", mandates.mandate_types),
     path("mandates/", mandates.mandates),

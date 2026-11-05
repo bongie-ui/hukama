@@ -50,6 +50,57 @@ def login_view(request):
 
 
 @api_view(["POST"])
+@permission_classes([AllowAny])
+def signup_view(request):
+    """Start a new family: the person gets an account and becomes the family's admin, then is signed in."""
+    from django.contrib.auth.password_validation import validate_password
+    from django.core.exceptions import ValidationError as DjangoValidationError
+    from django.core.validators import validate_email
+    from django.db import transaction
+
+    from core.phones import normalize_phone
+
+    from .models import Family
+
+    d = request.data
+    email = (d.get("email") or "").strip().lower()
+    first, last = (d.get("first_name") or "").strip(), (d.get("last_name") or "").strip()
+    family_name = (d.get("family_name") or "").strip() or (f"{last} family" if last else "")
+    errors = {}
+    try:
+        validate_email(email)
+    except DjangoValidationError:
+        errors["email"] = "Enter a valid email address"
+    User = get_user_model()
+    if email and (User.objects.filter(email__iexact=email).exists() or User.objects.filter(username=email).exists()):
+        errors["email"] = "There is already an account with this email. Sign in instead"
+    if not first:
+        errors["first_name"] = "Enter your first name"
+    if not family_name:
+        errors["family_name"] = "Name your family, e.g. the Moyo family"
+    phone = ""
+    if d.get("phone"):
+        phone = normalize_phone(d["phone"]) or ""
+        if not phone:
+            errors["phone"] = "Enter the phone number with its country code"
+    password = d.get("password") or ""
+    try:
+        validate_password(password, User(username=email, email=email, first_name=first, last_name=last))
+    except DjangoValidationError as exc:
+        errors["password"] = " ".join(exc.messages)
+    if errors:
+        raise ValidationError(errors)
+    with transaction.atomic():
+        user = User.objects.create_user(username=email, email=email, password=password, first_name=first,
+                                        last_name=last)
+        family = Family.objects.create(name=family_name[:120], created_by=user)
+        Membership.objects.create(user=user, family=family, role=Membership.ADMIN, phone=phone,
+                                  country=(d.get("country") or "").upper()[:2], paypal_email=email)
+    login(request, user, backend="django.contrib.auth.backends.ModelBackend")
+    return Response(_with_token(request, {**_me(user), "new_family": True}), status=201)
+
+
+@api_view(["POST"])
 @permission_classes([IsAuthenticated])
 def logout_view(request):
     logout(request)
