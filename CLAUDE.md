@@ -145,7 +145,7 @@ Phases 1–8 are done and verified live on Render with the real model and sandbo
 
 **Open items that need the user's logins or decisions**
 - Log in with PayPal is enabled (7 Nov); still to do once by hand: log in on a payee link as the payee's sandbox account and send a quote
-- GitHub About: description and website set; add topics and the social preview image (`docs/devpost/thumbnail.png`)
+- GitHub About: description, website and topics set (7 Nov, via `gh`, logged in as bongie-ui); only the social preview image is left (Settings → Social preview → `docs/devpost/thumbnail.png`, browser only)
 - Phone check of `#/supplier/<token>` and the People link panel (headless screenshots can't go below 500px)
 - The AG Studio licence is a 45-day trial key (`VITE_AG_STUDIO_LICENSE_KEY`, build-time)
 - Known limits, not fixed: the mandate owner can change rules on a mandate others also fund (ledgered; money only goes to verified payees); public pool checkout has no rate limit; viewers can submit requests (the rules still decide); no real WhatsApp/SMS channel (chat by phone number is demo-only)
