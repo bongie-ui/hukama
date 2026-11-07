@@ -53,7 +53,7 @@ export default function People() {
                 <div className="end">
                   {p.verified ? <span className="pill ok">Verified</span> : <span className="pill warn">Not verified</span>}
                   {p.rail === "BILLER_SIM" ? <SimTag /> : p.rail === "LOCAL_MOBILE_MONEY" ? <SimTag label="Simulated last mile" /> : <span className="xs muted">PayPal Payout</span>}
-                  {LINK_KINDS.includes(p.kind) && (
+                  {LINK_KINDS.includes(p.kind) && p.rail === "PAYPAL_PAYOUT" && (
                     <button className="linkbtn small" onClick={() => setLinkFor(linkFor === p.id ? null : p.id)}>
                       {p.upload_link ? "Upload link" : "Create upload link"}
                     </button>
@@ -248,7 +248,9 @@ function InviteMember({ onSaved }: { onSaved: () => void }) {
   );
 }
 
-const LINK_KINDS = ["SUPPLIER", "SCHOOL", "FUNERAL_PROVIDER", "GROCER", "MEDICAL_AID", "OTHER"];
+// Upload links are for businesses that send quotes or invoices and are paid by PayPal Payout
+// (billers are paid by subscription; the grocer is paid through shopping lists).
+const LINK_KINDS = ["SUPPLIER", "SCHOOL", "FUNERAL_PROVIDER", "OTHER"];
 
 function PayeeLink({ payee, onChange }: { payee: Payee; onChange: () => void }) {
   return <LinkPanel token={payee.upload_link} route="supplier" endpoint={`/payees/${payee.id}/upload-link/`} onChange={onChange}

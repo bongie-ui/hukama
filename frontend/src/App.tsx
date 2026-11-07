@@ -82,7 +82,8 @@ function Shell() {
   }, [path]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const section = path.split(/[/?]/)[1] || "home";
-  const active = (key: string) => section === key || (key === "home" && (section === "mandates" || section === "requests"));
+  const creating = path.startsWith("/mandates/new");
+  const active = (key: string) => section === key || (key === "home" && !creating && (section === "mandates" || section === "requests"));
   const count = inbox.data?.length ?? 0;
   const user = session.user!;
   const tourKey = `hukama-tour-done-${user.id}`;
@@ -113,7 +114,7 @@ function Shell() {
             {n.key === "inbox" && count > 0 && <span className="count" aria-label={`${count} waiting`}>{count}</span>}
           </a>
         ))}
-        <a className="navlink" href="#/mandates/new" data-tour="new-mandate" style={{ marginTop: 8 }}><Icon name="plus" />New mandate</a>
+        <a className="navlink" href="#/mandates/new" data-tour="new-mandate" aria-current={creating ? "page" : undefined} style={{ marginTop: 8 }}><Icon name="plus" />New mandate</a>
         <button className="navlink" onClick={() => setTour(true)} style={{ border: 0, background: "none", font: "inherit", cursor: "pointer", textAlign: "left" }}><Icon name="sparkle" />Take the tour</button>
         <div className="me">
           <Avatar name={user.name} />
@@ -128,7 +129,7 @@ function Shell() {
 
       <header className="topbar">
         <a className="brand" href="#/"><img src="/favicon.svg" alt="" /><span>Hukama</span></a>
-        <button className="btn ghost sm" onClick={() => setTour(true)} aria-label="Take the tour"><Icon name="sparkle" size={18} /></button>
+        <button className="btn ghost sm" onClick={() => setTour(true)}><Icon name="sparkle" size={18} />Tour</button>
         <button className="btn ghost sm" onClick={logout} aria-label={session.demo_mode ? "Switch person" : "Log out"}>
           <Avatar name={user.name} size="sm" />{session.demo_mode ? "Switch" : "Log out"}
         </button>

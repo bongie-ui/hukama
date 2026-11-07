@@ -1,0 +1,10 @@
+{
+ "model": "gpt-5.5-2026-04-23",
+ "result": {
+  "ai_risk": 5,
+  "flags": [],
+  "stated_intent": "No message was provided; the request is for groceries.",
+  "suggested_verification": "When you call the registered beneficiary number, ask: \u201cDid you request 17 USD for groceries today, and what groceries do you need?\u201d",
+  "summary": "This looks routine: it comes from a registered family number, is a modest amount, and matches the groceries mandate. There is no message text containing urgency, emergencies, third-party payment instructions, or code requests."
+ }
+}

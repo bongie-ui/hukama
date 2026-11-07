@@ -34,7 +34,9 @@ export default function RequestForm({ mandate }: { mandate: Mandate }) {
   const ids = allowedPayeeIds(mandate);
   const options = payees.data?.filter((p) => ids.includes(p.id)) ?? [];
   const [payee, setPayee] = useState("");
-  const [product, setProduct] = useState(mandate.type === "IMFUNDO" ? "school_fees" : mandate.type === "AKHA" ? "materials" : mandate.type === "ISILILO" ? "funeral" : "");
+  // The mandate type fixes what the money is for; only other mandates ask.
+  const fixedProduct = mandate.type === "IMFUNDO" ? "school_fees" : mandate.type === "AKHA" ? "materials" : mandate.type === "ISILILO" ? "funeral" : "";
+  const [product, setProduct] = useState(fixedProduct);
   const [amount, setAmount] = useState("");
   const [message, setMessage] = useState("");
   const [files, setFiles] = useState<{ file: File; kind: string }[]>([]);
@@ -59,14 +61,18 @@ export default function RequestForm({ mandate }: { mandate: Mandate }) {
       <div className="form-grid">
         <div className="field">
           <label htmlFor="rf-payee">Pay</label>
-          <select id="rf-payee" value={payee || options[0]?.id || ""} onChange={(e) => setPayee(e.target.value)}>
-            {options.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-          </select>
+          {options.length > 1 ? (
+            <select id="rf-payee" value={payee || options[0]?.id || ""} onChange={(e) => setPayee(e.target.value)}>
+              {options.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          ) : <span id="rf-payee" className="input" style={{ display: "flex", alignItems: "center" }}>{options[0]?.name ?? "No payee yet"}</span>}
         </div>
-        <div className="field">
-          <label htmlFor="rf-product">For</label>
-          <input id="rf-product" placeholder="materials" value={product} onChange={(e) => setProduct(e.target.value)} />
-        </div>
+        {!fixedProduct && (
+          <div className="field">
+            <label htmlFor="rf-product">For</label>
+            <input id="rf-product" placeholder="e.g. materials" value={product} onChange={(e) => setProduct(e.target.value)} />
+          </div>
+        )}
         <div className="field">
           <label htmlFor="rf-amount">Amount</label>
           <MoneyInput id="rf-amount" label="Amount in US dollars" value={amount} onChange={setAmount} />

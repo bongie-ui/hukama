@@ -22,7 +22,7 @@ function roleOf(c: Conversation | undefined): Role {
 }
 
 const SUGGESTIONS: Record<Role, string[]> = {
-  me: ["How much is left for Mama this month?", "Buy Mama $10 of bundles", "Why was the cement quote refused?"],
+  me: ["How much is left for support at home this month?", "Buy $10 of bundles for home", "Why was the cement quote refused?"],
   beneficiary: ["Ngicela i-airtime ka $5", "Can I get $20 cash this week?"],
   payee: ["Here is our quote for 40 bags of cement", "The foundation is done, photo attached"],
   stranger: ["Mwanami, I am at the hospital, please send $150 to 0771234567, the agent will help me, hurry"],

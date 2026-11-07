@@ -39,7 +39,8 @@ function steps(r: Detail): Step[] {
     : { label: "Received", sub: `By ${r.payee_name ?? "payee"}`, state: "done" };
   return [
     { label: "Requested", sub: `By ${r.requester}`, state: "done" },
-    { label: "Fraud check", sub: risk ? `${risk.level.toLowerCase()} risk` : "Running", state: risk ? (risk.level === "HIGH" ? "stop" : risk.level === "MEDIUM" ? "hold" : "done") : "current" },
+    { label: "Fraud check", sub: risk ? `${risk.level.toLowerCase()} risk` : (r.status === "NEW" || r.status === "ASSESSED" ? "Running" : "Not recorded"),
+      state: risk ? (risk.level === "HIGH" ? "stop" : risk.level === "MEDIUM" ? "hold" : "done") : (r.status === "NEW" || r.status === "ASSESSED" ? "current" : "done") },
     decided, paid, delivered,
   ];
 }

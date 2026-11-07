@@ -13,6 +13,7 @@ export default function GroceryTile({ c, mandate, beneficiary, grocer, onDone }:
   const items = grocer.catalogue.items ?? [];
   const fee = Number(grocer.catalogue.delivery_fee ?? 0);
   const [cart, setCart] = useState<Cart>({});
+  const [choosing, setChoosing] = useState(false);
   const [fulfilment, setFulfilment] = useState<"DELIVERY" | "COLLECT">(beneficiary.address ? "DELIVERY" : "COLLECT");
   const [result, setResult] = useState<RequestDetail | null>(null);
   const { busy, error, run } = useAction();
@@ -32,6 +33,7 @@ export default function GroceryTile({ c, mandate, beneficiary, grocer, onDone }:
     });
     setResult(r);
     setCart({});
+    setChoosing(false);
     onDone();
   });
 
@@ -54,10 +56,14 @@ export default function GroceryTile({ c, mandate, beneficiary, grocer, onDone }:
         {recently && <span className="xs" style={{ display: "block", marginTop: 4, color: "var(--warn)", fontWeight: 700 }}>Already sent in the last {c.min_interval_hours} hours</span>}
       </div>
 
-      <div className="stack-sm">
-        <span className="label">Choose what {firstName(beneficiary.name)} needs</span>
-        <ItemPicker items={items} cart={cart} onChange={setCart} currency={mandate.currency} />
-      </div>
+      {choosing ? (
+        <div className="stack-sm">
+          <span className="label">Choose what {firstName(beneficiary.name)} needs</span>
+          <ItemPicker items={items} cart={cart} onChange={setCart} currency={mandate.currency} />
+        </div>
+      ) : (
+        <button className="btn outline" onClick={() => setChoosing(true)}><Icon name="plus" size={18} />Choose items ({items.length} in store)</button>
+      )}
 
       <fieldset className="fulfil">
         <legend className="label">How does {firstName(beneficiary.name)} get it?</legend>
@@ -72,7 +78,7 @@ export default function GroceryTile({ c, mandate, beneficiary, grocer, onDone }:
           <input type="radio" name={`fulfil-${mandate.id}`} checked={fulfilment === "COLLECT"} onChange={() => setFulfilment("COLLECT")} />
           <Icon name="groceries" size={18} />
           <span><strong>Collect in store</strong> <span className="muted">free</span>
-            <span className="xs muted" style={{ display: "block" }}>{firstName(beneficiary.name)} gets a code on her phone</span></span>
+            <span className="xs muted" style={{ display: "block" }}>{firstName(beneficiary.name)} gets a code by phone</span></span>
         </label>
       </fieldset>
 

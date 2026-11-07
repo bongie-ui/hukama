@@ -17,6 +17,7 @@ export default function Home() {
   const recent = useApi<PayRequest[]>("/requests/");
   const inbox = useApi<PayRequest[]>("/requests/?inbox=1");
 
+  const fresh = mandates.data?.length === 0;
   const available = mandates.data?.reduce((s, m) => s + Number(m.balance), 0) ?? 0;
   const funded = mandates.data?.reduce((s, m) => s + Number(m.funded), 0) ?? 0;
   const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
@@ -35,10 +36,11 @@ export default function Home() {
       </div>
 
       <GettingStarted mandates={mandates.data} />
-      <Attention items={inbox.data} />
+      {/* A brand-new family sees the checklist and the first step, not empty totals. */}
+      {!fresh && <Attention items={inbox.data} />}
       <Notifications />
 
-      <div className="stats">
+      {!fresh && <div className="stats">
         <div className="card stat hero">
           <span className="eyebrow">Available to spend</span>
           <Money value={available} size="xl" />
@@ -56,7 +58,7 @@ export default function Home() {
           </div>
           <span className="small muted">supporting home together</span>
         </div>
-      </div>
+      </div>}
 
       <section className="section" aria-labelledby="mandates-h">
         <div className="section-head">
@@ -73,11 +75,11 @@ export default function Home() {
         <div className="grid-cards">{mandates.data?.map((m) => <MandateCard key={m.id} m={m} />)}</div>
       </section>
 
-      <section className="section" aria-labelledby="activity-h">
+      {!fresh && <section className="section" aria-labelledby="activity-h">
         <div className="section-head"><h2 id="activity-h">Recent activity</h2></div>
         <ErrorNote error={recent.error} />
         <ActivityList items={recent.data?.slice(0, 8) ?? null} loading={recent.loading} empty="No requests yet" />
-      </section>
+      </section>}
     </div>
   );
 }

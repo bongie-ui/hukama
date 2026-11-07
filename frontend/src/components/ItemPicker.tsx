@@ -39,7 +39,7 @@ export default function ItemPicker({ items, cart, onChange, currency = "USD" }:
                     <Icon name="plus" size={16} />Add
                   </button>
                 ) : (
-                  <div className="stepper" role="group" aria-label={`${i.name} quantity`}>
+                  <div className="qty" role="group" aria-label={`${i.name} quantity`}>
                     <button type="button" onClick={() => set(i.id, q - 1)} aria-label={`One less ${i.name}`}>−</button>
                     <span className="num" aria-live="polite">{q}</span>
                     <button type="button" onClick={() => set(i.id, q + 1)} aria-label={`One more ${i.name}`}>+</button>

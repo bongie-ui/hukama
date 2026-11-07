@@ -112,7 +112,7 @@ export function ApprovalActions({ r, onDone }:
       <div className="field">
         <label htmlFor={`note-${r.id}`}>{held ? "How did you check?" : "Note for the family (optional)"}</label>
         <input id={`note-${r.id}`} value={note} onChange={(e) => setNote(e.target.value)}
-          placeholder={held ? "e.g. Called Mama on her registered number; she asked for this" : ""} />
+          placeholder={held ? "e.g. Called them on the registered number; they asked for this" : ""} />
         {held && <span className="hint">Paying a held request needs a note saying how you confirmed it.</span>}
       </div>
       <div className="row">

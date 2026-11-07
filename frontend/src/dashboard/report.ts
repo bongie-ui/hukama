@@ -64,6 +64,7 @@ export function dataModel(t: DashboardTables): AgDataSourcesDefinition {
       id: `${table}-mandates`,
       source: { tableId: table, fieldId: "mandate_id" },
       target: { tableId: "mandates", fieldId: "mandate_id" },
+      type: "many-to-one" as const, // many fundings / requests / ledger rows per mandate
     })),
   } as AgDataSourcesDefinition;
 }
