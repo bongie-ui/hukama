@@ -71,6 +71,8 @@ The **[public Postman collection](https://documenter.getpostman.com/view/4361847
 
 **Groceries:** choose items from the family's store (prices come from the store's own list, so nobody can type an amount), then *collect in store* (a code is sent home) or *home delivery* to the **registered address only**. The store is paid by PayPal Payout; packing and delivery are simulated.
 
+**Ways in without an account.** The landing page has **Send an invoice** (a school or business logs in with PayPal and sees the families it can invoice), **Shop with your PIN** (registered phone number + the family's PIN) and **Ask Hukama**, a guide with no tools and no access to family data. The links below still work for families who share them directly.
+
 **Links instead of accounts.** The people at home and the businesses that get paid don't need a Hukama account:
 
 | Link | Who uses it | How Hukama knows it's really them | What it can do |

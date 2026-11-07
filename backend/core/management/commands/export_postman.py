@@ -157,14 +157,22 @@ def collection():
                             "PayPal covers it."),
             req("My notifications", "GET", "notifications/", tests=[OK]),
         ]},
-        {"name": "Chat by phone", "item": [
-            req("Is chat by phone on? (number and join words)", "GET", "config/phone/", tests=[OK]),
-            req("An unsigned message is refused", "POST", "channels/phone/", {"From": "whatsapp:+263770000020",
-                                                                            "Body": "send an invoice"},
-                tests=["pm.test('refused without the provider signature', () => pm.expect(pm.response.code).to.be.oneOf([403, 503]));"],
-                description="The messaging provider signs every message it forwards (HMAC of the URL and fields "
-                            "with our auth token). Anything unsigned is refused, so nobody can talk to the assistant "
-                            "pretending to be a registered number."),
+        {"name": "Landing page (no account)", "item": [
+            req("A business before logging in with PayPal sees nothing", "GET", "public/business/", tests=[
+                OK, "pm.test('not verified', () => pm.expect(pm.response.json().verified).to.eql(false));"],
+                description="A school or business opens {{baseUrl}}/#/business and logs in with the PayPal account "
+                            "that receives its payments (GET public/business/login/ redirects to PayPal). Hukama then "
+                            "lists the families it can invoice, each with its upload page."),
+            req("Shop with your PIN: a wrong number or PIN gets one generic answer", "POST", "public/home/",
+                {"phone": "+447700900000", "pin": "0000"},
+                tests=["pm.test('refused, without saying which part was wrong', () => { pm.expect(pm.response.code).to.eql(400); "
+                       "pm.expect(pm.response.json().detail).to.include(\"don't match\"); });"],
+                description="Someone at home enters their registered phone number and the PIN the family told them; "
+                            "the right pair opens their shop. Wrong PINs count towards turning the link off."),
+            req("Ask Hukama (the guide on the landing page)", "POST", "public/assistant/",
+                {"messages": [{"role": "user", "content": "I'm a school. How do I send an invoice to a family?"}]},
+                tests=[OK, "pm.test('answers', () => pm.expect(pm.response.json().reply).to.be.a('string').and.not.be.empty);"],
+                description="No tools and no family data; 30 questions an hour per visitor."),
         ]},
         {"name": "Mandates", "item": [
             req("Mandate types", "GET", "mandate-types/"),

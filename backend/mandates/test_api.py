@@ -62,6 +62,8 @@ class AuthTests(ApiBase):
 
     @override_settings(DEMO_MODE=True)
     def test_demo_login_offers_members_but_never_staff(self):
+        self.f.family.seed_version = 1  # only a seeded demo family is offered
+        self.f.family.save()
         admin = get_user_model().objects.create_superuser("root", password="x")
         self.f.family.memberships.create(user=admin, role="ADMIN")
         client = APIClient()

@@ -60,6 +60,11 @@ Sign in at https://thuma.onrender.com by choosing a family member (no password i
 1. **Mama's house: foundation** → **Request a payment** → attach [`quote_cement_14.jpg`](../backend/demo_assets/quote_cement_14.jpg), amount $560 → refused by the $11 price ceiling and the missing photo.
 2. Again with [`quote_cement_10_50.jpg`](../backend/demo_assets/quote_cement_10_50.jpg) and [`foundation_slab.jpg`](../backend/demo_assets/foundation_slab.jpg), amount $420 → approved and paid to Gwanda Hardware by PayPal Payout.
 
+**D0. Ways in without an account (landing page)**
+- **Send an invoice** (schools and businesses): log in with the PayPal account that receives your payments; Hukama recognises the business and lists the families you can invoice, each with its upload page.
+- **Shop with your PIN** (family at home): your registered phone number and the PIN the family told you open your shop.
+- **Ask Hukama**: a guide on every public page that answers questions. It can't see any family's money.
+
 **D. The supplier sends its own quote (no Hukama account, but proof of who it is)**
 1. On **Mama's house: foundation**, **Let Gwanda Hardware send it themselves** → copy the upload link and open it in a private window.
 2. **Log in with PayPal** as the sandbox account `hardware@business.example.com` (password in the judges' notes on Devpost). Any other PayPal account is turned away.
@@ -74,12 +79,7 @@ Sign in at https://thuma.onrender.com by choosing a family member (no password i
 **F. Fund with PayPal**
 On any mandate, enter an amount → **Pay with PayPal** → log in as a funder's sandbox account (below) → approve. The money counts only once PayPal confirms the capture.
 
-**G. Chat by phone** (when the test number is switched on; People shows the number)
-1. Your phone must be a registered number: on **People**, set it as Sunrise Academy's **chat number** (or as Mama's registered number).
-2. Send the join words shown on People to the test number, then e.g. *"Please send an invoice to the family for a student's term fees"*.
-3. The assistant replies with the school's private upload link; opening it still needs **Log in with PayPal** as the school's own account. Unregistered numbers get nothing.
-
-**H. More**
+**G. More**
 - **Funeral cover: Peaceful Rest** → **Start monthly premium with PayPal** (approve with a funder's sandbox account).
 - **Family funeral pool** → share link → open it signed out and give with PayPal.
 - **Dashboard** → **Build with AI** → *"chart cash paid out per month"*.

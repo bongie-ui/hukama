@@ -8,6 +8,8 @@ import Chat from "./pages/Chat";
 import Give from "./pages/Give";
 import Supplier from "./pages/Supplier";
 import Shop from "./pages/Shop";
+import Business from "./pages/Business";
+import AtHome from "./pages/AtHome";
 import DashboardPage from "./pages/DashboardPage";
 import Home from "./pages/Home";
 import Inbox from "./pages/Inbox";
@@ -30,6 +32,9 @@ export default function App() {
   // A beneficiary's own shop link (choose groceries; the fund or the family pays).
   const shop = match("/shop/:token", path);
   if (shop) return <Shop token={shop.token} />;
+  // The landing page's ways in without an account.
+  if (match("/business", path)) return <Business login={query(path).get("login")} />;
+  if (match("/at-home", path)) return <AtHome />;
   return <SignedIn />;
 }
 

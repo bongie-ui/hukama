@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { api } from "../api";
 import Icon from "../components/Icon";
+import PublicAssistant from "../components/PublicAssistant";
 import { Avatar, ErrorNote, Skeleton } from "../components/ui";
 import { useAction, useApi, useSession } from "../hooks";
 import type { Me } from "../types";
@@ -88,8 +89,22 @@ export default function Login() {
           <ErrorNote error={error} />
           <div className="or">new to Hukama?</div>
           <button className="btn outline block lg" onClick={() => setSigningUp(true)}><Icon name="people" size={18} />Start your family</button>
+          <div className="or">not family abroad?</div>
+          <div className="entry-cards">
+            <a className="entry-card" href="#/business">
+              <span className="type-icon" style={{ width: 38, height: 38 }}><Icon name="school" size={18} /></span>
+              <span className="main"><strong>Send an invoice</strong><span className="xs muted">For schools and businesses: log in with your PayPal</span></span>
+              <Icon name="chevron" size={16} />
+            </a>
+            <a className="entry-card" href="#/at-home">
+              <span className="type-icon" style={{ width: 38, height: 38 }}><Icon name="groceries" size={18} /></span>
+              <span className="main"><strong>Shop with your PIN</strong><span className="xs muted">For family at home: your phone number and PIN</span></span>
+              <Icon name="chevron" size={16} />
+            </a>
+          </div>
         </div>}
       </section>
+      <PublicAssistant />
     </div>
   );
 }

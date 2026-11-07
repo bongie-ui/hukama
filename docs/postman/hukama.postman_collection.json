@@ -1126,10 +1126,10 @@
       ]
     },
     {
-      "name": "Chat by phone",
+      "name": "Landing page (no account)",
       "item": [
         {
-          "name": "Is chat by phone on? (number and join words)",
+          "name": "A business before logging in with PayPal sees nothing",
           "request": {
             "method": "GET",
             "header": [
@@ -1139,18 +1139,18 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/config/phone/",
+              "raw": "{{baseUrl}}/api/public/business/",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
-                "config",
-                "phone",
+                "public",
+                "business",
                 ""
               ]
             },
-            "description": ""
+            "description": "A school or business opens {{baseUrl}}/#/business and logs in with the PayPal account that receives its payments (GET public/business/login/ redirects to PayPal). Hukama then lists the families it can invoice, each with its upload page."
           },
           "event": [
             {
@@ -1158,14 +1158,15 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "pm.test('not verified', () => pm.expect(pm.response.json().verified).to.eql(false));"
                 ]
               }
             }
           ]
         },
         {
-          "name": "An unsigned message is refused",
+          "name": "Shop with your PIN: a wrong number or PIN gets one generic answer",
           "request": {
             "method": "POST",
             "header": [
@@ -1179,21 +1180,21 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/channels/phone/",
+              "raw": "{{baseUrl}}/api/public/home/",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
-                "channels",
-                "phone",
+                "public",
+                "home",
                 ""
               ]
             },
-            "description": "The messaging provider signs every message it forwards (HMAC of the URL and fields with our auth token). Anything unsigned is refused, so nobody can talk to the assistant pretending to be a registered number.",
+            "description": "Someone at home enters their registered phone number and the PIN the family told them; the right pair opens their shop. Wrong PINs count towards turning the link off.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"From\": \"whatsapp:+263770000020\",\n  \"Body\": \"send an invoice\"\n}"
+              "raw": "{\n  \"phone\": \"+447700900000\",\n  \"pin\": \"0000\"\n}"
             }
           },
           "event": [
@@ -1202,7 +1203,52 @@
               "script": {
                 "type": "text/javascript",
                 "exec": [
-                  "pm.test('refused without the provider signature', () => pm.expect(pm.response.code).to.be.oneOf([403, 503]));"
+                  "pm.test('refused, without saying which part was wrong', () => { pm.expect(pm.response.code).to.eql(400); pm.expect(pm.response.json().detail).to.include(\"don't match\"); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Ask Hukama (the guide on the landing page)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/public/assistant/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "public",
+                "assistant",
+                ""
+              ]
+            },
+            "description": "No tools and no family data; 30 questions an hour per visitor.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"I'm a school. How do I send an invoice to a family?\"\n    }\n  ]\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));",
+                  "pm.test('answers', () => pm.expect(pm.response.json().reply).to.be.a('string').and.not.be.empty);"
                 ]
               }
             }

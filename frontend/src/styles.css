@@ -654,3 +654,15 @@ a.list-item:hover { background: var(--plum-tint); text-decoration: none; }
 .checklist .done .title { text-decoration: line-through; color: var(--ink-3, inherit); opacity: .7; }
 
 .checklist a > svg { flex: none; }
+
+/* Ask Hukama (public pages) */
+.ask-fab { position: fixed; right: 16px; bottom: 16px; z-index: 50; display: inline-flex; align-items: center; gap: 8px; padding: 12px 18px; border: 0; border-radius: 999px; background: var(--plum); color: #fff; font: 700 15px/1 var(--font-body); box-shadow: 0 10px 30px rgb(0 0 0 / .3); cursor: pointer; }
+.ask-panel { position: fixed; right: 16px; bottom: 16px; z-index: 50; width: min(380px, calc(100vw - 32px)); max-height: min(560px, calc(100vh - 32px)); display: flex; flex-direction: column; gap: 10px; box-shadow: 0 18px 50px rgb(0 0 0 / .35); }
+.ask-msgs { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; min-height: 120px; }
+.ask-msg { max-width: 88%; padding: 9px 12px; border-radius: 14px; font-size: var(--text-sm); white-space: pre-wrap; }
+.ask-msg.user { align-self: flex-end; background: var(--plum); color: #fff; }
+.ask-msg.assistant { align-self: flex-start; background: var(--surface-2); }
+.entry-cards { display: grid; gap: 10px; }
+.entry-card { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 16px; color: inherit; text-decoration: none; background: var(--surface); }
+.entry-card:hover { background: var(--plum-tint); text-decoration: none; }
+.entry-card .main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }

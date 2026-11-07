@@ -60,13 +60,11 @@ export default function People() {
                   )}
                 </div>
                 {linkFor === p.id && <PayeeLink payee={p} onChange={payees.reload} />}
-                {!p.shared && <ChatNumber payee={p} onSaved={payees.reload} />}
               </div>
             ))}
           </div>
         </div>
         <AddPayee onSaved={payees.reload} />
-        <PhoneChat />
       </section>
 
       <section className="section" aria-labelledby="fam-h">
@@ -253,41 +251,6 @@ function InviteMember({ onSaved }: { onSaved: () => void }) {
 // Upload links are for businesses that send quotes or invoices and are paid by PayPal Payout
 // (billers are paid by subscription; the grocer is paid through shopping lists).
 const LINK_KINDS = ["SUPPLIER", "SCHOOL", "FUNERAL_PROVIDER", "OTHER"];
-
-interface PhoneConfig { enabled: boolean; number: string; join: string }
-
-/** Chat by phone: registered people (funders, people at home, payees) can message the assistant's number. */
-function PhoneChat() {
-  const cfg = useApi<PhoneConfig>("/config/phone/");
-  if (!cfg.data?.enabled) return null;
-  return (
-    <div className="card stack" style={{ gap: 6, marginTop: 12 }}>
-      <strong className="row" style={{ gap: 8 }}><Icon name="chat" size={18} />Chat by phone</strong>
-      <span className="small ink-2">Anyone with a registered number above can message the assistant at <strong className="num">{cfg.data.number}</strong>{cfg.data.join ? <> (first message: <code>{cfg.data.join}</code>)</> : null}. A school can ask to send an invoice and gets its private upload link; someone at home can ask for their shop link. Unregistered numbers get nothing.</span>
-    </div>
-  );
-}
-
-/** A payee's chat number: the phone allowed to talk to the assistant as this payee. */
-function ChatNumber({ payee, onSaved }: { payee: Payee; onSaved: () => void }) {
-  const [open, setOpen] = useState(false);
-  const [phone, setPhone] = useState(payee.phone);
-  const { busy, error, run } = useAction();
-  const save = () => run(async () => {
-    await api.patch(`/payees/${payee.id}/`, { phone });
-    setOpen(false);
-    onSaved();
-  });
-  if (!open) return <button className="linkbtn small" onClick={() => setOpen(true)}>Change chat number</button>;
-  return (
-    <div className="row" style={{ flexBasis: "100%", gap: 8, paddingTop: 6 }}>
-      <input className="input" aria-label={`${payee.name} chat number`} inputMode="tel" placeholder="+263…" value={phone} onChange={(e) => setPhone(e.target.value)} style={{ maxWidth: 220 }} />
-      <button className="btn primary sm" disabled={busy} onClick={save}>Save</button>
-      <button className="btn outline sm" onClick={() => setOpen(false)}>Cancel</button>
-      <ErrorNote error={error} />
-    </div>
-  );
-}
 
 function PayeeLink({ payee, onChange }: { payee: Payee; onChange: () => void }) {
   return <LinkPanel token={payee.upload_link} route="supplier" endpoint={`/payees/${payee.id}/upload-link/`} onChange={onChange}

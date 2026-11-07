@@ -110,9 +110,10 @@ def logout_view(request):
 def _demo_users():
     if not settings.DEMO_MODE:
         raise NotFound()
-    # Ordinary family members only; staff and admin accounts are never offered.
-    return get_user_model().objects.filter(memberships__isnull=False, is_staff=False, is_superuser=False) \
-        .distinct().order_by("date_joined")
+    # Only the seeded demo family (seed_version > 0): families people start themselves are never offered, so nobody
+    # can sign in as them without their password. Staff and admin accounts are never offered either.
+    return get_user_model().objects.filter(memberships__family__seed_version__gt=0, is_staff=False,
+                                           is_superuser=False).distinct().order_by("date_joined")
 
 
 @api_view(["GET"])

@@ -291,12 +291,60 @@ def payee_paypal_login(request, token):
     return redirect(identity.authorize_url(link, premiums.public_base(request)))
 
 
+@api_view(["GET"])
+@authentication_classes([])
+@permission_classes([AllowAny])
+def business_login(request):
+    """The landing page's "Send an invoice": a school or business logs in with PayPal, no link needed."""
+    if not checkout.is_configured():
+        return redirect("/#/business?login=" + "PayPal+is+not+set+up+on+this+server")
+    return redirect(identity.authorize_url(None, premiums.public_base(request)))
+
+
+def _business_return(request):
+    """A business logged in from the landing page: recognised by the PayPal account payouts go to."""
+    from urllib.parse import quote
+
+    from mandates.models import Payee
+
+    try:
+        if not request.GET.get("code"):
+            raise identity.LoginError("The PayPal login was cancelled")
+        found = identity.verified_emails(request.GET["code"])
+        email = next((e for e in sorted(found) if Payee.objects.filter(paypal_email__iexact=e, verified=True).exists()),
+                     None)
+        if email is None:
+            raise identity.LoginError(f"No business on Hukama is paid to {identity.mask(next(iter(found), 'this account'))}. "
+                                      "Ask the family to add you as a payee with this PayPal email")
+    except identity.LoginError as exc:
+        return redirect(f"/#/business?login={quote(str(exc))}")
+    response = redirect("/#/business?login=ok")
+    response.set_cookie(identity.PORTAL_COOKIE, identity.portal_value(email), max_age=identity.SESSION_SECONDS,
+                        path=identity.PORTAL_COOKIE_PATH, httponly=True, samesite="Lax", secure=request.is_secure())
+    return response
+
+
+@api_view(["POST"])
+@authentication_classes([])
+@permission_classes([AllowAny])
+def business_logout(request):
+    response = Response({"ok": True})
+    response.delete_cookie(identity.PORTAL_COOKIE, path=identity.PORTAL_COOKIE_PATH)
+    return response
+
+
 def payee_login_return(request):
-    """PayPal sends the payee back here. Only the payee's own PayPal account unlocks their link."""
+    """PayPal sends the payee back here. Only the payee's own PayPal account unlocks their link (or, from the
+    landing page, recognises the business)."""
     from urllib.parse import quote
 
     from mandates.models import PayeeLink
 
+    try:
+        if identity.read_state(request.GET.get("state")).get("portal"):
+            return _business_return(request)
+    except identity.LoginError:
+        return redirect("/")
     try:
         link_id = identity.link_id_from_state(request.GET.get("state"))
         link = PayeeLink.objects.select_related("payee").filter(pk=link_id, active=True).first()

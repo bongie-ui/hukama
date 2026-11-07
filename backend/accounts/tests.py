@@ -40,6 +40,15 @@ class SignupTests(TestCase):
         self.assertTrue({"password", "first_name", "family_name"} <= set(r.data))
         self.assertFalse(get_user_model().objects.exists())
 
+    def test_a_new_family_is_never_offered_as_a_demo_persona(self):
+        from django.test import override_settings
+        self.api.post("/api/auth/signup/", GOOD, format="json")
+        with override_settings(DEMO_MODE=True):
+            other = APIClient()
+            names = [u["username"] for u in other.get("/api/auth/demo-users/").data]
+            self.assertNotIn("rudo@example.com", names)
+            self.assertEqual(other.post("/api/auth/demo-login/", {"username": "rudo@example.com"}, format="json").status_code, 400)
+
     def test_family_name_defaults_from_the_surname(self):
         r = self.api.post("/api/auth/signup/", {**GOOD, "family_name": ""}, format="json")
         self.assertEqual(r.data["family"]["name"], "Moyo family")

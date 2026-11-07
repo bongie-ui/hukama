@@ -226,6 +226,19 @@ ANNOTATIONS = [
         auth=[], responses={302: None})),
     (payments.payee_logout, None, dict(tags=["Payee upload link"], summary="Public: forget the PayPal login",
                                        auth=[], request=None, responses=OBJ)),
+    (mandates.public_business, None, dict(
+        tags=["Landing page"], summary="Public: the families a business logged in with PayPal can send invoices to",
+        auth=[], responses=OBJ)),
+    (payments.business_login, None, dict(tags=["Landing page"], summary="Public: a business logs in with PayPal",
+                                         auth=[], responses={302: None})),
+    (payments.business_logout, None, dict(tags=["Landing page"], summary="Public: forget the business login",
+                                          auth=[], request=None, responses=OBJ)),
+    (mandates.public_home, None, dict(
+        tags=["Landing page"], summary="Public: open a shop with the registered phone number and the family's PIN",
+        auth=[], request=body("HomeAccessInput", phone=text(), pin=text()), responses=OBJ)),
+    (agent.public_assistant, None, dict(
+        tags=["Landing page"], summary="Public: the Hukama guide (no tools, no family data, 30 questions an hour)",
+        auth=[], request=body("PublicAssistantInput", messages=s.ListField(child=s.DictField())), responses=OBJ)),
     (payments.invoice_create_order, None, dict(
         tags=["Shop link"], summary="A funder starts paying a shopping list with PayPal", request=None,
         responses=OBJ)),
@@ -235,11 +248,6 @@ ANNOTATIONS = [
     (mandates.notifications, None, dict(tags=["Family"], summary="My notifications", responses=OBJ)),
     (mandates.notifications_read, None, dict(tags=["Family"], summary="Mark my notifications read", request=None,
                                              responses=OBJ)),
-
-    (mandates.payee_detail, None, dict(tags=["Family"], summary="Change a family payee's chat number",
-                                       request=body("PayeeChatNumber", phone=text()), responses=PayeeSerializer)),
-    (mandates.phone_channel_config, None, dict(tags=["Assistant"], summary="Chat by phone: on/off, number, join words",
-                                               responses=OBJ)),
 
     (payments.demo_collect, None, dict(tags=["Demo"], summary="Mark cash collected (simulated last mile)",
                                        request=body("CollectInput", code=text(required=False)), responses=OBJ)),

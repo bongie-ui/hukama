@@ -106,37 +106,6 @@ def payees(request):
     return Response(PayeeSerializer(payee).data, status=status.HTTP_201_CREATED)
 
 
-@api_view(["PATCH"])
-@permission_classes(PERMS)
-def payee_detail(request, pk):
-    """A funder changes the family payee's chat number (who may talk to the assistant as this payee). Money still
-    only goes to the payee's PayPal account, and its upload link still needs Log in with PayPal."""
-    family = current_family(request)
-    payee = get_or_404(family.payees, pk=pk)
-    services.require_funder(request.user, family)
-    if "phone" in request.data:
-        raw = request.data.get("phone") or ""
-        phone = normalize_phone(raw) if raw else ""
-        if raw and not phone:
-            raise ValidationError({"phone": "Enter the number with its country code"})
-        payee.phone = phone
-        payee.save(update_fields=["phone", "updated_at"])
-    return Response(PayeeSerializer(payee).data)
-
-
-@api_view(["GET"])
-@permission_classes(PERMS)
-def phone_channel_config(request):
-    """Whether chat by phone is on, the number to message, and the words a new phone sends first."""
-    from django.conf import settings
-
-    from agent import phone_channel
-
-    number = settings.TWILIO_WHATSAPP_FROM.split(":")[-1]
-    return Response({"enabled": phone_channel.is_configured(), "number": number,
-                     "join": f"join {settings.PHONE_JOIN_CODE}" if settings.PHONE_JOIN_CODE else ""})
-
-
 @api_view(["POST", "DELETE"])
 @permission_classes(PERMS)
 def payee_upload_link(request, pk):
@@ -183,6 +152,31 @@ def notifications_read(request):
     return Response({"unread": 0})
 
 
+@api_view(["GET"])
+@authentication_classes([])
+@permission_classes([AllowAny])
+def public_business(request):
+    """A business logged in with PayPal on the landing page: the families it can send invoices to, each with its
+    upload page. Nothing is shown before the PayPal login."""
+    from payments import checkout, identity
+
+    email = identity.portal_email(request)
+    if not email:
+        return Response({"verified": False, "available": checkout.is_configured()})
+    result = []
+    for payee in Payee.objects.filter(paypal_email__iexact=email, verified=True).select_related("family"):
+        from accounts.models import Family
+        families = [payee.family] if payee.family_id else list(Family.objects.order_by("created_at"))
+        for family in families:
+            mandates = services.payee_mandates(family, payee)
+            if not mandates:
+                continue
+            link = services.payee_link_for(family, payee)
+            result.append({"payee": payee.name, "family": family.name, "upload": link.token,
+                           "for": [m.title for m in mandates]})
+    return Response({"verified": True, "email": email, "families": result})
+
+
 # --- Public shop link (no sign-in) -------------------------------------------------------------------------
 
 SHOP_COOKIE, SHOP_COOKIE_PATH, SHOP_SESSION_SECONDS = "hukama_shop", "/api/public/shop/", 30 * 24 * 3600
@@ -213,12 +207,42 @@ def public_shop_unlock(request, token):
     from django.core import signing
 
     link = services.unlock_shop_link(_active_shop(token), request.data.get("pin"))
-    response = Response({"unlocked": True})
-    # Tied to this PIN: a PIN reset by the family locks every phone again.
+    return _shop_session(Response({"unlocked": True}), request, link)
+
+
+def _shop_session(response, request, link):
+    """Remember on this phone that the PIN was entered (tied to this PIN: a new PIN locks every phone again)."""
+    from django.core import signing
+
     response.set_cookie(SHOP_COOKIE, signing.dumps({"link": str(link.id), "pin": link.pin_hash[-12:]}, salt="shop-session"),
                         max_age=SHOP_SESSION_SECONDS, path=SHOP_COOKIE_PATH, httponly=True, samesite="Lax",
                         secure=request.is_secure())
     return response
+
+
+HOME_NO_MATCH = "That phone number and PIN don't match a shop. Check both, or ask your family"
+
+
+@api_view(["POST"])
+@authentication_classes([])
+@permission_classes([AllowAny])
+def public_home(request):
+    """The landing page's "Shop with your PIN": the registered phone number plus the PIN from the family opens the
+    person's shop. The same answer for an unknown number or a wrong PIN, so numbers can't be probed; wrong PINs still
+    count towards turning the link off."""
+    from .models import ShopLink
+
+    phone = normalize_phone(request.data.get("phone") or "")
+    link = ShopLink.objects.filter(beneficiary__phone=phone, active=True).select_related("beneficiary").first() \
+        if phone else None
+    if link is None:
+        raise ValidationError({"detail": HOME_NO_MATCH})
+    try:
+        link = services.unlock_shop_link(link, request.data.get("pin"))
+    except services.ServiceError as exc:
+        locked = "now off" in str(exc)
+        raise ValidationError({"detail": str(exc) if locked else HOME_NO_MATCH})
+    return _shop_session(Response({"shop": link.token}), request, link)
 
 _SHOP_STATUS = {Request.APPROVED: "Paid, being prepared", Request.PAID: "Paid", Request.REFUSED: "Not approved",
                 Request.FAILED: "Payment failed; the family will follow up", Request.ESCALATED: "Waiting for the family",

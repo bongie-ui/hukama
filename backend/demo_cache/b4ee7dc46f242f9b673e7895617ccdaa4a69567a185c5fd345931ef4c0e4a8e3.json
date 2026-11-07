@@ -1,0 +1,9 @@
+{
+ "content": "Use **\u201cSend an invoice\u201d** on the page. Sign in with the **PayPal account that receives the payment**; Hukama will recognize your business and show the families you can invoice. The family must have **already added your business as a payee** using that same PayPal email.",
+ "model": "gpt-5.4-mini-2026-03-17",
+ "tool_calls": [],
+ "usage": {
+  "input": 503,
+  "output": 64
+ }
+}
