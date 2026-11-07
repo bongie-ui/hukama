@@ -87,7 +87,7 @@ Family members abroad fund a **mandate**: money set aside for one purpose, with 
 - **Hardening:** an audit closed real loopholes. Only payees Hukama has verified can be paid. Decisions on one mandate are serialised so two siblings can't spend the same limit at once. Refunds and chargebacks reduce the balance. Payout status only moves forward, and webhooks are stored and applied in one transaction.
 - **Onboarding:** anyone can start a new family. A first-visit tour and a "Getting started" checklist walk them to their first payment.
 - **Postman:** A public workspace with the whole API (47 requests) and folders that replay the demo against the hosted app with assertions (18 requests, 28 checks, passing).
-- **Quality:** 275 automated tests (every rule, fraud signals, payout idempotency, the loopholes, payee and shop links, invoices, and the five demo scenarios end to end with PayPal and the model mocked). GitHub Actions runs them on PostgreSQL on every push.
+- **Quality:** 276 automated tests (every rule, fraud signals, payout idempotency, the loopholes, payee and shop links, invoices, and the five demo scenarios end to end with PayPal and the model mocked). GitHub Actions runs them on PostgreSQL on every push.
 
 ## Challenges I ran into
 
@@ -108,7 +108,7 @@ Family members abroad fund a **mandate**: money set aside for one purpose, with 
 
 **AI is most powerful when it's boxed in.** The model reads handwritten quotes, understands requests in isiNdebele and Shona, spots the emotional pressure in a scam, and drafts rules from one plain sentence: things I could never have hand-coded in a month. The breakthrough was architectural: the AI only *proposes* and *reads*, a deterministic engine *decides*, and PayPal *moves* the money. That split made the system both smart and trustworthy, and it's a pattern I'll use in every AI product I build.
 
-**An AI coding partner changed how fast I can build.** Working in Claude Code, I went from an empty repository to a deployed, tested payments app (275 automated tests, CI on PostgreSQL, live on Render) in about two weeks. Its value was review as much as speed: a full audit found loopholes I hadn't seen, like two siblings spending the same limit at the same moment, refunds after the money was spent, and payment webhooks arriving out of order.
+**An AI coding partner changed how fast I can build.** Working in Claude Code, I went from an empty repository to a deployed, tested payments app (276 automated tests, CI on PostgreSQL, live on Render) in about two weeks. Its value was review as much as speed: a full audit found loopholes I hadn't seen, like two siblings spending the same limit at the same moment, refunds after the money was spent, and payment webhooks arriving out of order.
 
 **Payments engineering is about the unhappy paths.** Idempotency keys, signature-verified webhooks, statuses that only move forward, refunds and chargebacks: PayPal's sandbox let me test every one of them safely before any real money would move.
 

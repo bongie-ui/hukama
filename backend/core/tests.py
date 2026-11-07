@@ -94,3 +94,16 @@ class LegalPagesTests(TestCase):
             r = self.client.get(url)
             self.assertEqual(r.status_code, 200)
             self.assertContains(r, text)
+
+
+class AdminCoverageTests(TestCase):
+    """Phase 1 rule: the admin shows every model (directly or as an inline)."""
+
+    def test_every_app_model_is_in_the_admin(self):
+        from django.apps import apps
+        from django.contrib import admin
+        inlines = {i.model for a in admin.site._registry.values() for i in a.inlines}
+        ours = ("accounts", "mandates", "agent", "payments", "core")
+        missing = [m._meta.label for m in apps.get_models()
+                   if m._meta.app_label in ours and m not in admin.site._registry and m not in inlines]
+        self.assertEqual(missing, [])

@@ -1,7 +1,7 @@
 from django.contrib import admin
 
 from .models import (Upload, Approval, Beneficiary, BlockedPhone, Decision, Evidence, Funding, LedgerEntry, Mandate,
-                     MandateFunder, Payee, Request, RiskAssessment, Rule)
+                     MandateFunder, Notification, Payee, PayeeLink, Request, RiskAssessment, Rule, ShopLink)
 
 
 class RuleInline(admin.TabularInline):
@@ -91,3 +91,23 @@ admin.site.register([Evidence, Decision, Approval, MandateFunder, Rule])
 class UploadAdmin(admin.ModelAdmin):
     list_display = ("name", "family", "content_type", "size", "created_at")
     exclude = ("data",)  # file bytes are served by the app, not shown here
+
+
+@admin.register(PayeeLink)
+class PayeeLinkAdmin(admin.ModelAdmin):
+    list_display = ("payee", "family", "active", "created_at")
+    list_filter = ("active",)
+    readonly_fields = ("token",)
+
+
+@admin.register(ShopLink)
+class ShopLinkAdmin(admin.ModelAdmin):
+    list_display = ("beneficiary", "family", "active", "failed_attempts", "created_at")
+    list_filter = ("active",)
+    exclude = ("pin_hash",)  # the PIN is told by phone; its hash is never shown
+    readonly_fields = ("token", "failed_attempts")
+
+
+@admin.register(Notification)
+class NotificationAdmin(admin.ModelAdmin):
+    list_display = ("user", "family", "text", "read_at", "created_at")

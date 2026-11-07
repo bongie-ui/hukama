@@ -80,7 +80,7 @@ If calls to `api-m.sandbox.paypal.com`, `api.openai.com` or `thuma.onrender.com`
 | `backend/thuma/` | Django project (settings `base/local/production`, `api_urls.py`, `api_schema.py` OpenAPI annotations) |
 | `backend/accounts/` | Family, Membership (ADMIN / FUNDER / VIEWER), DashboardLayout, session + demo login |
 | `backend/mandates/` | Models, `services.py` (every state change), `templates.py`, `signing.py`, REST views, dashboard tables, payee upload links |
-| `backend/agent/` | `llm.py` (the only OpenAI import), `fraud.py`, `policy.py`, `chat.py` (6 tools, none can pay), `drafting.py`, `extraction.py`, prompts |
+| `backend/agent/` | `llm.py` (the only OpenAI import), `fraud.py`, `policy.py`, `chat.py` (7 tools, none can pay), `drafting.py`, `extraction.py`, prompts |
 | `backend/payments/` | `paypal_client.py`, `checkout.py` (Orders via the Server SDK), `payouts.py`, `rails/`, `webhooks.py`, `premiums.py` (Subscriptions), `last_mile.py` (simulated) |
 | `backend/core/` | BaseModel, phones, test fixtures, `seed_demo`, `export_postman`, SPA view |
 | `backend/demo_assets/` | Quotes ($14, $10.50), foundation photo, Sunrise invoice (use the PNG; PDFs are not read) |
@@ -133,7 +133,7 @@ Sandbox accounts are all US PayPal accounts; story locations differ. Personas: `
 
 ## Current status (5 Nov 2026)
 
-Phases 1–8 are done and verified live on Render with the real model and sandbox PayPal (275 tests, CI green). Details, batch ids and verifications are in `docs/HISTORY.md`.
+Phases 1–8 are done and verified live on Render with the real model and sandbox PayPal (276 tests, CI green). Details, batch ids and verifications are in `docs/HISTORY.md`.
 
 - [x] Phases 1 Foundations · 2 Policy + fraud · 3 Render · 4 PayPal funding, payouts, mobile money rail, webhooks (built with the APIMatic plugin) · 5 Agent · 6 Frontend + seed_demo · 7 AG Studio dashboard, Isililo pool, Postman · 8 Hardening, README, OpenAPI
 - [x] Extras: Hukama rebrand + redesign, funeral cover premiums (PayPal Subscriptions; live subscription `I-URGX2TF3YXPV` active), family invite, groceries, pool contribution link
@@ -149,7 +149,6 @@ Phases 1–8 are done and verified live on Render with the real model and sandbo
 - Devpost: add the YouTube video (Project details) and the grocer password to the judges' notes yourself; press Submit. Story (with the home-page entries), tags, links, gallery, eligibility ticks and judges' notes are filled (7 Nov)
 - Log in with PayPal verified live (7 Nov, batch `8SAH2QJRKF72J`); not yet tried live: the home page's Send an invoice login as `fees@business.example.com` (needs the user to type the password)
 - GitHub About: description, website and topics set (7 Nov, via `gh`, logged in as bongie-ui); only the social preview image is left (Settings → Social preview → `docs/devpost/thumbnail.png`, browser only)
-- Phone check of `#/supplier/<token>` and the People link panel (headless screenshots can't go below 500px)
 - The AG Studio licence is a 45-day trial key (`VITE_AG_STUDIO_LICENSE_KEY`, build-time)
 - Known limits, not fixed: the mandate owner can change rules on a mandate others also fund (ledgered; money only goes to verified payees); public pool checkout has no rate limit; viewers can submit requests (the rules still decide); no WhatsApp/SMS channel (built, then removed on 7 Nov as out of scope)
 
