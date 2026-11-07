@@ -44,7 +44,8 @@ export default function Login() {
             <div><Icon name="check" />Scam messages are held until you call home</div>
           </div>
         </div>
-        <p className="meaning">Hukama (Shona): kinship, the ties that hold a family together.</p>
+        <p className="meaning">Hukama (Shona): kinship, the ties that hold a family together.<br />
+          <a href="/legal/privacy/" style={{ color: "inherit" }}>Privacy</a> · <a href="/legal/terms/" style={{ color: "inherit" }}>Terms</a></p>
       </section>
 
       <section className="login-panel">

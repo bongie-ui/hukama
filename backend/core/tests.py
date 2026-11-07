@@ -86,3 +86,11 @@ class PostmanCollectionTests(SimpleTestCase):
                 resolve(path)
             except Resolver404:
                 self.fail(f"{item['name']}: {path} is not a route")
+
+
+class LegalPagesTests(TestCase):
+    def test_privacy_and_terms_are_public(self):
+        for url, text in (("/legal/privacy/", "Log in with PayPal"), ("/legal/terms/", "Terms of use")):
+            r = self.client.get(url)
+            self.assertEqual(r.status_code, 200)
+            self.assertContains(r, text)

@@ -1,0 +1,47 @@
+{% extends "legal/base.html" %}
+{% block title %}Privacy policy{% endblock %}
+{% block content %}
+<h1>Privacy policy</h1>
+<p class="muted">Last updated 7 November 2026</p>
+<div class="note">Hukama is a demonstration built for the PayPal AI Hackathon. It runs on PayPal's <strong>sandbox</strong> (test money only) and its demo family is fictional. Please don't enter real personal or financial details.</div>
+
+<h2>What Hukama is</h2>
+<p>Hukama lets family members abroad set aside money for a purpose (school fees, building, support for someone at home) with rules attached. Approved payments go directly to the school, supplier, shop or mobile money provider through PayPal.</p>
+
+<h2>What we collect</h2>
+<ul>
+<li><strong>Family members:</strong> name, email, password (stored hashed), country, phone number and the PayPal email used for funding.</li>
+<li><strong>People supported at home:</strong> name, registered phone number, delivery address and what they may receive.</li>
+<li><strong>Payees</strong> (schools, suppliers, shops): business name, PayPal email and an optional phone number.</li>
+<li><strong>Requests and evidence:</strong> amounts, messages sent to the assistant, and photos of quotes, invoices or progress that you upload.</li>
+<li><strong>Payments:</strong> PayPal order, capture, payout and subscription identifiers and statuses. We never see or store card or bank details; PayPal handles those.</li>
+</ul>
+
+<h2>Log in with PayPal</h2>
+<p>When a supplier or school opens its upload link, we ask PayPal to confirm the <strong>email address</strong> of the PayPal account they log in with (scopes <code>openid</code> and <code>email</code>). We use it only to check that it matches the PayPal account the payment would go to, and we record it on the request so the family knows who sent it. We never receive your PayPal password, and we don't keep the PayPal access token.</p>
+
+<h2>How we use it</h2>
+<ul>
+<li>To check each request against the family's rules and pay the right business through PayPal.</li>
+<li>To protect families from scams: every request is scored for fraud risk, and suspicious ones are held until a family member confirms by phone.</li>
+<li>To read uploaded quotes, invoices and photos, and to answer messages, using an AI service (OpenAI). These are sent to it only to produce that answer.</li>
+<li>To keep an append-only record of every decision and payment for the family.</li>
+</ul>
+
+<h2>Who we share it with</h2>
+<ul>
+<li><strong>PayPal</strong>, to take payments, pay businesses and confirm logins.</li>
+<li><strong>OpenAI</strong>, to read documents and messages (see above).</li>
+<li><strong>Render</strong>, which hosts the app and its database.</li>
+</ul>
+<p>Within a family, members see the family's mandates, requests and history. A person who sent a message never sees the fraud analysis about it. We don't sell data or use it for advertising.</p>
+
+<h2>Cookies</h2>
+<p>We use a session cookie to keep you signed in, a security (CSRF) cookie, and short-lived cookies that remember a confirmed PayPal login on an upload link or an entered PIN on a shop link. Your browser may also remember small preferences, such as whether you have seen the tour.</p>
+
+<h2>How long we keep it</h2>
+<p>Data is kept while the demo runs. Payment records are append-only so the family's history can't be changed. Demo data may be reset at any time.</p>
+
+<h2>Your choices</h2>
+<p>You can ask us to see, correct or delete your data by opening an issue at <a href="https://github.com/bongie-ui/hukama/issues">github.com/bongie-ui/hukama/issues</a>.</p>
+{% endblock %}

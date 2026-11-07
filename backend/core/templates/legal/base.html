@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}{% endblock %} · Hukama</title>
+<link rel="icon" href="/favicon.svg">
+<style>
+:root { --bg: #fbf7f9; --ink: #241820; --muted: #6b5a64; --plum: #4a1f3d; --line: #eadde4; }
+@media (prefers-color-scheme: dark) { :root { --bg: #141114; --ink: #f4ecf0; --muted: #b9a8b2; --plum: #ff8a7a; --line: #33262e; } }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.6 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 720px; margin: 0 auto; padding: 32px 16px 64px; }
+a { color: var(--plum); }
+header { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 20px; margin-bottom: 24px; }
+header img { width: 32px; height: 32px; }
+h1 { font-size: 32px; line-height: 1.2; margin: 0 0 4px; }
+h2 { font-size: 20px; margin: 28px 0 6px; }
+.muted { color: var(--muted); font-size: 14px; }
+.note { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; margin: 16px 0; }
+footer { margin-top: 40px; border-top: 1px solid var(--line); padding-top: 16px; font-size: 14px; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+<header><a href="/" style="display:flex;gap:10px;align-items:center;text-decoration:none;color:inherit"><img src="/favicon.svg" alt="">Hukama</a></header>
+{% block content %}{% endblock %}
+<footer><a href="/legal/privacy/">Privacy policy</a> · <a href="/legal/terms/">Terms of use</a> · <a href="/">Back to Hukama</a></footer>
+</main>
+</body>
+</html>
