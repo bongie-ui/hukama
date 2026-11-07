@@ -1,11 +1,14 @@
 // Custom AG Studio widget: a Sankey "money flow" from any "from" category to any "to" category, sized by a
 // number. On the family dashboard it shows family member -> mandate -> what the money was spent on.
 // Built on AG Charts Enterprise (already part of AG Studio), drawn with the vanilla API: no extra package.
-import { AgCharts, ModuleRegistry, SankeySeriesModule, type AgChartInstance, type AgChartOptions } from "ag-charts-enterprise";
+import { AgCharts, LicenseManager, ModuleRegistry, SankeySeriesModule, type AgChartInstance, type AgChartOptions } from "ag-charts-enterprise";
 import { getChartTheme, type AgWidgetFieldReference, type AgWidgetParams } from "ag-studio";
 import { useEffect, useRef, useState } from "react";
 
 ModuleRegistry.registerModules([SankeySeriesModule]);
+// This chart is created directly, outside AG Studio, so it needs the same licence key AG Studio gets.
+const LICENSE_KEY = import.meta.env.VITE_AG_STUDIO_LICENSE_KEY as string | undefined;
+if (LICENSE_KEY) LicenseManager.setLicenseKey(LICENSE_KEY);
 
 export interface MoneyFlowDef {
   type: "money-flow";
