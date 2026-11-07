@@ -1126,6 +1126,91 @@
       ]
     },
     {
+      "name": "Chat by phone",
+      "item": [
+        {
+          "name": "Is chat by phone on? (number and join words)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/config/phone/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "config",
+                "phone",
+                ""
+              ]
+            },
+            "description": ""
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 2xx', () => pm.expect(pm.response.code).to.be.within(200, 299));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "An unsigned message is refused",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Accept",
+                "value": "application/json"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/channels/phone/",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "channels",
+                "phone",
+                ""
+              ]
+            },
+            "description": "The messaging provider signs every message it forwards (HMAC of the URL and fields with our auth token). Anything unsigned is refused, so nobody can talk to the assistant pretending to be a registered number.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"From\": \"whatsapp:+263770000020\",\n  \"Body\": \"send an invoice\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('refused without the provider signature', () => pm.expect(pm.response.code).to.be.oneOf([403, 503]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
       "name": "Mandates",
       "item": [
         {

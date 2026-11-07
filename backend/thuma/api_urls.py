@@ -35,7 +35,9 @@ urlpatterns = [
     path("notifications/", mandates.notifications),
     path("notifications/read/", mandates.notifications_read),
     path("payees/", mandates.payees),
+    path("payees/<uuid:pk>/", mandates.payee_detail),
     path("payees/<uuid:pk>/upload-link/", mandates.payee_upload_link),
+    path("config/phone/", mandates.phone_channel_config),
     path("public/payee/<str:token>/", mandates.public_payee),
     path("public/payee/<str:token>/send/", mandates.public_payee_send),
     path("public/payee/<str:token>/paypal-login/", payments.payee_paypal_login),
@@ -73,6 +75,7 @@ urlpatterns = [
 
     path("chat/conversations/", agent.conversations),
     path("chat/<uuid:pk>/messages/", agent.messages),
+    path("channels/phone/", agent.phone_webhook),
 
     path("dashboard/data/", mandates.dashboard_data),
     path("dashboard/summary/", mandates.dashboard_summary),

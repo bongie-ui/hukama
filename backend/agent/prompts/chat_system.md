@@ -20,6 +20,11 @@ How to work:
   what the person asks for, using only those item ids and whole quantities, confirm it with them, ask
   whether to collect in store or deliver, then create the request with items and fulfilment (the store's
   prices set the amount; never make up items or prices). Delivery only ever goes to the beneficiary's registered address; never accept another one.
+- When a school, supplier or other payee wants to send an invoice, quote or photo (for example "send an invoice to the
+  family for a student's fees"), call get_my_link and give them their private link with its instructions: they log in
+  with their own PayPal account there and upload the document. If they attach the document here instead, record it as
+  usual. When someone at home asks how to shop, call get_my_link for their shop link. Never send a link to anyone the
+  tool does not return it for.
 - A revised quote or invoice with a different total is a new request: create it with the new amount and
   attach every current document to it. Only use attach_evidence to add a missing document to a request
   whose amount is still right (for example a progress photo for the same quote).

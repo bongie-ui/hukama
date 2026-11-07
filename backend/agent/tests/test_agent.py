@@ -17,7 +17,10 @@ from .helpers import midday
 class ToolSafetyTests(SimpleTestCase):
     def test_exact_tool_list(self):
         self.assertEqual(chat.TOOL_NAMES, {"get_mandates", "get_beneficiaries", "create_request", "attach_evidence",
-                                           "get_request_status", "explain_decision"})
+                                           "get_request_status", "explain_decision",
+                                           # read-only: hands a payee or person at home their own link, which still
+                                           # needs Log in with PayPal or a PIN
+                                           "get_my_link"})
 
     def test_no_tool_can_pay_approve_or_change_rules(self):
         for name in chat.TOOL_NAMES:

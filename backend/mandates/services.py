@@ -601,6 +601,17 @@ def set_payee_link(family, payee, user, enabled, new=False):
     return PayeeLink.objects.create(family=family, payee=payee, token=secrets.token_urlsafe(16), created_by=user)
 
 
+def payee_link_for(family, payee):
+    """The payee's active upload link for this family, created when a mandate can pay them (used when the payee
+    asks for it on the phone channel; sending still needs Log in with PayPal as the payee's own account)."""
+    from .models import PayeeLink
+
+    link = PayeeLink.objects.filter(family=family, payee=payee, active=True).first()
+    if link is None and payee_mandates(family, payee):
+        link = PayeeLink.objects.create(family=family, payee=payee, token=secrets.token_urlsafe(16))
+    return link
+
+
 def active_payee_link(token):
     from .models import PayeeLink
 

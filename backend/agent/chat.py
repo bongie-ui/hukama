@@ -63,6 +63,8 @@ TOOLS = [
         "kind": {"type": "string", "enum": [k for k, _ in Evidence.KINDS]},
     }),
     _tool("get_request_status", "Current status of a request.", {"request_id": {"type": "string"}}),
+    _tool("get_my_link", "For a payee (school, supplier): their private link to send an invoice, quote or photo to the "
+          "family. For a person supported at home: their shop link, if the family made one. Nothing else."),
     _tool("explain_decision", "Rule results (and, for funders, risk flags) behind a request's decision.",
           {"request_id": {"type": "string"}}),
 ]
@@ -277,6 +279,29 @@ def tool_attach_evidence(p, conversation, current, request_id, upload_id, kind):
     return data
 
 
+def tool_get_my_link(p, conversation, current):
+    from django.conf import settings
+
+    from mandates.models import ShopLink
+
+    base = (settings.PUBLIC_BASE_URL or "").rstrip("/")
+    if p.payee:
+        link = services.payee_link_for(p.family, p.payee)
+        if link is None:
+            raise ToolError("No mandate in this family pays you yet")
+        return {"link": f"{base}/#/supplier/{link.token}", "for": p.payee.name,
+                "how": "Open it, log in with your own PayPal account (the one that receives the payment), then send a "
+                       "photo of the invoice or quote with the amount. Payment comes straight to that PayPal account "
+                       "once the family's rules are met."}
+    if p.beneficiary:
+        link = ShopLink.objects.filter(beneficiary=p.beneficiary, active=True).first()
+        if link is None:
+            raise ToolError("The family has not made a shop link yet; ask them to make one on People")
+        return {"link": f"{base}/#/shop/{link.token}",
+                "how": "Open it and enter the PIN your family told you on the phone. Never share that PIN."}
+    raise ToolError("Links are only for registered payees and the people the family supports")
+
+
 def tool_get_request_status(p, conversation, current, request_id):
     return outcome(p, _visible_request(p, request_id))
 
@@ -302,6 +327,7 @@ _EXECUTORS = {
     "create_request": tool_create_request,
     "attach_evidence": tool_attach_evidence,
     "get_request_status": tool_get_request_status,
+    "get_my_link": tool_get_my_link,
     "explain_decision": tool_explain_decision,
 }
 assert set(_EXECUTORS) == TOOL_NAMES

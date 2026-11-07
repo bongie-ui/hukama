@@ -74,7 +74,12 @@ Sign in at https://thuma.onrender.com by choosing a family member (no password i
 **F. Fund with PayPal**
 On any mandate, enter an amount → **Pay with PayPal** → log in as a funder's sandbox account (below) → approve. The money counts only once PayPal confirms the capture.
 
-**G. More**
+**G. Chat by phone** (when the test number is switched on; People shows the number)
+1. Your phone must be a registered number: on **People**, set it as Sunrise Academy's **chat number** (or as Mama's registered number).
+2. Send the join words shown on People to the test number, then e.g. *"Please send an invoice to the family for a student's term fees"*.
+3. The assistant replies with the school's private upload link; opening it still needs **Log in with PayPal** as the school's own account. Unregistered numbers get nothing.
+
+**H. More**
 - **Funeral cover: Peaceful Rest** → **Start monthly premium with PayPal** (approve with a funder's sandbox account).
 - **Family funeral pool** → share link → open it signed out and give with PayPal.
 - **Dashboard** → **Build with AI** → *"chart cash paid out per month"*.

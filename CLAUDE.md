@@ -132,7 +132,7 @@ Sandbox accounts are all US PayPal accounts; story locations differ. Personas: `
 
 ## Current status (5 Nov 2026)
 
-Phases 1–8 are done and verified live on Render with the real model and sandbox PayPal (262 tests, CI green). Details, batch ids and verifications are in `docs/HISTORY.md`.
+Phases 1–8 are done and verified live on Render with the real model and sandbox PayPal (270 tests, CI green). Details, batch ids and verifications are in `docs/HISTORY.md`.
 
 - [x] Phases 1 Foundations · 2 Policy + fraud · 3 Render · 4 PayPal funding, payouts, mobile money rail, webhooks (built with the APIMatic plugin) · 5 Agent · 6 Frontend + seed_demo · 7 AG Studio dashboard, Isililo pool, Postman · 8 Hardening, README, OpenAPI
 - [x] Extras: Hukama rebrand + redesign, funeral cover premiums (PayPal Subscriptions; live subscription `I-URGX2TF3YXPV` active), family invite, groceries, pool contribution link
@@ -144,6 +144,8 @@ Phases 1–8 are done and verified live on Render with the real model and sandbo
 - [ ] Phase 10 — Submitted (by 11 Nov)
 
 **Open items that need the user's logins or decisions**
+- Chat by phone (built 7 Nov): create a Twilio account → WhatsApp sandbox; set `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `PHONE_JOIN_CODE` on Render; sandbox webhook "When a message comes in" = `https://thuma.onrender.com/api/channels/phone/` (POST); join from a phone and set it as a payee's chat number on People. App and video stay brand-neutral
+- Grocer sandbox password unknown (not in the Numbers sheet); reset it in the PayPal developer dashboard if needed
 - Devpost: tick the three eligibility statements on Additional info → Save & continue; add the YouTube video (Project details); press Submit. Story, tags, links, gallery and judges' notes (with sandbox passwords) are filled (7 Nov)
 - Log in with PayPal verified live (7 Nov, batch `8SAH2QJRKF72J`); optional: also show a different PayPal account being turned away
 - GitHub About: description, website and topics set (7 Nov, via `gh`, logged in as bongie-ui); only the social preview image is left (Settings → Social preview → `docs/devpost/thumbnail.png`, browser only)

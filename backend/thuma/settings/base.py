@@ -148,6 +148,13 @@ DEMO_MODE = env_bool("DEMO_MODE", False)
 DEMO_REPLAY = env_bool("DEMO_REPLAY", False)
 
 
+# Phone chat channel (agent/phone_channel.py): a messaging provider's test number (Twilio's sandbox) forwards
+# messages to the assistant. Blank = the channel is off. Tests never call the provider.
+TWILIO_ACCOUNT_SID = "" if TESTING else os.environ.get("TWILIO_ACCOUNT_SID", "")
+TWILIO_AUTH_TOKEN = "" if TESTING else os.environ.get("TWILIO_AUTH_TOKEN", "")
+TWILIO_WHATSAPP_FROM = os.environ.get("TWILIO_WHATSAPP_FROM", "whatsapp:+14155238886")  # the sandbox number
+PHONE_JOIN_CODE = os.environ.get("PHONE_JOIN_CODE", "")  # the sandbox's "join <code>" words, shown to families
+
 # OpenAI (agent/llm.py is the only consumer). Tests never call the real API.
 OPENAI_API_KEY = "" if TESTING else os.environ.get("OPENAI_API_KEY", "")
 LLM_TIMEOUT_SECONDS = int(os.environ.get("LLM_TIMEOUT_SECONDS") or 60)

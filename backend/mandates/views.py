@@ -106,6 +106,37 @@ def payees(request):
     return Response(PayeeSerializer(payee).data, status=status.HTTP_201_CREATED)
 
 
+@api_view(["PATCH"])
+@permission_classes(PERMS)
+def payee_detail(request, pk):
+    """A funder changes the family payee's chat number (who may talk to the assistant as this payee). Money still
+    only goes to the payee's PayPal account, and its upload link still needs Log in with PayPal."""
+    family = current_family(request)
+    payee = get_or_404(family.payees, pk=pk)
+    services.require_funder(request.user, family)
+    if "phone" in request.data:
+        raw = request.data.get("phone") or ""
+        phone = normalize_phone(raw) if raw else ""
+        if raw and not phone:
+            raise ValidationError({"phone": "Enter the number with its country code"})
+        payee.phone = phone
+        payee.save(update_fields=["phone", "updated_at"])
+    return Response(PayeeSerializer(payee).data)
+
+
+@api_view(["GET"])
+@permission_classes(PERMS)
+def phone_channel_config(request):
+    """Whether chat by phone is on, the number to message, and the words a new phone sends first."""
+    from django.conf import settings
+
+    from agent import phone_channel
+
+    number = settings.TWILIO_WHATSAPP_FROM.split(":")[-1]
+    return Response({"enabled": phone_channel.is_configured(), "number": number,
+                     "join": f"join {settings.PHONE_JOIN_CODE}" if settings.PHONE_JOIN_CODE else ""})
+
+
 @api_view(["POST", "DELETE"])
 @permission_classes(PERMS)
 def payee_upload_link(request, pk):

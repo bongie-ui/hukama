@@ -99,3 +99,30 @@ def dashboard_turn(request):
         return Response(dashboard_ai.run_turn(request.data))
     except (dashboard_ai.TurnError, KeyError, TypeError) as exc:
         raise ValidationError({"detail": f"Invalid dashboard request: {exc}"})
+
+
+# --- Phone chat channel (provider webhook) ----------------------------------------------------------------
+
+from django.conf import settings as _settings  # noqa: E402
+from django.http import HttpResponse  # noqa: E402
+from django.views.decorators.csrf import csrf_exempt  # noqa: E402
+from django.views.decorators.http import require_POST  # noqa: E402
+
+PHONE_WEBHOOK_PATH = "/api/channels/phone/"
+
+
+@csrf_exempt
+@require_POST
+def phone_webhook(request):
+    """Messages sent to the test number arrive here. Only requests signed by the provider are accepted; the reply
+    is sent separately so slow model calls never time out the provider."""
+    from . import phone_channel
+
+    if not phone_channel.is_configured():
+        return HttpResponse("Phone chat is not configured", status=503)
+    params = {k: request.POST.get(k) for k in request.POST}
+    url = (_settings.PUBLIC_BASE_URL or request.build_absolute_uri("/")).rstrip("/") + PHONE_WEBHOOK_PATH
+    if not phone_channel.valid_signature(url, params, request.headers.get("X-Twilio-Signature", "")):
+        return HttpResponse("Signature could not be verified", status=403)
+    phone_channel.handle_in_background(params)
+    return HttpResponse("<Response/>", content_type="text/xml")

@@ -236,6 +236,11 @@ ANNOTATIONS = [
     (mandates.notifications_read, None, dict(tags=["Family"], summary="Mark my notifications read", request=None,
                                              responses=OBJ)),
 
+    (mandates.payee_detail, None, dict(tags=["Family"], summary="Change a family payee's chat number",
+                                       request=body("PayeeChatNumber", phone=text()), responses=PayeeSerializer)),
+    (mandates.phone_channel_config, None, dict(tags=["Assistant"], summary="Chat by phone: on/off, number, join words",
+                                               responses=OBJ)),
+
     (payments.demo_collect, None, dict(tags=["Demo"], summary="Mark cash collected (simulated last mile)",
                                        request=body("CollectInput", code=text(required=False)), responses=OBJ)),
 ]

@@ -157,6 +157,15 @@ def collection():
                             "PayPal covers it."),
             req("My notifications", "GET", "notifications/", tests=[OK]),
         ]},
+        {"name": "Chat by phone", "item": [
+            req("Is chat by phone on? (number and join words)", "GET", "config/phone/", tests=[OK]),
+            req("An unsigned message is refused", "POST", "channels/phone/", {"From": "whatsapp:+263770000020",
+                                                                            "Body": "send an invoice"},
+                tests=["pm.test('refused without the provider signature', () => pm.expect(pm.response.code).to.be.oneOf([403, 503]));"],
+                description="The messaging provider signs every message it forwards (HMAC of the URL and fields "
+                            "with our auth token). Anything unsigned is refused, so nobody can talk to the assistant "
+                            "pretending to be a registered number."),
+        ]},
         {"name": "Mandates", "item": [
             req("Mandate types", "GET", "mandate-types/"),
             req("List mandates", "GET", "mandates/", tests=[save("mandateId", "pm.response.json()[0].id")]),
