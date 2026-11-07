@@ -146,12 +146,12 @@ Phases 1–8 are done and verified live on Render with the real model and sandbo
 
 **Open items that need the user's logins or decisions**
 - Grocer sandbox password unknown (not in the Numbers sheet); reset it in the PayPal developer dashboard if needed
-- Devpost: tick the three eligibility statements on Additional info → Save & continue; add the YouTube video (Project details); press Submit. Story, tags, links, gallery and judges' notes (with sandbox passwords) are filled (7 Nov)
-- Log in with PayPal verified live (7 Nov, batch `8SAH2QJRKF72J`); optional: also show a different PayPal account being turned away
+- Devpost: add the YouTube video (Project details) and the grocer password to the judges' notes yourself; press Submit. Story (with the home-page entries), tags, links, gallery, eligibility ticks and judges' notes are filled (7 Nov)
+- Log in with PayPal verified live (7 Nov, batch `8SAH2QJRKF72J`); not yet tried live: the home page's Send an invoice login as `fees@business.example.com` (needs the user to type the password)
 - GitHub About: description, website and topics set (7 Nov, via `gh`, logged in as bongie-ui); only the social preview image is left (Settings → Social preview → `docs/devpost/thumbnail.png`, browser only)
 - Phone check of `#/supplier/<token>` and the People link panel (headless screenshots can't go below 500px)
 - The AG Studio licence is a 45-day trial key (`VITE_AG_STUDIO_LICENSE_KEY`, build-time)
-- Known limits, not fixed: the mandate owner can change rules on a mandate others also fund (ledgered; money only goes to verified payees); public pool checkout has no rate limit; viewers can submit requests (the rules still decide); no real WhatsApp/SMS channel (chat by phone number is demo-only)
+- Known limits, not fixed: the mandate owner can change rules on a mandate others also fund (ledgered; money only goes to verified payees); public pool checkout has no rate limit; viewers can submit requests (the rules still decide); no WhatsApp/SMS channel (built, then removed on 7 Nov as out of scope)
 
 ## Working method for Claude Code
 
