@@ -22,11 +22,22 @@ An AI agent that turns money sent home into purpose-locked payments: builders, s
 ### About the project
 
 ```markdown
+**Try it:** [live demo](https://thuma.onrender.com) (pick a family member, no password) · [guide for judges](https://github.com/bongie-ui/hukama/blob/main/docs/GUIDE.md) · [code](https://github.com/bongie-ui/hukama) · [API on Postman](https://documenter.getpostman.com/view/43618475/2sBYHXRJVS)
+
 ## Inspiration
 
-I'm from Gwanda, Zimbabwe. Like many families here, mine is spread out: one brother in Johannesburg, one in the UK, me in the US, and our mother at home. Zimbabwe received about US$2.45 billion in remittances in 2025, and most of it travels the way ours does: someone sends money for a purpose, and from the moment it lands nobody can see whether it went to cement, school fees or something else. Siblings support the same parent without coordinating, so airtime gets topped up twice while the school invoice waits. And scammers know exactly how this works: "Mwanami, I'm at the hospital, send $150 to this number, hurry."
+Zimbabwe received about **US$2.45 billion** in diaspora remittances in 2025, more than 8% of GDP, and about **US$1.86 billion** in just the first eight months of 2026, up 22% ([The Zimbabwe Mail](https://thezimbabwemail.com/main-headline/zimbabwes-diaspora-remittances-rise-to-us2-45-billion-as-uk-overtakes-south-africa/), [The Herald](https://www.heraldonline.co.zw/diaspora-remittances-surge-22pc/)). The UK and South Africa are the biggest sources.
 
-I wanted the money to carry the family's intent with it.
+A lot of that money is sent **for a purpose**: school fees, cement for a house, groceries for a parent, a funeral. Yet:
+
+- Once the money lands, the sender can't see whether it went to that purpose.
+- Relatives in different countries support the same person without coordinating, so one thing gets paid twice while another waits.
+- It's expensive: sending money to Sub-Saharan Africa costs about **8.5–9%** on average, the most of any region, against a UN target of 3% ([UN DESA](https://policy.desa.un.org/publications/world-economic-situation-and-prospects-november-2025-briefing-no-196)).
+- Scammers target exactly these families with fake emergencies: *"I'm at the hospital, send $150 to this number, hurry."*
+
+I'm from Gwanda, Zimbabwe, and I wanted to make sending money home **easy and safe**: pay the school, the builder or the shop directly, and only when the rules the family agreed are met.
+
+To show how it works, Hukama comes with a **demo family**, the Fuyanas: three brothers in Johannesburg, the UK and the US supporting their mother in Gwanda. The family is fictional; the problem is real.
 
 **Hukama** means *kinship* in Shona: the ties that hold a family together.
 
@@ -34,11 +45,11 @@ I wanted the money to carry the family's intent with it.
 
 Family members abroad fund a **mandate**: money set aside for one purpose, with rules everyone agreed and signed. Then:
 
-- **An AI agent handles the requests.** Mama, the hardware store, the school or anyone else messages the assistant in English, isiNdebele or Shona. It reads handwritten quotes, invoices and progress photos with vision, and turns the conversation into a payment request.
+- **An AI agent handles the requests.** The person at home (Mama, in the demo), the hardware store, the school or anyone else messages the assistant in English, isiNdebele or Shona. It reads handwritten quotes, invoices and progress photos with vision, and turns the conversation into a payment request.
 - **A deterministic rules engine decides.** Price ceilings ("cement no more than $11 a bag"), caps shared across siblings ("bundles up to $30 a month, not twice in 24 hours"), required evidence ("pay only after a photo shows the foundation is done"), approved payees and approval limits.
 - **PayPal moves the money.** Approved payments go straight to the supplier, school or mobile money provider. Nobody in the middle holds cash.
 - **Schools, builders and shops don't need an account.** Each gets a private upload link. They log in with the PayPal account that receives the money, so only the business that gets paid can ask for it, then send a photo of the quote or invoice.
-- **The people at home can ask for themselves.** Mama gets her own shop link and picks groceries item by item. A PIN the family tells her on the phone proves it's her. If the support fund can pay, the shop is paid straight away. If it can't, her list goes to every son (or the one she picks). The first to pay with PayPal covers it, and the others are told.
+- **The people at home can ask for themselves.** In the demo, Mama gets her own shop link and picks groceries item by item. A PIN the family tells her on the phone proves it's her. If the support fund can pay, the shop is paid straight away. If it can't, her list goes to every son (or the one she picks). The first to pay with PayPal covers it, and the others are told.
 - **Every request is checked for fraud first.** Deterministic signals (unregistered sender, a different number in the message, an amount spike, velocity, someone asking for a PIN) plus an AI read of intent (urgency pressure, impersonation, "pay someone else", emergency story). High risk means the request is held. Every funder sees a red card that says "Call Mama on her registered number first", and can report it, which blocks the scammer's numbers for the whole family.
 
 **The AI proposes, code decides, PayPal moves the money.** The assistant has no tool that can pay, approve, change rules or change beneficiaries. AI can only make a decision stricter, never looser.

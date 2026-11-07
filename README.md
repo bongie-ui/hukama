@@ -10,13 +10,15 @@ Built for the [PayPal AI Hackathon](https://paypalaihackathon.devpost.com/) from
 
 ## The problem
 
-Zimbabwe received about US$2.45 billion in remittances in 2025. Money sent for a purpose stops being the sender's to control the moment it lands. Siblings in Johannesburg, London and the US support the same parent without coordinating, so airtime gets topped up twice while the school invoice waits. And scams target exactly these families: *"Mwanami, I'm at the hospital, send $150 to this number, hurry."*
+Zimbabwe received about US$2.45 billion in diaspora remittances in 2025 (more than 8% of GDP) and about US$1.86 billion in January–August 2026, up 22%. Sending money to Sub-Saharan Africa costs about 8.5–9%, the most of any region. Money sent for a purpose stops being the sender's to control the moment it lands. Siblings in Johannesburg, London and the US support the same parent without coordinating, so airtime gets topped up twice while the school invoice waits. And scams target exactly these families: *"Mwanami, I'm at the hospital, send $150 to this number, hurry."*
 
 **Who it's for:** families who send money home. Funders abroad, plus the people they support at home and the suppliers, schools and providers who get paid.
 
 ## Try it (hosted demo)
 
 **https://thuma.onrender.com** (sign-in page: pick a family member, no password needed)
+
+**[Guide for judges and testers](docs/GUIDE.md)**: the whole system, a ten-minute tour, and the sandbox PayPal accounts (passwords are in the judges' notes on Devpost). The Fuyana family is a fictional demo family; the problem is real.
 
 | Persona | Story | What to try |
 |---|---|---|
