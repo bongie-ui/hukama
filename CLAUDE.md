@@ -144,6 +144,7 @@ Phases 1–8 are done and verified live on Render with the real model and sandbo
 - [ ] Phase 10 — Submitted (by 11 Nov)
 
 **Open items that need the user's logins or decisions**
+- Devpost: tick the three eligibility statements on Additional info → Save & continue; add the YouTube video (Project details); press Submit. Story, tags, links, gallery and judges' notes (with sandbox passwords) are filled (7 Nov)
 - Log in with PayPal is enabled (7 Nov); still to do once by hand: log in on a payee link as the payee's sandbox account and send a quote
 - GitHub About: description, website and topics set (7 Nov, via `gh`, logged in as bongie-ui); only the social preview image is left (Settings → Social preview → `docs/devpost/thumbnail.png`, browser only)
 - Phone check of `#/supplier/<token>` and the People link panel (headless screenshots can't go below 500px)
