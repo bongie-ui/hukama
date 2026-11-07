@@ -190,7 +190,7 @@ Check PayPal: `curl http://127.0.0.1:8000/api/health/paypal/` should print `"sta
 cd backend && .venv/bin/python manage.py test     # Windows: .venv\Scripts\python manage.py test
 ```
 
-These (276 of them) cover every rule kind, shared caps across funders, signature tampering, fraud signals (and that AI can only add risk), payout idempotency and forward-only status, refunds, the last mile, grocery pricing and delivery, the pool, upload and shop links (PayPal login, PIN lockout), invoices between siblings, family sign-up, the dashboard AI proxy and saved layouts, and scenarios 1–5 end to end. PayPal and the model are mocked; tests never call them. GitHub Actions runs the tests and the frontend build on every push.
+These (279 of them) cover every rule kind, shared caps across funders, signature tampering, fraud signals (and that AI can only add risk), payout idempotency and forward-only status, refunds, the last mile, grocery pricing and delivery, the pool, upload and shop links (PayPal login, PIN lockout), invoices between siblings, family sign-up, the dashboard AI proxy and saved layouts, and scenarios 1–6 end to end (6: the funeral pool). PayPal and the model are mocked; tests never call them. GitHub Actions runs the tests and the frontend build on every push.
 
 Regenerate the Postman collection with `python manage.py export_postman` (then migrate it with `postman collection migrate` and `postman workspace push` to update the public workspace).
 

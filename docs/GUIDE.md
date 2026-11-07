@@ -132,4 +132,4 @@ Payouts are sent by the platform's own sandbox business account, which is not sh
 
 ## 7. Run it yourself
 
-See the [README](../README.md#run-it-locally): clone, `cp .env.example .env`, build the frontend, `migrate`, `seed_demo`, `runserver`. 276 automated tests run on every push (GitHub Actions, PostgreSQL).
+See the [README](../README.md#run-it-locally): clone, `cp .env.example .env`, build the frontend, `migrate`, `seed_demo`, `runserver`. 279 automated tests run on every push (GitHub Actions, PostgreSQL).

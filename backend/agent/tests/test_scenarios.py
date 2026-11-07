@@ -169,3 +169,42 @@ class Scenario5CashCollection(ScenarioBase):
         self.assertIn(tx.collection_code, notice.text)
         self.assertEqual(last_mile.collect(tx, code=tx.collection_code).last_mile_status,
                          RailTransaction.COLLECTED)
+
+
+class Scenario6FuneralPool(ScenarioBase):
+    """The pool is funded by the family and by anyone with its link, and pays only the funeral provider, on its
+    own invoice for the exact total; large bills wait for a funder."""
+
+    def setUp(self):
+        super().setUp()
+        from mandates.models import Payee
+        self.provider = Payee.objects.create(family=self.f.family, name="Test Funeral Provider", verified=True,
+                                             kind=Payee.FUNERAL_PROVIDER, paypal_email="funeral@example.com")
+        self.pool = self.f.mandate(Mandate.ISILILO, [
+            {"kind": "allowed_payees", "params": {"payee_ids": [str(self.provider.id)]}},
+            {"kind": "requires_invoice", "params": {}},
+            {"kind": "escalate_above", "params": {"amount": 500}}], fund=Decimal("300"))
+        gift = services.create_funding(self.pool, None, Decimal("400"))  # a relative through the pool's link
+        gift.contributor_name = "Example Relative"
+        gift.save()
+        services.mark_funding_captured(gift)
+
+    def bill(self, amount, payee=None, key="bill", invoice=None):
+        return services.submit_request(mandate=self.pool, amount=Decimal(amount), product="funeral",
+                                       requester_user=self.f.owner, payee=payee or self.provider, idempotency_key=key,
+                                       uploads=[(self.upload(f"invoice@{invoice or amount}@Test Funeral Provider"),
+                                                Evidence.INVOICE)])
+
+    def test_the_providers_invoice_is_paid_from_the_pool(self):
+        req = self.bill("450")
+        self.assertEqual(req.status, Request.APPROVED)
+        self.assertEqual(self.for_payee.return_value.pay.call_args.args[0].identifier, "funeral@example.com")
+
+    def test_anyone_else_or_a_wrong_total_is_refused(self):
+        self.assertEqual(self.bill("450", payee=self.f.supplier, key="other").status, Request.REFUSED)
+        self.assertEqual(self.bill("450", key="total", invoice="400").status, Request.REFUSED)
+        self.for_payee.return_value.pay.assert_not_called()
+
+    def test_a_large_bill_waits_for_a_funder(self):
+        self.assertEqual(self.bill("650").status, Request.ESCALATED)
+        self.for_payee.return_value.pay.assert_not_called()

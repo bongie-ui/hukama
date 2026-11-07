@@ -133,7 +133,7 @@ Sandbox accounts are all US PayPal accounts; story locations differ. Personas: `
 
 ## Current status (5 Nov 2026)
 
-Phases 1–8 are done and verified live on Render with the real model and sandbox PayPal (276 tests, CI green). Details, batch ids and verifications are in `docs/HISTORY.md`.
+Phases 1–8 are done and verified live on Render with the real model and sandbox PayPal (279 tests, CI green). Details, batch ids and verifications are in `docs/HISTORY.md`.
 
 - [x] Phases 1 Foundations · 2 Policy + fraud · 3 Render · 4 PayPal funding, payouts, mobile money rail, webhooks (built with the APIMatic plugin) · 5 Agent · 6 Frontend + seed_demo · 7 AG Studio dashboard, Isililo pool, Postman · 8 Hardening, README, OpenAPI
 - [x] Extras: Hukama rebrand + redesign, funeral cover premiums (PayPal Subscriptions; live subscription `I-URGX2TF3YXPV` active), family invite, groceries, pool contribution link

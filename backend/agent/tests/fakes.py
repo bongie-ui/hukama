@@ -38,13 +38,14 @@ class ScriptedChat:
 
 
 def fake_extractor(evidence):
-    """Reads test uploads by name: quote@14, quote@10.50, invoice@320, photo:matches."""
+    """Reads test uploads by name: quote@14, quote@10.50, invoice@320 (or invoice@320@Issuer Name), photo:matches."""
     name = evidence.upload.name
     if name.startswith("quote@"):
         evidence.extracted = {"supplier": "Test Supplier", "currency": "USD", "items": [
             {"name": "Cement 50kg bag", "key": "cement_bag", "quantity": 40, "unit_price": float(name[6:])}]}
     elif name.startswith("invoice@"):
-        evidence.extracted = {"supplier": "Test School", "total": float(name[8:]), "items": []}
+        total, _, supplier = name[8:].partition("@")
+        evidence.extracted = {"supplier": supplier or "Test School", "total": float(total), "items": []}
     elif name.startswith("photo:"):
         evidence.extracted = {"verdict": name[6:], "observed": "a concrete slab", "expected": "foundation"}
     evidence.model_name = "fake"
