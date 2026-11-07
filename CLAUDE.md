@@ -144,8 +144,8 @@ Phases 1–8 are done and verified live on Render with the real model and sandbo
 - [ ] Phase 10 — Submitted (by 11 Nov)
 
 **Open items that need the user's logins or decisions**
-- PayPal developer dashboard: enable Log in with PayPal on the `thuma-platform` sandbox app, return URL `https://thuma.onrender.com/paypal/payee-login/`, email scope (until then payee links can't send; `PAYEE_PAYPAL_LOGIN=false` turns the check off)
-- GitHub About still reads "Paypal Hackaton" with no website (set the description and `https://thuma.onrender.com`)
+- Log in with PayPal is enabled (7 Nov); still to do once by hand: log in on a payee link as the payee's sandbox account and send a quote
+- GitHub About: description and website set; add topics and the social preview image (`docs/devpost/thumbnail.png`)
 - Phone check of `#/supplier/<token>` and the People link panel (headless screenshots can't go below 500px)
 - The AG Studio licence is a 45-day trial key (`VITE_AG_STUDIO_LICENSE_KEY`, build-time)
 - Known limits, not fixed: the mandate owner can change rules on a mandate others also fund (ledgered; money only goes to verified payees); public pool checkout has no rate limit; viewers can submit requests (the rules still decide); no real WhatsApp/SMS channel (chat by phone number is demo-only)
