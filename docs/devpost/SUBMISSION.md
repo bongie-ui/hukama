@@ -49,6 +49,7 @@ Family members abroad fund a **mandate**: money set aside for one purpose, with 
 - **A deterministic rules engine decides.** Price ceilings ("cement no more than $11 a bag"), caps shared across siblings ("bundles up to $30 a month, not twice in 24 hours"), required evidence ("pay only after a photo shows the foundation is done"), approved payees and approval limits.
 - **PayPal moves the money.** Approved payments go straight to the supplier, school or mobile money provider. Nobody in the middle holds cash.
 - **Schools, builders and shops don't need an account.** Each gets a private upload link. They log in with the PayPal account that receives the money, so only the business that gets paid can ask for it, then send a photo of the quote or invoice.
+- **One front door for everyone without an account.** The Hukama home page has **Send an invoice** (a school or shop logs in with PayPal and sees every family it can invoice, so nobody has to pass links around), **Shop with your PIN** (someone at home enters their registered phone number and the family's PIN) and **Ask Hukama**, a guide that answers questions in English, isiNdebele or Shona but can't see any family's money.
 - **The people at home can ask for themselves.** In the demo, Mama gets her own shop link and picks groceries item by item. A PIN the family tells her on the phone proves it's her. If the support fund can pay, the shop is paid straight away. If it can't, her list goes to every son (or the one she picks). The first to pay with PayPal covers it, and the others are told.
 - **Every request is checked for fraud first.** Deterministic signals (unregistered sender, a different number in the message, an amount spike, velocity, someone asking for a PIN) plus an AI read of intent (urgency pressure, impersonation, "pay someone else", emergency story). High risk means the request is held. Every funder sees a red card that says "Call Mama on her registered number first", and can report it, which blocks the scammer's numbers for the whole family.
 
@@ -86,7 +87,7 @@ Family members abroad fund a **mandate**: money set aside for one purpose, with 
 - **Hardening:** an audit closed real loopholes. Only payees Hukama has verified can be paid. Decisions on one mandate are serialised so two siblings can't spend the same limit at once. Refunds and chargebacks reduce the balance. Payout status only moves forward, and webhooks are stored and applied in one transaction.
 - **Onboarding:** anyone can start a new family. A first-visit tour and a "Getting started" checklist walk them to their first payment.
 - **Postman:** A public workspace with the whole API (47 requests) and folders that replay the demo against the hosted app with assertions (18 requests, 28 checks, passing).
-- **Quality:** 262 automated tests (every rule, fraud signals, payout idempotency, the loopholes, payee and shop links, invoices, and the five demo scenarios end to end with PayPal and the model mocked). GitHub Actions runs them on PostgreSQL on every push.
+- **Quality:** 275 automated tests (every rule, fraud signals, payout idempotency, the loopholes, payee and shop links, invoices, and the five demo scenarios end to end with PayPal and the model mocked). GitHub Actions runs them on PostgreSQL on every push.
 
 ## Challenges I ran into
 
@@ -107,13 +108,13 @@ Family members abroad fund a **mandate**: money set aside for one purpose, with 
 
 **AI is most powerful when it's boxed in.** The model reads handwritten quotes, understands requests in isiNdebele and Shona, spots the emotional pressure in a scam, and drafts rules from one plain sentence: things I could never have hand-coded in a month. The breakthrough was architectural: the AI only *proposes* and *reads*, a deterministic engine *decides*, and PayPal *moves* the money. That split made the system both smart and trustworthy, and it's a pattern I'll use in every AI product I build.
 
-**An AI coding partner changed how fast I can build.** Working in Claude Code, I went from an empty repository to a deployed, tested payments app (262 automated tests, CI on PostgreSQL, live on Render) in about two weeks. Its value was review as much as speed: a full audit found loopholes I hadn't seen, like two siblings spending the same limit at the same moment, refunds after the money was spent, and payment webhooks arriving out of order.
+**An AI coding partner changed how fast I can build.** Working in Claude Code, I went from an empty repository to a deployed, tested payments app (275 automated tests, CI on PostgreSQL, live on Render) in about two weeks. Its value was review as much as speed: a full audit found loopholes I hadn't seen, like two siblings spending the same limit at the same moment, refunds after the money was spent, and payment webhooks arriving out of order.
 
 **Payments engineering is about the unhappy paths.** Idempotency keys, signature-verified webhooks, statuses that only move forward, refunds and chargebacks: PayPal's sandbox let me test every one of them safely before any real money would move.
 
 **APIMatic made the PayPal SDK predictable.** The Context Plugin gave me the SDK's exact models and parameters, so the Orders and Subscriptions code worked against the real SDK first time. It also told me clearly what the SDK doesn't cover (Log in with PayPal, catalog products), so I called those APIs directly instead of guessing.
 
-**Postman turned my API into something anyone can run.** Every endpoint is in a public collection, with folders that replay the demo against the live app with assertions (18 requests, 28 checks). I ran it after every deploy as a regression check, and it caught real breakages. It's also the fastest way for a judge or developer to understand the API without reading the code.
+**Postman turned my API into something anyone can run.** Every endpoint is in a public collection, with folders that replay the demo against the live app with assertions (21 requests, 33 checks). I ran it after every deploy as a regression check, and it caught real breakages. It's also the fastest way for a judge or developer to understand the API without reading the code.
 
 **Rules people can read are the real product.** Families don't want an app that sends money; they want one that keeps a promise. The hardest and most valuable work was turning that promise into rules a mother, a school and a machine all understand: "Cement: no more than $11.00 each."
 
@@ -188,7 +189,8 @@ Yes. The PayPal integration was built in Claude Code with the **APIMatic Context
 6. Open **Dashboard → Build with AI** and ask for a chart.
 7. **Mama shops for herself:** as **Mmeli**, open **People → Mama → Shop link → New PIN**. Open the link in a private window, enter the PIN, pick a few items and send. The support fund pays, or the 72-hour grocery rule explains why not. Every son gets a notification.
 8. **A supplier sends its own quote:** open **Mama's house: foundation → Let Gwanda Hardware send it themselves**, open the link, and log in with PayPal as the sandbox account `hardware@business.example.com` (password in the private notes).
-9. **Start your own family** from the sign-in page. A short tour and a "Getting started" checklist guide you.
+9. **A school logs in from the home page:** sign out, choose **Send an invoice**, and log in with PayPal as `fees@business.example.com` (password in the private notes). Sunrise Academy sees the Fuyana family and can send its invoice without any link. Any other PayPal account is turned away.
+10. **Start your own family** from the sign-in page. A short tour and a "Getting started" checklist guide you.
 
 **Is this a new project?**
 Yes. The repository's first commit is 27 October 2026, after the hackathon opened on 1 October.
@@ -201,5 +203,4 @@ Zimbabwe
 ## Not built yet (don't claim until done)
 
 - The video
-- Log in with PayPal live on Render: switch on Log in with PayPal for the sandbox app (return URL `https://thuma.onrender.com/paypal/payee-login/`, email), then try step 8 once before submitting
 - AG Studio licence: the 45-day trial key is set; check the dashboard has no watermark on the day you submit

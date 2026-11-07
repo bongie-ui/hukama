@@ -60,26 +60,26 @@ Sign in at https://thuma.onrender.com by choosing a family member (no password i
 1. **Mama's house: foundation** → **Request a payment** → attach [`quote_cement_14.jpg`](../backend/demo_assets/quote_cement_14.jpg), amount $560 → refused by the $11 price ceiling and the missing photo.
 2. Again with [`quote_cement_10_50.jpg`](../backend/demo_assets/quote_cement_10_50.jpg) and [`foundation_slab.jpg`](../backend/demo_assets/foundation_slab.jpg), amount $420 → approved and paid to Gwanda Hardware by PayPal Payout.
 
-**D0. Ways in without an account (landing page)**
-- **Send an invoice** (schools and businesses): log in with the PayPal account that receives your payments; Hukama recognises the business and lists the families you can invoice, each with its upload page.
+**D. Ways in without an account (the home page)**
+- **Send an invoice** (schools and businesses): sign out, choose **Send an invoice**, and log in with PayPal as `fees@business.example.com`. Hukama recognises Sunrise Academy and lists the families it can invoice; **Send** opens its upload page already logged in. Any other PayPal account is turned away.
 - **Shop with your PIN** (family at home): your registered phone number and the PIN the family told you open your shop.
 - **Ask Hukama**: a guide on every public page that answers questions. It can't see any family's money.
 
-**D. The supplier sends its own quote (no Hukama account, but proof of who it is)**
+**E. The supplier sends its own quote (no Hukama account, but proof of who it is)**
 1. On **Mama's house: foundation**, **Let Gwanda Hardware send it themselves** → copy the upload link and open it in a private window.
 2. **Log in with PayPal** as the sandbox account `hardware@business.example.com` (password in the judges' notes on Devpost). Any other PayPal account is turned away.
 3. Send a photo of a quote with the amount. It becomes a request that can only pay Gwanda Hardware and goes through the same checks.
 
-**E. Mama shops for herself**
+**F. Mama shops for herself**
 1. As **Mmeli**: **People** → Mama → **Shop link** → **New PIN** (shown once; in real life you tell her by phone).
 2. Open the link in a private window, enter the PIN, add items, choose collect or delivery, and who to ask if the fund is short.
 3. The support fund pays when the rules allow, and every son is notified. If the fund were short, the list would go to every son (or the one she picked); the first to pay with PayPal covers it and the others are told.
 4. Five wrong PINs turn the link off and alert the family.
 
-**F. Fund with PayPal**
+**G. Fund with PayPal**
 On any mandate, enter an amount → **Pay with PayPal** → log in as a funder's sandbox account (below) → approve. The money counts only once PayPal confirms the capture.
 
-**G. More**
+**H. More**
 - **Funeral cover: Peaceful Rest** → **Start monthly premium with PayPal** (approve with a funder's sandbox account).
 - **Family funeral pool** → share link → open it signed out and give with PayPal.
 - **Dashboard** → **Build with AI** → *"chart cash paid out per month"*.
@@ -97,7 +97,7 @@ All are PayPal **sandbox** accounts (US, test money only). **Passwords are in th
 | `bonginkosi.fuyana@personal.example.com` | Bonginkosi (funder) | Same |
 | `andile.fuyana@personal.example.com` | Andile (funder) | Same |
 | `hardware@business.example.com` | Gwanda Hardware (supplier) | Log in with PayPal on its upload link; see payouts arrive on sandbox.paypal.com |
-| `fees@business.example.com` | Sunrise Academy (school) | Log in with PayPal on its upload link; see the $340 fee payouts |
+| `fees@business.example.com` | Sunrise Academy (school) | **Send an invoice** on the home page, or Log in with PayPal on its upload link; see the $340 fee payouts |
 | `mobilemoney@business.example.com` | Local mobile money provider | See airtime, bundles and cash payouts (with the phone to credit in the note) |
 
 Payouts are sent by the platform's own sandbox business account, which is not shared.
@@ -132,4 +132,4 @@ Payouts are sent by the platform's own sandbox business account, which is not sh
 
 ## 7. Run it yourself
 
-See the [README](../README.md#run-it-locally): clone, `cp .env.example .env`, build the frontend, `migrate`, `seed_demo`, `runserver`. 262 automated tests run on every push (GitHub Actions, PostgreSQL).
+See the [README](../README.md#run-it-locally): clone, `cp .env.example .env`, build the frontend, `migrate`, `seed_demo`, `runserver`. 275 automated tests run on every push (GitHub Actions, PostgreSQL).
