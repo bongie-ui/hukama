@@ -57,6 +57,7 @@ class PayeeLoginTests(TestCase):
     def test_sending_needs_a_paypal_login(self):
         data = self.api.get(f"/api/public/payee/{self.link.token}/").data
         self.assertEqual((data["paypal_login"]["required"], data["paypal_login"]["verified_as"]), (True, None))
+        self.assertEqual(data["requests"], [])  # no history before the login
         self.assertEqual(self.send().status_code, 403)
         self.assertFalse(Request.objects.exists())
 

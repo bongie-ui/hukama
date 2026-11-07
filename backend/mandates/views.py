@@ -322,7 +322,8 @@ def public_payee(request, token):
                          "account": identity.mask(link.payee.paypal_email)},
         "mandates": [{"id": str(m.id), "title": m.title, "type": TEMPLATES[m.type].label, "currency": m.currency,
                       "needs": _needs(m)} for m in mandates],
-        "requests": [_public_request(r) for r in recent],
+        # Their request history only after the PayPal login (when required): a link alone reveals nothing.
+        "requests": [_public_request(r) for r in recent] if verified or not identity.required() else [],
     })
 
 
