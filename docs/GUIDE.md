@@ -71,10 +71,22 @@ Sign in at https://thuma.onrender.com by choosing a family member (no password i
 3. Send a photo of a quote with the amount. It becomes a request that can only pay Gwanda Hardware and goes through the same checks.
 
 **F. Mama shops for herself**
-1. As **Mmeli**: **People** → Mama → **Shop link** → **New PIN** (shown once; in real life you tell her by phone).
-2. Open the link in a private window, enter the PIN, add items, choose collect or delivery, and who to ask if the fund is short.
+1. As **Mmeli**: **People** → Mama → **Shop link**. Hukama makes her private shop link and a random 4-digit **PIN**, shown once (in real life you call her on her registered number and tell her; never send it with the link).
+2. Open the link in a private window (or the home page → **Shop with your PIN** with her registered number), enter the PIN, add items, choose collect or delivery, and who to ask if the fund is short.
 3. The support fund pays when the rules allow, and every son is notified. If the fund were short, the list would go to every son (or the one she picked); the first to pay with PayPal covers it and the others are told.
 4. Five wrong PINs turn the link off and alert the family.
+
+**Managing Mama's PIN** (any funder, on **People** → Mama → **Shop link**)
+
+| You want to | Tap | What happens |
+|---|---|---|
+| Give her a PIN the first time | **Shop link** | Link and PIN created; the PIN is shown once |
+| Change a forgotten or leaked PIN | **New PIN** | New PIN shown once; the old one stops working and wrong tries reset |
+| Replace a link shared too widely | **New link** | New address and new PIN |
+| Let her back in after 5 wrong PINs | **Shop link** | A fresh link and PIN |
+| Stop her shop | **Turn off** | The link stops working |
+
+Nobody can see a PIN again later (only a one-way hash is stored, and the admin never shows it). Mama can't change it herself, on purpose: if a scammer tricks her into saying it, the family can still replace it.
 
 **G. Fund with PayPal**
 On any mandate, enter an amount → **Pay with PayPal** → log in as a funder's sandbox account (below) → approve. The money counts only once PayPal confirms the capture.
