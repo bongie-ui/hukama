@@ -64,7 +64,7 @@ Family members abroad fund a **mandate**: money set aside for one purpose, with 
 | **Isililo** (funeral pool) | The family funds it, and anyone with the pool's link can give with PayPal, no account needed |
 | **Vikela** (cover) | Funeral cover (including repatriation for family abroad) or medical aid, paid monthly by PayPal Subscriptions to the named provider |
 
-### What we saw in testing
+### What I saw in testing
 
 - A handwritten quote for 40 bags of cement at $14 is read by the vision model, refused by the $11 price ceiling, and the supplier is asked for a revised quote in plain words.
 - The revised quote at $10.50 plus the foundation photo is approved, and Gwanda Hardware receives a real $420 PayPal sandbox payout within half a minute. Sunrise Academy's $340 invoice is paid the same way, and a $48 grocery basket is paid to the store and delivered to Mama's registered address.
@@ -73,14 +73,14 @@ Family members abroad fund a **mandate**: money set aside for one purpose, with 
 - Mama's shopping list is refused while Andile's groceries from 3 November are still inside the family's 72-hour rule, and she's told exactly why. Without her PIN her shop shows nothing but her first name. Five wrong guesses turn the link off and alert the family.
 - A "hospital emergency" message from an unknown number scores 100/100 risk and is held. The sender sees only "held until the family confirms with her on her registered number". The funders see every signal, and the assistant's reasoning with quotes from the message.
 
-## How we built it
+## How I built it
 
 - **Backend:** Django + Django REST Framework, PostgreSQL on Render. Every state change writes an append-only ledger entry, and mandate rules are signed with HMAC-SHA256: if anyone edits them in the database, nothing gets paid.
 - **AI:** OpenAI models for chat with tool calling, structured outputs for drafting mandates from plain language, vision for quotes, invoices and photos, and fraud intent analysis. Every model call goes through one wrapper with retries, timeouts and a demo replay cache.
 - **PayPal, end to end:** money comes in through **PayPal checkout** (Orders v2 via the APIMatic-generated **PayPal Server SDK**, **JS SDK v6** buttons), for funders and for anyone with a pool's link. Funeral cover (including repatriation for family abroad) is paid monthly by **PayPal Subscriptions**; each premium is recorded once and then passed to the cover provider by the rules. Money goes out by **PayPal Payouts** to suppliers, schools, the grocer and the local mobile money provider, idempotently (`sender_batch_id` = `hukama-<request id>`). **PayPal webhooks** update captures and payouts the moment they happen; every event is signature-verified with PayPal and applied once.
 - **APIMatic:** the PayPal integration was written in Claude Code with the **APIMatic Context Plugin for PayPal**, which supplied the SDK's exact models, endpoints and idempotency parameters.
 - **Frontend:** React + TypeScript + Vite, served by Django on one Render service. Mobile-first, light and dark modes, with its own design system and logo.
-- **Dashboard:** AG Studio (built on AG Grid and AG Charts) shows funds by mandate, each sibling's contributions, spend by category, fraud alerts and the full audit trail. Its Agent Framework lets you say "chart cash paid out per month" and the chart appears. The agents' model calls go through our own server, so the API key never reaches the browser.
+- **Dashboard:** AG Studio (built on AG Grid and AG Charts) shows funds by mandate, each sibling's contributions, spend by category, fraud alerts and the full audit trail. Its Agent Framework lets you say "chart cash paid out per month" and the chart appears. The agents' model calls go through the app's own server, so the API key never reaches the browser.
 - **Links instead of accounts:** a funeral pool's link lets anyone give with PayPal. A payee's upload link uses **Log in with PayPal**: the logged-in PayPal email must be the account the payout goes to. A person at home gets a shop link opened with a PIN. Whatever arrives through a link can only pay that link's payee or the family's store, and still goes through the fraud check and the rules.
 - **Invoices between siblings:** when the support fund can't cover a shopping list, it becomes an invoice to the family. The first son's PayPal payment is captured, the list is re-checked against every rule and the store is paid. A late second payment simply stays in the fund. Everyone sees in-app notifications.
 - **Hardening:** an audit closed real loopholes. Only payees Hukama has verified can be paid. Decisions on one mandate are serialised so two siblings can't spend the same limit at once. Refunds and chargebacks reduce the balance. Payout status only moves forward, and webhooks are stored and applied in one transaction.
@@ -88,14 +88,14 @@ Family members abroad fund a **mandate**: money set aside for one purpose, with 
 - **Postman:** A public workspace with the whole API (47 requests) and folders that replay the demo against the hosted app with assertions (18 requests, 28 checks, passing).
 - **Quality:** 262 automated tests (every rule, fraud signals, payout idempotency, the loopholes, payee and shop links, invoices, and the five demo scenarios end to end with PayPal and the model mocked). GitHub Actions runs them on PostgreSQL on every push.
 
-## Challenges we ran into
+## Challenges I ran into
 
 - **Keeping the AI on a leash without making it useless.** The answer was architecture rather than prompts: the model can only *create requests* and *read*. Fraud analysis can add risk but never remove it, and a funder's approval re-checks every hard rule.
 - **Sending money to Zimbabwe.** Zimbabwean PayPal accounts have historically been send-only, so the last mile goes through a local mobile money provider's PayPal business account. Airtime, data and cash delivery to the beneficiary's phone are clearly labelled **Simulated rail** in the app, because no public sandbox exists for them.
 - **Proving who is asking, without accounts.** Suppliers and schools already have PayPal, so Log in with PayPal proves the request comes from the account that gets paid. Mama has no PayPal, so her shop link needs a PIN the family tells her on a phone call, never in the same message as the link. The family is also told about every list paid from the fund.
 - **Scam messages that look exactly like family.** Deterministic signals catch the mechanics, such as an unknown number or "send to this other number". The model catches the story, such as urgency, impersonation or an emergency. Neither alone was enough.
 
-## Accomplishments that we're proud of
+## Accomplishments that I'm proud of
 
 - A refusal always explains itself in plain words, names who already covered something, and suggests what would work.
 - Siblings on three continents see the same limits, so nobody tops up twice.
@@ -103,9 +103,19 @@ Family members abroad fund a **mandate**: money set aside for one purpose, with 
 - An append-only ledger and signed rules mean every dollar has a trail.
 - Mama can shop for herself, and her sons never pay for the same list twice.
 
-## What we learned
+## What I learned
 
-Families don't want an app that sends money. They want one that keeps a promise, so the hard part was making rules people can read ("Cement: no more than $11.00 each") that a machine can enforce.
+**AI is most powerful when it's boxed in.** The model reads handwritten quotes, understands requests in isiNdebele and Shona, spots the emotional pressure in a scam, and drafts rules from one plain sentence: things I could never have hand-coded in a month. The breakthrough was architectural: the AI only *proposes* and *reads*, a deterministic engine *decides*, and PayPal *moves* the money. That split made the system both smart and trustworthy, and it's a pattern I'll use in every AI product I build.
+
+**An AI coding partner changed how fast I can build.** Working in Claude Code, I went from an empty repository to a deployed, tested payments app (262 automated tests, CI on PostgreSQL, live on Render) in about two weeks. Its value was review as much as speed: a full audit found loopholes I hadn't seen, like two siblings spending the same limit at the same moment, refunds after the money was spent, and payment webhooks arriving out of order.
+
+**Payments engineering is about the unhappy paths.** Idempotency keys, signature-verified webhooks, statuses that only move forward, refunds and chargebacks: PayPal's sandbox let me test every one of them safely before any real money would move.
+
+**APIMatic made the PayPal SDK predictable.** The Context Plugin gave me the SDK's exact models and parameters, so the Orders and Subscriptions code worked against the real SDK first time. It also told me clearly what the SDK doesn't cover (Log in with PayPal, catalog products), so I called those APIs directly instead of guessing.
+
+**Postman turned my API into something anyone can run.** Every endpoint is in a public collection, with folders that replay the demo against the live app with assertions (18 requests, 28 checks). I ran it after every deploy as a regression check, and it caught real breakages. It's also the fastest way for a judge or developer to understand the API without reading the code.
+
+**Rules people can read are the real product.** Families don't want an app that sends money; they want one that keeps a promise. The hardest and most valuable work was turning that promise into rules a mother, a school and a machine all understand: "Cement: no more than $11.00 each."
 
 ## What's next for Hukama
 
