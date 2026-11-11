@@ -8,6 +8,42 @@
 
 Built for the [PayPal AI Hackathon](https://paypalaihackathon.devpost.com/) from Gwanda, Zimbabwe.
 
+## Watch the demo
+
+[![Hukama demo on YouTube](https://img.youtube.com/vi/6DvEVSm4mjM/hqdefault.jpg)](https://youtu.be/6DvEVSm4mjM)
+
+**[Hukama demo (2:39, captioned)](https://youtu.be/6DvEVSm4mjM)** follows one payment from start to finish:
+
+| Time | What you see |
+|---|---|
+| 0:00 | The problem: money sent home for a purpose, with no control once it lands |
+| 0:24 | Mandates: money for one purpose, with rules every funder signs (only Gwanda Hardware, at most $11 a bag, foundation photo first) |
+| 0:43 | A "hospital emergency" scam held at risk 100/100 before any money moves, and the family dashboard |
+| 1:01 | A son adds $100 with PayPal checkout; it only counts once PayPal confirms the capture |
+| 1:22 | The builder's quote and foundation photo are read by AI, every rule passes, and a PayPal Payout pays the hardware store directly, visible in PayPal's own developer log |
+| 1:47 | A school with no Hukama account logs in with PayPal, sends its $340 invoice, and PayPal pays it |
+| 2:27 | The AI proposes, code decides, PayPal moves the money |
+
+### Beyond the video
+
+The video shows one path. Everything below is also built, tested and live in the [hosted demo](https://thuma.onrender.com):
+
+| Capability | What it does | Why it matters |
+|---|---|---|
+| **Five mandates, one rule engine** | Build, school fees, shared support, funeral pool and cover are rule templates plus data | A new purpose (rent, medical bills, farming inputs) is a new template, not new code |
+| **Siblings share limits** | Shared caps, "not twice in 24 hours", and a tile that names who already paid | Brothers on three continents never top up twice |
+| **Mama shops for herself** | A shop link opened with a PIN told by phone; groceries item by item, collected with a code or delivered to the registered address only | The person being supported asks for herself, with no account |
+| **Invoices between siblings** | A list the fund can't cover becomes an invoice to every son (or one); the first PayPal payment covers it, the rules re-check it, the store is paid, the others are notified | Nobody pays for the same list twice |
+| **Funeral pool** | A share link anyone can give to with PayPal, no account; pays only the funeral provider, on its invoice | Friends and church can help without money passing through anyone's pocket |
+| **Monthly cover** | Funeral cover (with repatriation) and medical aid by PayPal Subscriptions | Premiums never lapse because a transfer was forgotten |
+| **Multilingual agent** | Chat in English, isiNdebele and Shona; mandates drafted from one plain sentence, then signed | Older relatives and small businesses use their own language |
+| **Fraud before rules** | Eight weighted signals plus nine AI intent flags; high risk is held until a funder calls the registered number; reporting blocks the numbers family-wide | Fake emergencies stop at the first message |
+| **Payees without accounts** | Upload links and **Send an invoice**, gated by Log in with PayPal as the account that gets paid | Only the business that receives the money can ask for it |
+| **Ask Hukama** | A public guide on the home page with no tools and no family data | Visitors get answers with no risk to any family |
+| **A dashboard you can talk to** | AG Studio with a money-flow widget; "chart cash paid out per month" builds the chart | Every dollar is traceable |
+| **Families of their own** | Start your family, invite relatives as admin, funder or viewer, a guided tour and a checklist | Any family can use it, not just the demo one |
+| **Payments-grade plumbing** | Signed rules, append-only ledger, idempotent payouts, forward-only status, refunds and chargebacks, verified webhooks, per-mandate locking | It behaves like a payments system, because it is one |
+
 ## The problem
 
 Zimbabwe received about US$2.45 billion in diaspora remittances in 2025 (more than 8% of GDP) and about US$1.86 billion in January–August 2026, up 22%. Sending money to Sub-Saharan Africa costs about 8.5–9%, the most of any region. Money sent for a purpose stops being the sender's to control the moment it lands. Siblings in Johannesburg, London and the US support the same parent without coordinating, so airtime gets topped up twice while the school invoice waits. And scams target exactly these families: *"Mwanami, I'm at the hospital, send $150 to this number, hurry."*

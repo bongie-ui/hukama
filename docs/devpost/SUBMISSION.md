@@ -22,7 +22,7 @@ An AI agent that turns money sent home into purpose-locked payments: builders, s
 ### About the project
 
 ```markdown
-**Try it:** [live demo](https://thuma.onrender.com) (pick a family member, no password) · [guide for judges](https://github.com/bongie-ui/hukama/blob/main/docs/GUIDE.md) · [code](https://github.com/bongie-ui/hukama) · [API on Postman](https://documenter.getpostman.com/view/43618475/2sBYHXRJVS)
+**Watch:** [the 3-minute demo on YouTube](https://youtu.be/6DvEVSm4mjM) · **Try it:** [live demo](https://thuma.onrender.com) (pick a family member, no password) · [guide for judges](https://github.com/bongie-ui/hukama/blob/main/docs/GUIDE.md) · [code](https://github.com/bongie-ui/hukama) · [API on Postman](https://documenter.getpostman.com/view/43618475/2sBYHXRJVS)
 
 ## Inspiration
 
@@ -35,7 +35,7 @@ A lot of that money is sent **for a purpose**: school fees, cement for a house, 
 - It's expensive: sending money to Sub-Saharan Africa costs about **8.5–9%** on average, the most of any region, against a UN target of 3% ([UN DESA](https://policy.desa.un.org/publications/world-economic-situation-and-prospects-november-2025-briefing-no-196)).
 - Scammers target exactly these families with fake emergencies: *"I'm at the hospital, send $150 to this number, hurry."*
 
-I'm from Gwanda, Zimbabwe, and I wanted to make sending money home **easy and safe**: pay the school, the builder or the shop directly, and only when the rules the family agreed are met.
+I wanted to make sending money home **easy and safe**: pay the school, the builder or the shop directly, and only when the rules the family agreed are met.
 
 To show how it works, Hukama comes with a **demo family**, the Fuyanas: three brothers in Johannesburg, the UK and the US supporting their mother in Gwanda. The family is fictional; the problem is real.
 
@@ -65,14 +65,43 @@ Family members abroad fund a **mandate**: money set aside for one purpose, with 
 | **Isililo** (funeral pool) | The family funds it, and anyone with the pool's link can give with PayPal, no account needed |
 | **Vikela** (cover) | Funeral cover (including repatriation for family abroad) or medical aid, paid monthly by PayPal Subscriptions to the named provider |
 
-### What I saw in testing
+### What the video shows, and what it doesn't
 
-- A handwritten quote for 40 bags of cement at $14 is read by the vision model, refused by the $11 price ceiling, and the supplier is asked for a revised quote in plain words.
-- The revised quote at $10.50 plus the foundation photo is approved, and Gwanda Hardware receives a real $420 PayPal sandbox payout within half a minute. Sunrise Academy's $340 invoice is paid the same way, and a $48 grocery basket is paid to the store and delivered to Mama's registered address.
-- Andile buys Mama's bundles. An hour later Mmeli tries the same thing and is told, "Andile Fuyana already sent bundles ($10.00) at 08:50; wait 24 hours."
-- Sunrise Academy sends its invoice through its upload link. At $300 it's refused ("The invoice total ($340.00) does not match the request"); at $340 it's paid by PayPal Payout.
-- Mama's shopping list is refused while Andile's groceries from 3 November are still inside the family's 72-hour rule, and she's told exactly why. Without her PIN her shop shows nothing but her first name. Five wrong guesses turn the link off and alert the family.
-- A "hospital emergency" message from an unknown number scores 100/100 risk and is held. The sender sees only "held until the family confirms with her on her registered number". The funders see every signal, and the assistant's reasoning with quotes from the message.
+The [3-minute video](https://youtu.be/6DvEVSm4mjM) follows **one payment from start to finish**: a son adds $100 to Mama's house with PayPal checkout, the builder's quote and foundation photo are read by AI and checked against the signed rules, PayPal pays the hardware store directly, and a school with no Hukama account logs in with PayPal to send its own invoice and gets paid. Along the way you see a scam held at risk 100/100 and the family dashboard, and each PayPal call appears in PayPal's own developer log.
+
+That's one path through Hukama. Everything below is also built, tested and live in the demo:
+
+| Area | What Hukama does | Why it matters |
+|---|---|---|
+| **Five mandates, one rule engine** | Build, school fees, shared support, funeral pool and cover are rule templates and data, not separate code | A new purpose (rent, medical bills, farming inputs) is a new template, not a new app |
+| **Siblings share limits** | Caps, "not twice in 24 hours", and a tile that says who already paid ("Andile already sent bundles at 08:50") | Three brothers on three continents never top up twice |
+| **Mama shops for herself** | A shop link opened with a PIN the family tells her by phone; groceries item by item, collected in store with a code or delivered to her registered address only | The person being supported asks for herself, with no account and no smartphone skills beyond a link |
+| **Invoices between siblings** | If the fund is short, her list becomes an invoice to every son (or the one she picks); the first PayPal payment covers it, the list is re-checked, the store is paid, and the others are notified | Nobody pays for the same list twice, and nobody is left out of the loop |
+| **Funeral pool** | A share link anyone can give to with PayPal, no account needed; it pays only the funeral provider, on its invoice | Friends and church members can help without the money passing through anyone's pocket |
+| **Monthly cover** | Funeral cover (with repatriation) and medical aid paid by PayPal Subscriptions; each premium funds the mandate once, then the rules pay the provider | Premiums never lapse because a transfer was forgotten |
+| **A multilingual agent** | Chat in English, isiNdebele and Shona for family, suppliers and schools; mandates drafted from one plain sentence and signed | Older relatives and small businesses use the language they think in |
+| **Fraud before rules** | Eight weighted rule signals plus nine AI intent flags; high risk is held until a funder calls the **registered** number; reporting a scam blocks its numbers for the whole family | Fake emergencies stop at the first message, not after the money is gone |
+| **Payees without accounts** | An upload link, or **Send an invoice** on the home page, gated by Log in with PayPal as the account that gets paid | Only the business that receives the money can ask for it |
+| **Ask Hukama** | A public guide on the home page that answers questions but has no tools and can't see any family's data | Curious visitors get answers without any risk to a family |
+| **A dashboard you can talk to** | AG Studio with a custom money-flow widget; "chart cash paid out per month" builds the chart, through our own server | Every dollar is traceable: who gave, what it paid for, every alert |
+| **Families of their own** | **Start your family**, invite relatives as admin, funder or viewer, a first-visit tour and a getting-started checklist | Any family can start using it today, not just the demo one |
+| **Payments-grade plumbing** | HMAC-signed rules, an append-only ledger, payouts that can't be sent twice, forward-only status, refunds and chargebacks, verified webhooks, per-mandate locking | It behaves like a payments system, because it is one |
+
+### A week with the Fuyana family
+
+Here is what happens on screen when we follow the demo family through one week, in the order the money moves.
+
+**1. A quote that's too expensive.** Gwanda Hardware sends a photo of a handwritten quote: 40 bags of cement at $14 a bag. The assistant reads the photo into line items, and the request appears as refused, because the family's rule says cement costs no more than $11 a bag. The supplier is asked, in plain words, for a revised quote.
+
+**2. The revised quote is paid.** A new quote arrives at $10.50 a bag, with a photo showing the foundation is finished. This time every rule passes, the request is approved, and Gwanda Hardware receives a real $420 PayPal sandbox payout within half a minute.
+
+**3. The school sends its own invoice.** Sunrise Academy logs in with PayPal through its upload link and sends its invoice. The first try, at $300, is refused, and the screen says why: "The invoice total ($340.00) does not match the request." At $340 it's paid by PayPal Payout.
+
+**4. Two brothers, one top-up.** Andile buys Mama's data bundles. An hour later Mmeli opens **Support for Mama**, taps **Buy bundles**, and is stopped by a message that names his brother: "Andile Fuyana already sent bundles ($10.00) at 08:50; wait 24 hours." Earlier in the week, a $48 grocery basket was paid to the store and delivered to Mama's registered address.
+
+**5. Mama shops for herself.** Mama opens her shop link. Until she types the PIN the family told her on the phone, the page shows nothing but her first name; five wrong guesses would switch the link off and alert the family. She picks groceries item by item and sends the list. It's refused, because Andile's groceries from 3 November are still inside the family's 72-hour rule, and the screen tells her exactly that.
+
+**6. A scam is caught.** A message arrives from an unknown number: Mama is "at the hospital" and someone must send $150 to a different number, quickly. It scores 100/100 risk and is held. The sender sees only that it's "held until the family confirms with her on her registered number". The sons see a red card on their **Approvals** page that says "Call Mama on her registered number first", listing every warning sign and the assistant's reasoning with quotes from the message, and a button to report the scam.
 
 ## How I built it
 
@@ -86,7 +115,7 @@ Family members abroad fund a **mandate**: money set aside for one purpose, with 
 - **Invoices between siblings:** when the support fund can't cover a shopping list, it becomes an invoice to the family. The first son's PayPal payment is captured, the list is re-checked against every rule and the store is paid. A late second payment simply stays in the fund. Everyone sees in-app notifications.
 - **Hardening:** an audit closed real loopholes. Only payees Hukama has verified can be paid. Decisions on one mandate are serialised so two siblings can't spend the same limit at once. Refunds and chargebacks reduce the balance. Payout status only moves forward, and webhooks are stored and applied in one transaction.
 - **Onboarding:** anyone can start a new family. A first-visit tour and a "Getting started" checklist walk them to their first payment.
-- **Postman:** A public workspace with the whole API (47 requests) and folders that replay the demo against the hosted app with assertions (18 requests, 28 checks, passing).
+- **Postman:** A public workspace with the whole API (47 requests) and folders that replay the demo against the hosted app with assertions (21 requests, 33 checks, passing).
 - **Quality:** 279 automated tests (every rule, fraud signals, payout idempotency, the loopholes, payee and shop links, invoices, and the five demo scenarios end to end with PayPal and the model mocked). GitHub Actions runs them on PostgreSQL on every push.
 
 ## Challenges I ran into
@@ -153,7 +182,7 @@ paypal-orders, paypal-subscriptions, paypal-server-sdk, paypal-js-sdk, paypal-we
 
 ### Video demo link
 
-**(update later)** YouTube link, under 3 minutes.
+https://youtu.be/6DvEVSm4mjM (2:39, captioned)
 
 ---
 
@@ -202,5 +231,4 @@ Zimbabwe
 
 ## Not built yet (don't claim until done)
 
-- The video
 - AG Studio licence: the 45-day trial key is set; check the dashboard has no watermark on the day you submit
