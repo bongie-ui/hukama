@@ -241,7 +241,7 @@ All accounts are PayPal **sandbox** accounts (US), whatever the story location.
 | `hardware@business.example.com` | Gwanda Hardware (supplier) |
 | `fees@business.example.com` | Sunrise Academy (school) |
 | `mobilemoney@business.example.com` | Local mobile money provider |
-| `groceries@business.example.com` | Gwanda Fresh Market (grocer). Create this sandbox business account, or set `DEMO_PAYEE_GROCER_EMAIL` |
+| `groceries@business.example.com` | Gwanda Fresh Market (grocer) |
 
 Sandbox passwords are not in this repository; judges get them in the Devpost testing instructions.
 
