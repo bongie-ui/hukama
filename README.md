@@ -6,7 +6,7 @@
 
 > **The AI proposes, code decides, PayPal moves the money.** The assistant has no tool that can pay, approve, change rules or change who gets paid. Fraud analysis can only make a decision stricter.
 
-Built for the [PayPal AI Hackathon](https://paypalaihackathon.devpost.com/) from Gwanda, Zimbabwe.
+Built for the [PayPal AI Hackathon](https://paypalaihackathon.devpost.com/) from Gwanda, Zimbabwe. **[Devpost project page](https://devpost.com/software/thuma)**
 
 ## Watch the demo
 

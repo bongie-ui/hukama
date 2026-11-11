@@ -142,11 +142,10 @@ Phases 1–8 are done and verified live on Render with the real model and sandbo
 - [x] 6 Nov groceries by item; Mama's shop link (`#/shop/<token>`): the fund pays when it can, otherwise the list is invoiced to every son or the one she picks; the first to pay with PayPal covers it and the others are notified in the app
 - [x] 6 Nov who is really asking: payee links need Log in with PayPal as the payee's own account; shop links need a PIN told by phone (5 wrong = off + family told; family notified of every list); "Start your family" sign-up; first-visit guided tour + Getting started checklist; upload-link box on the mandate page
 - [x] **Phase 9 — Video + Devpost text** (11 Nov): video https://youtu.be/6DvEVSm4mjM (public, captioned); Devpost story, video link and README updated
-- [ ] Phase 10 — Submitted (by 11 Nov)
+- [x] Phase 10 — Submitted (11 Nov): https://devpost.com/software/thuma (video, grocer login in the judges' notes)
 
 **Open items that need the user's logins or decisions**
 - Grocer sandbox account confirmed (11 Nov); its password goes only in the Devpost judges' notes (typed by the user), never in the repo
-- Devpost: the video link is in (11 Nov); add the grocer login to the judges' notes yourself and press Submit. Story (with the home-page entries), tags, links, gallery, eligibility ticks and judges' notes are filled (7 Nov)
 - Log in with PayPal verified live (7 Nov, batch `8SAH2QJRKF72J`); not yet tried live: the home page's Send an invoice login as `fees@business.example.com` (needs the user to type the password)
 - GitHub About: description, website and topics set (7 Nov, via `gh`, logged in as bongie-ui); only the social preview image is left (Settings → Social preview → `docs/devpost/thumbnail.png`, browser only)
 - The AG Studio licence is a 45-day trial key (`VITE_AG_STUDIO_LICENSE_KEY`, build-time)
